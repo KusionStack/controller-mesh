@@ -1,0 +1,31 @@
+apiVersion: kridge.kusionstack.io/v1alpha1
+kind: ShardingConfig
+metadata:
+  name: sharding-demo
+  namespace: operator-demo
+spec:
+  controller:
+    leaderElectionName: operator-leader
+  limits:
+    - objectSelector:
+        relateResources:
+          - apiGroups:
+              - '*'
+            resources:
+              - pods
+              - services
+        selector:
+          matchExpressions:
+            - key: kridge.kusionstack.io/namespace
+              operator: In
+              values:
+                - namespace-a
+                - namespace-b
+          matchLabels:
+            # ...
+  selector:
+    matchExpressions:
+      - key: statefulset.kubernetes.io/pod-name
+        operator: In
+        values:
+          - operator-demo-0

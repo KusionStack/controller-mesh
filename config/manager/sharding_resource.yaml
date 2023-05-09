@@ -1,0 +1,20 @@
+apiVersion: v1
+data:
+  resource-config: |
+    groupVersionKinds:
+      kridge.kusionstack.io/v1alpha1:
+      - '*'
+      v1:
+      - Pod
+      - PersistentVolumeClaim
+      - Service
+      - ConfigMap
+      - Endpoint
+      apps/v1:
+      - StatefulSet
+      - ReplicaSet
+      - ControllerRevision
+kind: ConfigMap
+metadata:
+  name: kridge-sharding-resource
+  namespace: kridge

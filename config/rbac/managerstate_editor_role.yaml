@@ -1,0 +1,24 @@
+# permissions for end users to edit managerstates.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: managerstate-editor-role
+rules:
+- apiGroups:
+  - kridge.kusionstack.io
+  resources:
+  - managerstates
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - kridge.kusionstack.io
+  resources:
+  - managerstates/status
+  verbs:
+  - get

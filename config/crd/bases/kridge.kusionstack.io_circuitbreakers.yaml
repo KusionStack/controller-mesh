@@ -1,0 +1,321 @@
+
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.7.0
+  creationTimestamp: null
+  name: circuitbreakers.kridge.kusionstack.io
+spec:
+  group: kridge.kusionstack.io
+  names:
+    kind: CircuitBreaker
+    listKind: CircuitBreakerList
+    plural: circuitbreakers
+    shortNames:
+    - cbk
+    singular: circuitbreaker
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: CircuitBreaker is the Schema for the circuitbreakers API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: CircuitBreakerSpec defines the desired state of CircuitBreaker
+            properties:
+              rateLimitings:
+                description: RateLimitings defines the limit policies
+                items:
+                  description: Limiting defines the limit policy
+                  properties:
+                    bucket:
+                      description: Bucket defines the whole token bucket of the policy
+                      properties:
+                        burst:
+                          description: Burst is the max token number of the bucket
+                          format: int32
+                          type: integer
+                        interval:
+                          description: 'Interval is the time interval of the limiting
+                            policy, in format of time like: 1h, 3m, 5s.'
+                          type: string
+                        limit:
+                          description: Limit is the token number of the limiting policy.
+                          format: int32
+                          type: integer
+                      required:
+                      - burst
+                      - interval
+                      - limit
+                      type: object
+                    name:
+                      description: Name is the name of the policy
+                      type: string
+                    properties:
+                      additionalProperties:
+                        type: string
+                      description: 'Properties defines the additional properties of
+                        the policy, like: SleepingWindowSize'
+                      type: object
+                    recoverPolicy:
+                      description: RecoverPolicy defines how the circuit-breaking
+                        policy recovered from 'Opened' to 'Closed'
+                      type: string
+                    resourceRules:
+                      description: ResourceRules defines the target k8s resource of
+                        the limiting policy
+                      items:
+                        description: ResourceRule defines the target k8s resource
+                          of the limiting policy
+                        properties:
+                          apiGroups:
+                            description: APIGroups is the name of the APIGroup that
+                              contains the resources.  If multiple API groups are
+                              specified, any action requested against one of the enumerated
+                              resources in any API group will be allowed.  "*" means
+                              all.
+                            items:
+                              type: string
+                            type: array
+                          namespaces:
+                            description: Namespaces is a list of namespaces the rule
+                              applies to. "*" means all.
+                            items:
+                              type: string
+                            type: array
+                          resources:
+                            description: Resources is a list of resources this rule
+                              applies to.  "*" means all in the specified apiGroups.  "*/foo"
+                              represents the subresource 'foo' for all resources in
+                              the specified apiGroups.
+                            items:
+                              type: string
+                            type: array
+                          verbs:
+                            description: 'Verb is a list of kubernetes resource API
+                              verbs, like: get, list, watch, create, update, delete,
+                              proxy.  "*" means all.'
+                            items:
+                              type: string
+                            type: array
+                        required:
+                        - apiGroups
+                        - namespaces
+                        - resources
+                        - verbs
+                        type: object
+                      type: array
+                    restRules:
+                      description: RestRules defines the target rest resource of the
+                        limiting policy
+                      items:
+                        description: RestRule defines the target rest resource of
+                          the limiting policy
+                        properties:
+                          method:
+                            description: 'Method specifies the http method of the
+                              request, like: PUT, POST, GET, DELETE.'
+                            type: string
+                          url:
+                            description: URL gives the location of the rest request,
+                              in standard URL form (`scheme://host:port/path`)
+                            type: string
+                        required:
+                        - method
+                        - url
+                        type: object
+                      type: array
+                    triggerPolicy:
+                      description: TriggerPolicy defines how the circuit-breaking
+                        policy triggered from 'Closed' to 'Opened'
+                      type: string
+                    validatePolicy:
+                      description: ValidatePolicy determine the opportunity to validate
+                        req
+                      type: string
+                  required:
+                  - bucket
+                  - name
+                  - recoverPolicy
+                  - triggerPolicy
+                  type: object
+                type: array
+              selector:
+                description: Selector is a label query over pods of this application.
+                properties:
+                  labelSelector:
+                    description: A label selector is a label query over a set of resources.
+                      The result of matchLabels and matchExpressions are ANDed. An
+                      empty label selector matches all objects. A null label selector
+                      matches no objects.
+                    properties:
+                      matchExpressions:
+                        description: matchExpressions is a list of label selector
+                          requirements. The requirements are ANDed.
+                        items:
+                          description: A label selector requirement is a selector
+                            that contains values, a key, and an operator that relates
+                            the key and values.
+                          properties:
+                            key:
+                              description: key is the label key that the selector
+                                applies to.
+                              type: string
+                            operator:
+                              description: operator represents a key's relationship
+                                to a set of values. Valid operators are In, NotIn,
+                                Exists and DoesNotExist.
+                              type: string
+                            values:
+                              description: values is an array of string values. If
+                                the operator is In or NotIn, the values array must
+                                be non-empty. If the operator is Exists or DoesNotExist,
+                                the values array must be empty. This array is replaced
+                                during a strategic merge patch.
+                              items:
+                                type: string
+                              type: array
+                          required:
+                          - key
+                          - operator
+                          type: object
+                        type: array
+                      matchLabels:
+                        additionalProperties:
+                          type: string
+                        description: matchLabels is a map of {key,value} pairs. A
+                          single {key,value} in the matchLabels map is equivalent
+                          to an element of matchExpressions, whose key field is "key",
+                          the operator is "In", and the values array contains only
+                          "value". The requirements are ANDed.
+                        type: object
+                    type: object
+                  targets:
+                    items:
+                      type: string
+                    type: array
+                type: object
+              trafficInterceptRules:
+                description: TrafficInterceptRules defines the traffic rules
+                items:
+                  description: TrafficInterceptRule defines the traffic intercept
+                    rule
+                  properties:
+                    contentType:
+                      description: ContentType is the content type of the traffic
+                        rule
+                      type: string
+                    contents:
+                      description: Content is the content of the traffic rule
+                      items:
+                        type: string
+                      type: array
+                    interceptType:
+                      description: InterceptType is the intercept type of the traffic
+                        rule
+                      type: string
+                    methods:
+                      description: 'Method specifies the http method of the request,
+                        like: PUT, POST, GET, DELETE.'
+                      items:
+                        type: string
+                      type: array
+                    name:
+                      description: Name is the name of the traffic rule
+                      type: string
+                  required:
+                  - contentType
+                  - contents
+                  - interceptType
+                  - methods
+                  - name
+                  type: object
+                type: array
+            required:
+            - rateLimitings
+            type: object
+          status:
+            description: CircuitBreakerStatus defines the observed state of CircuitBreaker
+            properties:
+              lastUpdatedTime:
+                format: date-time
+                type: string
+              limitingSnapshots:
+                items:
+                  description: LimitingSnapshot defines the snapshot of the whole
+                    limiting policy
+                  properties:
+                    bucket:
+                      description: Bucket defines the whole snapshot of the token
+                        bucket
+                      properties:
+                        availableTokens:
+                          description: AvailableTokens defines the rest tokens of
+                            the bucket.
+                          format: int64
+                          type: integer
+                        lastAcquireTimestamp:
+                          description: LastAcquireTimestamp is the unix timestamp
+                            that the last token(s) were acquired.
+                          format: int64
+                          type: integer
+                      required:
+                      - availableTokens
+                      - lastAcquireTimestamp
+                      type: object
+                    endpoint:
+                      description: Endpoint specifies the users who use this rule
+                      type: string
+                    lastTransitionTime:
+                      description: LastTransitionTime is the last time that the status
+                        changed
+                      format: date-time
+                      type: string
+                    name:
+                      description: Name specifies the name of the policy
+                      type: string
+                    podName:
+                      description: PodName specifies the users pod name
+                      type: string
+                    status:
+                      description: Status is the status of the circuit breaker, which
+                        may be 'Opened' or 'Closed'.
+                      type: string
+                  required:
+                  - bucket
+                  - name
+                  - status
+                  type: object
+                type: array
+              observedGeneration:
+                format: int64
+                type: integer
+            required:
+            - limitingSnapshots
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
