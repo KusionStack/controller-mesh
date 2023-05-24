@@ -1,6 +1,5 @@
 /*
 Copyright 2023 The KusionStack Authors.
-Modified from Kruise code, Copyright 2021 The Kruise Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -42,10 +41,9 @@ const (
 	KdAutoShardingRootLabel = "kridge.kusionstack.io/auto-sharding-root"
 	KdAutoShardingHashAnno  = "kridge.kusionstack.io/auto-sharding-hash"
 
-	// Sharding Rollout
-	KdInRollingLabel = "kridge.kusionstack.io/rolling"
-
-	KdRollingStatusAnno = "kridge.kusionstack.io/roll-status"
+	KdInRollingLabel      = "kridge.kusionstack.io/rolling"
+	KdRollingStatusAnno   = "kridge.kusionstack.io/roll-status"
+	KdRollingExpectedAnno = "kridge.kusionstack.io/roll-expected"
 
 	KdDisableFakeKubeconfigArg = "kridge.kusionstack.io/disable-fake-kubeconfig-arg"
 	KdDisableFakeKubeconfigEnv = "kridge.kusionstack.io/disable-fake-kubeconfig-env"
