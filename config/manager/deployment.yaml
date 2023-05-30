@@ -1,0 +1,96 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    kridge.kusionstack.io/ignore-webhook: 'true'
+  name: kridge
+  namespace: kridge
+spec:
+  replicas: 3
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      control-plane: kridge
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        control-plane: kridge
+        kridge.kusionstack.io/ignore-webhook: 'true'
+        kridge.kusionstack.io/watching: 'true'
+    spec:
+      containers:
+        - args:
+            - --logtostderr=true
+            - --v=4
+            - --leader-election-namespace=kridge
+            - --proxy-image=${proxy-image}
+            - --proxy-cpu=1
+            - --proxy-memory=2Gi
+            - --proxy-ephemeral-storage=6Gi
+            - --leader-election-lease-duration-seconds=15
+            - --leader-election-renew-deadline-seconds=10
+          command:
+            - /manager
+          env:
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.namespace
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.name
+            - name: ENABLE_WEBHOOK_SERVER
+              value: 'true'
+            - name: WEBHOOK_HOST
+              value: kridge-webhook-service.kridge.svc
+            - name: WEBHOOK_CERT_WRITER
+              value: secret
+            - name: WATCH_ON_LIMIT
+              value: 'true'
+          image: ${manager-image}
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /healthz
+              port: 8081
+              scheme: HTTP
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            successThreshold: 1
+            timeoutSeconds: 1
+          name: manager
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /delay
+              port: 8083
+              scheme: HTTP
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 2
+          resources:
+            limits:
+              cpu: '4'
+              memory: 8Gi
+              ephemeral-storage: 30Gi
+            requests:
+              cpu: '4'
+              memory: 8Gi
+              ephemeral-storage: 30Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+      dnsPolicy: ClusterFirst
+      serviceAccount: kridge-serviceaccount
+      serviceAccountName: kridge-serviceaccount

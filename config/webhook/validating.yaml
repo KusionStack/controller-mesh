@@ -1,0 +1,27 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  creationTimestamp: null
+  name: validating-webhook-configuration
+webhooks:
+  - admissionReviewVersions:
+      - v1
+      - v1beta1
+    clientConfig:
+      service:
+        name: webhook-service
+        namespace: system
+        path: /validate-kridge-shardingconfig
+    failurePolicy: Fail
+    name: shardingconfigs.kridge.validating.io
+    rules:
+      - apiGroups:
+          - kridge.kusionstack.io
+        apiVersions:
+          - v1alpha1
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - shardingconfigs
+    sideEffects: None

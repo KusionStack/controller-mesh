@@ -1,0 +1,57 @@
+syntax = "proto3";
+option go_package = "proto";
+package proto;
+
+service ControllerMesh {
+  rpc Register(stream ProxyStatus) returns (stream ProxySpec) {}
+}
+
+message ProxyStatus {
+  SelfInfo selfInfo = 1;
+  MetaState metaState = 2;
+  LeaderElectionState leaderElectionState = 3;
+}
+
+message SelfInfo {
+  string namespace = 1;
+  string name = 2;
+}
+
+message MetaState {
+  string expectedHash = 1;
+  string currentHash = 2;
+  string hashUnloadReason = 3;
+}
+
+message LeaderElectionState {
+  string identity = 1;
+  bool isLeader = 2;
+}
+
+message ProxySpec {
+  SpecMeta meta = 1;
+  repeated Limit limits = 2;
+  repeated Endpoint endpoints = 3;
+}
+
+message SpecMeta {
+  string shardName = 1;
+  string hash = 2;
+}
+
+message Limit {
+  string objectSelector = 1;
+  repeated APIGroupResource resources = 2;
+}
+
+message APIGroupResource {
+  repeated string apiGroups = 1;
+  repeated string resources = 2;
+}
+
+message Endpoint {
+  string name = 1;
+  string ip = 2;
+  string shardName = 3;
+  repeated Limit limits = 4;
+}

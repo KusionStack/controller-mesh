@@ -1,0 +1,14 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kridge-public-role
+rules:
+- apiGroups:
+  - kridge.kusionstack.io
+  resources:
+  - managerstates
+  - trafficpolicies
+  verbs:
+  - get
+  - list
+  - watch

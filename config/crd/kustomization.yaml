@@ -1,0 +1,6 @@
+
+resources:
+- bases/kridge.kusionstack.io_circuitbreakers.yaml
+- bases/kridge.kusionstack.io_managerstates.yaml
+- bases/kridge.kusionstack.io_shardingconfigs.yaml
+
