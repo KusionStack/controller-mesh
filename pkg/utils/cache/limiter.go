@@ -28,7 +28,9 @@ var (
 
 func WarpNewCacheWithSelector(selector *cache.ObjectSelector, selectorsByObj cache.SelectorsByObject) func(config *rest.Config, opts cache.Options) (cache.Cache, error) {
 	return func(config *rest.Config, opts cache.Options) (cache.Cache, error) {
-		opts.DefaultSelector = *selector
+		if selector != nil {
+			opts.DefaultSelector = *selector
+		}
 		opts.SelectorsByObject = selectorsByObj
 		return cache.New(config, opts)
 	}
