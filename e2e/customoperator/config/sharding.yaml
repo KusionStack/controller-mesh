@@ -1,0 +1,60 @@
+apiVersion: kridge.kusionstack.io/v1alpha1
+kind: ShardingConfig
+metadata:
+  name: sharding-test-1
+  namespace: kridge
+spec:
+  controller:
+    leaderElectionName: testapp
+  limits:
+  - relateResources:
+    - apiGroups:
+      - '*'
+      resources:
+      - pods
+      - configmaps
+    selector:
+      matchExpressions:
+      - key: kridge.kusionstack.io/namespace
+        operator: In
+        values:
+        - test-0
+        - test-1
+        - test-2
+        - kridge
+  selector:
+    matchExpressions:
+    - key: statefulset.kubernetes.io/pod-name
+      operator: In
+      values:
+      - testapp-0
+---
+apiVersion: kridge.kusionstack.io/v1alpha1
+kind: ShardingConfig
+metadata:
+  name: sharding-test-2
+  namespace: kridge
+spec:
+  controller:
+    leaderElectionName: testapp
+  limits:
+  - relateResources:
+    - apiGroups:
+      - '*'
+      resources:
+      - pods
+      - configmaps
+    selector:
+      matchExpressions:
+      - key: kridge.kusionstack.io/namespace
+        operator: In
+        values:
+        - test-3
+        - test-4
+        - test-5
+  selector:
+    matchExpressions:
+    - key: statefulset.kubernetes.io/pod-name
+      operator: In
+      values:
+      - testapp-1
