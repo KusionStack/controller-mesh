@@ -8,9 +8,9 @@ import (
 	"time"
 
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -25,8 +25,18 @@ func initConfigMap(c client.Client) *v1.ConfigMap {
 	cm := &v1.ConfigMap{}
 	cm.Name = cmName
 	cm.Namespace = podNamespace
-	c.Create(context.TODO(), cm)
+	cm.Data = map[string]string{}
+	if err := c.Create(context.TODO(), cm); err != nil {
+		klog.Errorf("Failed to create cm %v", err)
+	}
 	return cm
+}
+
+var Retry = wait.Backoff{
+	Steps:    50,
+	Duration: 10 * time.Millisecond,
+	Factor:   1.0,
+	Jitter:   0.1,
 }
 
 func add(c client.Client, namespace, kind string) error {
@@ -34,12 +44,10 @@ func add(c client.Client, namespace, kind string) error {
 		return nil
 	}
 	key := podName
-	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+	return retry.RetryOnConflict(Retry, func() error {
 		cm := &v1.ConfigMap{}
 		if err := c.Get(context.TODO(), types.NamespacedName{Name: cmName, Namespace: podNamespace}, cm); err != nil {
-			if !errors.IsNotFound(err) {
-				return err
-			}
+			klog.Errorf("Failed to get cm %v, try init", err)
 			cm = initConfigMap(c)
 		}
 		if cm.Data == nil {
@@ -78,7 +86,7 @@ func Checker(ctx context.Context, c client.Client) {
 		}
 
 		if err := c.Get(context.TODO(), types.NamespacedName{Name: cmName, Namespace: podNamespace}, cm); err != nil {
-			klog.Errorf("fail to get configMap %s", cmName)
+			klog.Errorf("fail to get configMap %s, %v", cmName, err)
 			continue
 		}
 		if cm.Data == nil {

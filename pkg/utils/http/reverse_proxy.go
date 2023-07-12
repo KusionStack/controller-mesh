@@ -429,7 +429,9 @@ func (p *ReverseProxy) flushInterval(req *http.Request, res *http.Response) time
 	if resCT == "text/event-stream" {
 		return -1 // negative means immediately
 	}
-
+	if res.ContentLength == -1 {
+		return -1
+	}
 	// TODO: more specific cases? e.g. res.ContentLength == -1?
 	return p.FlushInterval
 }

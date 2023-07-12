@@ -40,6 +40,12 @@ type storage struct {
 	currentSpecFile  *os.File
 }
 
+func init() {
+	if err := os.MkdirAll("/home/kridge-proxy/kridge", 0777); err != nil {
+		klog.Error(err)
+	}
+}
+
 func newStorage() (*storage, error) {
 	var err error
 	s := &storage{}

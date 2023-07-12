@@ -51,6 +51,7 @@ import (
 var (
 	upgradeSubresources = sets.NewString("exec", "attach")
 	enableIpTable       = os.Getenv(constants.EnvIPTable) == "true"
+	enableWebhookProxy  = os.Getenv(constants.EnvEnableWebHookProxy) == "true"
 )
 
 type Proxy struct {
@@ -62,8 +63,10 @@ type Proxy struct {
 
 func NewProxy(opts *Options) (*Proxy, error) {
 	var servingInfo *server.SecureServingInfo
-	if err := opts.ApplyTo(&servingInfo); err != nil {
-		return nil, fmt.Errorf("error apply options %s: %v", utils.DumpJSON(opts), err)
+	if enableIpTable {
+		if err := opts.ApplyTo(&servingInfo); err != nil {
+			return nil, fmt.Errorf("error apply options %s: %v", utils.DumpJSON(opts), err)
+		}
 	}
 
 	tp, err := rest.TransportFor(opts.Config)
@@ -131,10 +134,15 @@ type handler struct {
 	electionHandler leaderelection.Handler
 }
 
+func getReqInfoStr(r *apirequest.RequestInfo) string {
+	return fmt.Sprintf("RequestInfo: { Path: %s, APIGroup: %s, Resource: %s, Subresource: %s, Verb: %s, Namespace: %s, Name: %s, APIVersion: %s }", r.Path, r.APIGroup, r.Resource, r.Subresource, r.Verb, r.Namespace, r.Name, r.APIVersion)
+}
+
 func (h *handler) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	startTime := time.Now()
-
 	requestInfo, ok := apirequest.RequestInfoFrom(r.Context())
+	klog.Infof("handle http req %s", r.URL.String())
+	klog.Infof(getReqInfoStr(requestInfo))
 	if !ok {
 		klog.Errorf("%s %s %s, no request info in context", r.Method, r.Header.Get("Content-Type"), r.URL)
 		http.Error(rw, "no request info in context", http.StatusBadRequest)

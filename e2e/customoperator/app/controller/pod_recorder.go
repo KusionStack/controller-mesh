@@ -23,6 +23,7 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/util/workqueue"
+	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -37,6 +38,7 @@ var (
 // ManagerStateReconciler reconciles a ManagerState object
 type PodReconciler struct {
 	client.Client
+	DirectorClient client.Client
 }
 
 func (r *PodReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ctrl.Result, err error) {
@@ -50,8 +52,8 @@ func (r *PodReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	// default handler.EnqueueRequestForObject
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1.Pod{}).
-		Watches(&source.Kind{Type: &v1.Pod{}}, &enqueueHandler{Client: r.Client, kind: "Pod"}).
-		Watches(&source.Kind{Type: &v1.ConfigMap{}}, &enqueueHandler{Client: r.Client, kind: "ConfigMap"}).
+		Watches(&source.Kind{Type: &v1.Pod{}}, &enqueueHandler{Client: r.DirectorClient, kind: "Pod"}).
+		Watches(&source.Kind{Type: &v1.ConfigMap{}}, &enqueueHandler{Client: r.DirectorClient, kind: "ConfigMap"}).
 		Complete(r)
 }
 
@@ -61,17 +63,24 @@ type enqueueHandler struct {
 }
 
 func (e *enqueueHandler) Create(event event.CreateEvent, q workqueue.RateLimitingInterface) {
-	add(e.Client, event.Object.GetNamespace(), e.kind)
+	Add(e.Client, event.Object.GetNamespace(), event.Object.GetName(), e.kind)
 }
 
 func (e *enqueueHandler) Update(event event.UpdateEvent, q workqueue.RateLimitingInterface) {
-	add(e.Client, event.ObjectNew.GetNamespace(), e.kind)
+	Add(e.Client, event.ObjectNew.GetNamespace(), event.ObjectNew.GetName(), e.kind)
 }
 
 func (e *enqueueHandler) Delete(event event.DeleteEvent, q workqueue.RateLimitingInterface) {
-	add(e.Client, event.Object.GetNamespace(), e.kind)
+	Add(e.Client, event.Object.GetNamespace(), event.Object.GetName(), e.kind)
 }
 
 func (e *enqueueHandler) Generic(event event.GenericEvent, q workqueue.RateLimitingInterface) {
-	add(e.Client, event.Object.GetNamespace(), e.kind)
+	Add(e.Client, event.Object.GetNamespace(), event.Object.GetName(), e.kind)
+}
+
+func Add(c client.Client, namespace, name, kind string) {
+	klog.Infof("handle event %s %s/%s", kind, namespace, name)
+	if err := add(c, namespace, kind); err != nil {
+		klog.Errorf("fail to record event %s %s/%s, %v", kind, namespace, name, err)
+	}
 }

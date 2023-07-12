@@ -18,6 +18,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"math/rand"
 	_ "net/http/pprof"
 	"os"
@@ -28,10 +29,12 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	"k8s.io/klog/v2"
 	"k8s.io/klog/v2/klogr"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
@@ -85,11 +88,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	go func() {
-		setupLog.Info("wait webhook ready")
+	directorClient := NewDirectorClientFromManager(mgr, "checker")
 
+	go func() {
 		if err = (&appcontroller.PodReconciler{
-			Client: mgr.GetClient(),
+			Client:         mgr.GetClient(),
+			DirectorClient: directorClient,
 		}).SetupWithManager(mgr); err != nil {
 			setupLog.Error(err, "unable to create controller", "controller", "Recorder")
 			os.Exit(1)
@@ -98,11 +102,22 @@ func main() {
 
 	go func() {
 		<-time.After(20 * time.Second)
-		appcontroller.Checker(ctx, mgr.GetClient())
+		appcontroller.Checker(ctx, directorClient)
 	}()
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctx); err != nil {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
+}
+
+func NewDirectorClientFromManager(mgr manager.Manager, name string) client.Client {
+	cfg := rest.CopyConfig(mgr.GetConfig())
+	cfg.UserAgent = fmt.Sprintf("director-client/%s", name)
+
+	c, err := client.New(cfg, client.Options{Scheme: mgr.GetScheme(), Mapper: mgr.GetRESTMapper()})
+	if err != nil {
+		panic(err)
+	}
+	return c
 }
