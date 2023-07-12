@@ -71,28 +71,27 @@ spec:
     certDir: /tmp/webhook-certs
     port: 9443
   limits:
-    - objectSelector:
-        relateResources:
-          - apiGroups:
-              - '*'
-            resources:
-              - pods
-              - services
-        selector:
-          matchExpressions:
-            - key: kridge.kusionstack.io/namespace
-              operator: In
-              values:
-                - ns-a
-                - ns-b
-          matchLabels:
-          # ...
-  selector:
-    matchExpressions:
-      - key: statefulset.kubernetes.io/pod-name
+  - relateResources:
+    - apiGroups:
+      - '*'
+      resources:
+      - pods
+      - services
+    selector:
+      matchExpressions:
+      - key: kridge.kusionstack.io/namespace
         operator: In
         values:
-          - operator-demo-0
+        - ns-a
+        - ns-b
+      matchLabels:
+      # ...
+  selector:
+    matchExpressions:
+    - key: statefulset.kubernetes.io/pod-name
+      operator: In
+      values:
+      - operator-demo-0
 ```
 
 - selector: for all pods under a shard. It can be a subset of pods under a StatefulSet.
