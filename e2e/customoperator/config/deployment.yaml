@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: testapp
+  namespace: kridge
+spec:
+  podManagementPolicy: Parallel
+  replicas: 3
+  selector:
+    matchLabels:
+      control-plane: testapp
+  template:
+    metadata:
+      labels:
+        control-plane: testapp
+        kridge.kusionstack.io/watching: "true"
+    spec:
+      containers:
+      - command:
+        - /testapp
+        env:
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        image: reg.docker.alibaba-inc.com/paascore-library/kridge-test:test-v0.0.1
+        imagePullPolicy: IfNotPresent
+        name: testapp
+        resources:
+          limits:
+            cpu: 100m
+            ephemeral-storage: 100Mi
+            memory: 100Mi
+          requests:
+            cpu: 100m
+            ephemeral-storage: 100Mi
+            memory: 100Mi
+      dnsPolicy: ClusterFirst
+      serviceAccount: kridge-serviceaccount
+      serviceAccountName: kridge-serviceaccount
+  serviceName: testapp

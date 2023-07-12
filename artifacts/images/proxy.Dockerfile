@@ -1,4 +1,4 @@
-FROM golang:1.19 as builder
+FROM golang:1.20 as builder
 
 WORKDIR /workspace
 
@@ -8,7 +8,7 @@ COPY artifacts/ artifacts/
 COPY pkg/ pkg/
 COPY vendor/ vendor/
 
-RUN CGO_ENABLED=0 GO111MODULE=on go build -mod=vendor -a -o kridge-proxy ./pkg/cmd/proxy/main.go
+RUN CGO_ENABLED=0 GO111MODULE=on GOOS=linux GOARCH=amd64 go build -mod=vendor -a -o kridge-proxy ./pkg/cmd/proxy/main.go
 
 FROM ubuntu:focal
 
@@ -33,6 +33,6 @@ RUN useradd -m --uid 1359 kridge-proxy && \
   echo "kridge-proxy ALL=NOPASSWD: ALL" >> /etc/sudoers
 WORKDIR /
 COPY artifacts/scripts/proxy-poststart.sh /poststart.sh
-
+RUN mkdir /kridge && chmod 777 /kridge
 COPY --from=builder /workspace/kridge-proxy .
 ENTRYPOINT ["/kridge-proxy"]

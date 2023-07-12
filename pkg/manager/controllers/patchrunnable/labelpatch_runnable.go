@@ -140,6 +140,7 @@ func (p *PatchRunnable) Start(ctx context.Context) error {
 		klog.Errorf("fail to load group version kind, %v", err)
 		return err
 	}
+	klog.Infof("load group version kind %s", util.DumpJSON(gvks))
 	p.groupVersionKinds = gvks
 	p.invalid = sets.Set[string]{}
 
@@ -170,6 +171,7 @@ func (p *PatchRunnable) Start(ctx context.Context) error {
 		}()
 	}
 	wg.Wait()
+	klog.Infof("finished patching label")
 	return nil
 }
 
@@ -191,7 +193,14 @@ func (p *PatchRunnable) getAllResources(namespaceList *v1.NamespaceList, itemCh 
 		}()
 	}
 	wg.Wait()
-	close(itemCh)
+	defer klog.Infof("finish collect resources")
+	for {
+		if len(itemCh) == 0 {
+			close(itemCh)
+			return
+		}
+		<-time.After(5 * time.Second)
+	}
 }
 
 func (p *PatchRunnable) getResourceInNamespace(namespace *v1.Namespace, itemCh chan<- patchItem) {

@@ -142,8 +142,8 @@ func (h *MutatingHandler) injectByShardingConfig(ctx context.Context, pod *v1.Po
 		Name:            constants.ProxyContainerName,
 		Image:           *proxyImage,
 		ImagePullPolicy: imagePullPolicy,
-		Args: []string{
-			"--v=" + strconv.Itoa(int(*proxyLogLevel)),
+		Args:            []string{
+			//"--v=" + strconv.Itoa(int(*proxyLogLevel)),
 		},
 		Env: []v1.EnvVar{
 			{Name: constants.EnvPodName, ValueFrom: &v1.EnvVarSource{FieldRef: &v1.ObjectFieldSelector{FieldPath: "metadata.name"}}},
@@ -172,9 +172,9 @@ func (h *MutatingHandler) injectByShardingConfig(ctx context.Context, pod *v1.Po
 			},
 		},
 		SecurityContext: &v1.SecurityContext{
-			Privileged:             utilpointer.Bool(true), // This can be false, but true help us debug more easier.
-			ReadOnlyRootFilesystem: utilpointer.Bool(true),
-			RunAsUser:              utilpointer.Int64(int64(constants.ProxyUserID)),
+			Privileged: utilpointer.Bool(true), // This can be false, but true help us debug more easier.
+			//ReadOnlyRootFilesystem: utilpointer.Bool(true),
+			RunAsUser: utilpointer.Int64(int64(constants.ProxyUserID)),
 		},
 	}
 

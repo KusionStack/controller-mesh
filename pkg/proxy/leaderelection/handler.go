@@ -93,6 +93,7 @@ func (h *handler) Handle(req *request.RequestInfo, r *http.Request) (handled boo
 		}
 
 		if adp.GetName() != h.lockName {
+			adp.EncodeInto(r)
 			return false, nil, nil
 		}
 

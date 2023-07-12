@@ -49,6 +49,7 @@ func LoadGroupVersionKind(c client.Client, discoveryClient *discovery.DiscoveryC
 	cm := &v1.ConfigMap{}
 	if err := c.Get(context.TODO(), types.NamespacedName{Name: *configMapName, Namespace: configMapNamespace}, cm); err != nil {
 		if errors.IsNotFound(err) {
+			klog.Infof("ConfigMap %s/%s not found", configMapNamespace, *configMapName)
 			return result, nil
 		}
 		return result, err

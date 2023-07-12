@@ -1,0 +1,15 @@
+---
+# Source: mykridge/templates/rbac/leader_election_role_binding.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: kridge-leader-election-rolebinding
+  namespace: kridge
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: leader-election-role
+subjects:
+- kind: ServiceAccount
+  name: kridge-serviceaccount
+  namespace: kridge
