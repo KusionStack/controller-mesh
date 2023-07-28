@@ -16,23 +16,23 @@ The design architecture of this project is based on [openkruise/controllermesh](
 3. **Circuit breaker and rate limiter**: Not only Kubernetes operation requests, but also other external operation requests.
 4. **Multicluster routing and sharding**: This feature is supported by [kusionstack/kaera(karbour)]()
 
-<p align="center"><img width="800" src="./docs/img/img4.png"/></p>
+<p align="center"><img width="800" src="./docs/img/img5.png"/></p>
 
 ## Quick Start
 Visit [Quick Start]().
 
 
 ## Installation
-**Install by helm** (TODO)
+**Install by helm**
 ```shell
 # Firstly add charts repository if you haven't do this.
-$ helm repo add kusionstack https://kusionstack.github.io/charts/
+$ helm repo add kusionstack https://kusionstack.io/charts
 
 # [Optional]
 $ helm repo update
 
 # Install the latest version.
-$ helm install kridge kusionstack/kridge --version 0.0.x
+$ helm install kridge kusionstack/kridge --version v0.1.0
 
 # Uninstall
 $ helm uninstall kridge
