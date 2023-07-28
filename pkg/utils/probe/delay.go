@@ -17,7 +17,6 @@ limitations under the License.
 package probe
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"net"
@@ -73,5 +72,5 @@ func Checker(_ *http.Request) error {
 	if done {
 		return nil
 	}
-	return errors.New(fmt.Sprintf("wait for delay checker %d seconds", delayDuration))
+	return fmt.Errorf(fmt.Sprintf("wait for delay checker %d seconds", delayDuration))
 }

@@ -136,17 +136,15 @@ func ValidateTrafficIntercept(URL string, method string) (result *ValidateResult
 	if indexes == nil {
 		indexes = defaultTrafficInterceptStore.normalIndexes[indexForRest(URL, "*")]
 	}
-	if indexes != nil {
-		for key := range indexes {
-			trafficInterceptRule := defaultTrafficInterceptStore.rules[key]
-			if trafficInterceptRule != nil {
-				if appsv1alpha1.InterceptTypeWhite == trafficInterceptRule.InterceptType {
-					result = &ValidateResult{Allowed: true, Reason: "white", Message: fmt.Sprintf("Traffic is allow by white rule, name: %s", trafficInterceptRule.Name)}
-					return result
-				} else if appsv1alpha1.InterceptTypeBlack == trafficInterceptRule.InterceptType {
-					result = &ValidateResult{Allowed: false, Reason: "black", Message: fmt.Sprintf("Traffic is intercept by black rule, name: %s", trafficInterceptRule.Name)}
-					return result
-				}
+	for key := range indexes {
+		trafficInterceptRule := defaultTrafficInterceptStore.rules[key]
+		if trafficInterceptRule != nil {
+			if appsv1alpha1.InterceptTypeWhite == trafficInterceptRule.InterceptType {
+				result = &ValidateResult{Allowed: true, Reason: "white", Message: fmt.Sprintf("Traffic is allow by white rule, name: %s", trafficInterceptRule.Name)}
+				return result
+			} else if appsv1alpha1.InterceptTypeBlack == trafficInterceptRule.InterceptType {
+				result = &ValidateResult{Allowed: false, Reason: "black", Message: fmt.Sprintf("Traffic is intercept by black rule, name: %s", trafficInterceptRule.Name)}
+				return result
 			}
 		}
 	}
@@ -182,7 +180,7 @@ func ValidateTrafficIntercept(URL string, method string) (result *ValidateResult
 func ValidateRest(URL string, method string) (result ValidateResult) {
 	now := time.Now()
 	defer func() {
-		logger.Info("validate rest", "URL", URL, "method", method, "result", result, "cost time", time.Now().Sub(now).String())
+		logger.Info("validate rest", "URL", URL, "method", method, "result", result, "cost time", time.Since(now).String())
 	}()
 
 	if !EnableCircuitBreaker {
@@ -206,7 +204,7 @@ func ValidateRest(URL string, method string) (result ValidateResult) {
 func ValidateRestWithOption(URL string, method string, isPre bool) (result ValidateResult) {
 	now := time.Now()
 	defer func() {
-		logger.Info("validate rest", "URL", URL, "method", method, "result", result, "cost time", time.Now().Sub(now).String())
+		logger.Info("validate rest", "URL", URL, "method", method, "result", result, "cost time", time.Since(now).String())
 	}()
 
 	if !EnableCircuitBreaker {
@@ -232,7 +230,7 @@ func ValidateRestWithOption(URL string, method string, isPre bool) (result Valid
 func ValidateResource(namespace, apiGroup, resource, verb string) (result ValidateResult) {
 	now := time.Now()
 	defer func() {
-		logger.Info("validate resource", "namespace", namespace, "apiGroup", apiGroup, "resource", resource, "verb", verb, "result", result, "cost time", time.Now().Sub(now).String())
+		logger.Info("validate resource", "namespace", namespace, "apiGroup", apiGroup, "resource", resource, "verb", verb, "result", result, "cost time", time.Since(now).String())
 	}()
 
 	if !EnableCircuitBreaker {
@@ -256,7 +254,7 @@ func ValidateResource(namespace, apiGroup, resource, verb string) (result Valida
 func ValidateResourceWithOption(namespace, apiGroup, resource, verb string, isPre bool) (result ValidateResult) {
 	now := time.Now()
 	defer func() {
-		logger.Info("validate resource", "namespace", namespace, "apiGroup", apiGroup, "resource", resource, "verb", verb, "result", result, "cost time", time.Now().Sub(now).String())
+		logger.Info("validate resource", "namespace", namespace, "apiGroup", apiGroup, "resource", resource, "verb", verb, "result", result, "cost time", time.Since(now).String())
 	}()
 
 	if !EnableCircuitBreaker {
@@ -280,9 +278,7 @@ func ValidateResourceWithOption(namespace, apiGroup, resource, verb string, isPr
 func generateWildcardUrls(URL string, method string) []string {
 	var result []string
 	result = append(result, indexForRest(URL, method))
-	if strings.HasSuffix(URL, "/") {
-		URL = strings.TrimSuffix(URL, "/")
-	}
+	URL = strings.TrimSuffix(URL, "/")
 	u, err := url.Parse(URL)
 	if err != nil {
 		logger.Error(err, "failed to url", "URL", URL, "method", method)
@@ -312,8 +308,7 @@ func generateWildcardSeeds(namespace, apiGroup, resource, verb string) []string 
 	   2、if wildcard number equal, the priority order is verb > resource > apiGroup > namespace.
 	      eg. verb exist first match verb, then match resource, after match apiGroup, last match namespace
 	*/
-	var result []string
-	result = []string{
+	result := []string{
 		// zero wildcard
 		indexForResource(namespace, apiGroup, resource, verb),
 		// one wildcard

@@ -19,7 +19,7 @@ package proto
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 
 	"github.com/gogo/protobuf/proto"
@@ -67,11 +67,11 @@ func newStorage() (*storage, error) {
 }
 
 func (s *storage) loadData() (expectedSpec, currentSpec *kridgeproto.ProxySpec, err error) {
-	expectedSpecBytes, err := ioutil.ReadAll(s.expectedSpecFile)
+	expectedSpecBytes, err := io.ReadAll(s.expectedSpecFile)
 	if err != nil {
 		return nil, nil, err
 	}
-	currentSpecBytes, err := ioutil.ReadAll(s.currentSpecFile)
+	currentSpecBytes, err := io.ReadAll(s.currentSpecFile)
 	if err != nil {
 		return nil, nil, err
 	}

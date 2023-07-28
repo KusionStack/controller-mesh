@@ -20,11 +20,9 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"math/rand"
 	"net"
 	"net/http"
 	"os"
-	"time"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/pflag"
@@ -53,7 +51,6 @@ var (
 )
 
 func main() {
-	rand.Seed(time.Now().UnixNano())
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 	pflag.Parse()
 
@@ -106,15 +103,11 @@ func main() {
 
 	serveHTTP(ctx, readyHandler)
 	if stoppedWebhook != nil {
-		select {
-		case <-stoppedWebhook:
-			klog.Infof("Webhook proxy stopped")
-		}
+		<-stoppedWebhook
+		klog.Infof("Webhook proxy stopped")
 	}
-	select {
-	case <-stoppedApiserver:
-		klog.Infof("Apiserver proxy stopped")
-	}
+	<-stoppedApiserver
+	klog.Infof("Apiserver proxy stopped")
 }
 
 func serveHTTP(ctx context.Context, readyHandler *healthz.Handler) {

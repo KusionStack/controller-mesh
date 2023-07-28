@@ -44,7 +44,7 @@ var (
 	}
 )
 
-type index map[string]sets.String
+type index map[string]sets.Set[string]
 
 type indices map[string]index
 
@@ -205,7 +205,7 @@ func (s *store) updateIndices(oldOne, newOne *appsv1alpha1.Limiting, key string)
 		for _, indexValue := range indexValues {
 			set := idx[indexValue]
 			if set == nil {
-				set = sets.String{}
+				set = sets.New[string]()
 				idx[indexValue] = set
 			}
 			set.Insert(key)
@@ -317,7 +317,7 @@ type trafficInterceptStore struct {
 	// rules cache, key is {cb.namespace}:{cb.name}:{rule.name}
 	rules map[string]*appsv1alpha1.TrafficInterceptRule
 	// normalIndex cache, key is {trafficInterceptStore.Content}:{trafficInterceptStore.Method}, value is {cb.namespace}:{cb.name}:{rule.name}
-	normalIndexes map[string]sets.String
+	normalIndexes map[string]sets.Set[string]
 	// regexpIndex cache, key is {cb.namespace}:{cb.name}:{rule.name}, value is regexpInfo
 	regexpIndexes map[string][]*regexpInfo
 }
@@ -325,7 +325,7 @@ type trafficInterceptStore struct {
 func newTrafficInterceptStore() *trafficInterceptStore {
 	return &trafficInterceptStore{
 		rules:         make(map[string]*appsv1alpha1.TrafficInterceptRule),
-		normalIndexes: make(map[string]sets.String),
+		normalIndexes: make(map[string]sets.Set[string]),
 		regexpIndexes: make(map[string][]*regexpInfo),
 	}
 }
@@ -367,7 +367,7 @@ func (s *trafficInterceptStore) updateIndex(oldOne, newOne *appsv1alpha1.Traffic
 				urlMethod := indexForRest(content, method)
 				set := s.normalIndexes[urlMethod]
 				if set == nil {
-					set = sets.String{}
+					set = sets.New[string]()
 					s.normalIndexes[urlMethod] = set
 				}
 				set.Insert(key)

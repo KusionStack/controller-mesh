@@ -95,7 +95,7 @@ func validateConfigResource(c client.Client, obj *kridgev1alpha1.ShardingConfig)
 		return admission.Errored(http.StatusInternalServerError, err)
 	}
 
-	resourceRangeMap := map[string]sets.String{}
+	resourceRangeMap := map[string]sets.Set[string]{}
 	for _, cfg := range cfgs.Items {
 		if cfg.Name == obj.Name {
 			continue
@@ -112,6 +112,9 @@ func validateConfigResource(c client.Client, obj *kridgev1alpha1.ShardingConfig)
 			}
 
 			err = c.List(context.TODO(), nss, &client.ListOptions{LabelSelector: selector})
+			if err != nil {
+				return admission.Errored(http.StatusInternalServerError, err)
+			}
 			targetNsName := getNamespaceNameSets(nss)
 
 			for _, resources := range limit.RelatedResources {
@@ -124,7 +127,7 @@ func validateConfigResource(c client.Client, obj *kridgev1alpha1.ShardingConfig)
 							ran.Insert(name)
 						}
 					} else {
-						resourceRangeMap[resource] = sets.NewString(targetNsName...)
+						resourceRangeMap[resource] = sets.New[string](targetNsName...)
 					}
 				}
 			}
@@ -143,6 +146,9 @@ func validateConfigResource(c client.Client, obj *kridgev1alpha1.ShardingConfig)
 		}
 
 		err = c.List(context.TODO(), nss, &client.ListOptions{LabelSelector: selector})
+		if err != nil {
+			return admission.Errored(http.StatusInternalServerError, err)
+		}
 		targetNsName := getNamespaceNameSets(nss)
 
 		for _, resources := range limit.RelatedResources {
@@ -155,7 +161,7 @@ func validateConfigResource(c client.Client, obj *kridgev1alpha1.ShardingConfig)
 						ran.Insert(name)
 					}
 				} else {
-					resourceRangeMap[resource] = sets.NewString(targetNsName...)
+					resourceRangeMap[resource] = sets.New[string](targetNsName...)
 				}
 			}
 		}
@@ -186,7 +192,7 @@ func validate(obj *kridgev1alpha1.ShardingConfig) error {
 		}
 		return nil
 	}
-	resourceSet := sets.String{}
+	resourceSet := sets.Set[string]{}
 	for _, limits := range obj.Spec.Limits {
 		for _, resourceGroup := range limits.RelatedResources {
 			for _, resource := range resourceGroup.Resources {

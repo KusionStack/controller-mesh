@@ -172,9 +172,6 @@ func (s *responseSerializer) IsWatch() bool {
 }
 
 func (s *responseSerializer) Release() {
-	if s.buf != nil {
-		//pool.BytesPool.Put(s.buf.Bytes()[:s.buf.Cap()])
-	}
 	if s.gzipReader != nil {
 		s.gzipReader.Close()
 		pool.GzipReaderPool.Put(s.gzipReader)

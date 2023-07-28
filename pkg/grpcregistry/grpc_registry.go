@@ -98,7 +98,12 @@ func (r *grpcRegistry) Start(ctx context.Context) error {
 		return fmt.Errorf("error listening grpc server address %s: %v", addr, err)
 	}
 	klog.Infof("Start listening gRPC server with leaderElection=%v on %s", r.needLeaderElection, addr)
-	go grpcServer.Serve(lis)
+	go func() {
+		if err = grpcServer.Serve(lis); err != nil {
+			klog.Errorf("serve gRPC error %v", err)
+		}
+	}()
+
 	<-ctx.Done()
 	return nil
 }

@@ -22,7 +22,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"mime"
 	"net/http"
 	"strconv"
@@ -161,7 +160,7 @@ func decodeObject(ser runtime.Serializer, body io.ReadCloser, obj runtime.Object
 	if body == nil {
 		return fmt.Errorf("body is empty")
 	}
-	bodyBytes, err := ioutil.ReadAll(body)
+	bodyBytes, err := io.ReadAll(body)
 	body.Close()
 	if err != nil {
 		return fmt.Errorf("failed to read the body: %v", err)
@@ -175,5 +174,5 @@ func decodeObject(ser runtime.Serializer, body io.ReadCloser, obj runtime.Object
 func encodeObject(ser runtime.Serializer, obj runtime.Object) (io.ReadCloser, int) {
 	buf := &bytes.Buffer{}
 	_ = ser.Encode(obj, buf)
-	return ioutil.NopCloser(buf), buf.Len()
+	return io.NopCloser(buf), buf.Len()
 }

@@ -56,7 +56,7 @@ func SetExpectedRevision(sts *appsv1.StatefulSet, podRevision map[string]string)
 
 func isUpdatedRevision(sts *appsv1.StatefulSet, po *corev1.Pod) bool {
 	expectedRevision := recentRevision(sts)
-	revision, _ := po.Labels[appsv1.StatefulSetRevisionLabel]
+	revision := po.Labels[appsv1.StatefulSetRevisionLabel]
 	return revision == expectedRevision
 }
 

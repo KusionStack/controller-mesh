@@ -46,7 +46,7 @@ type Options struct {
 	SecureServingOptions *options.SecureServingOptions
 
 	RequestInfoResolver    apirequest.RequestInfoResolver
-	LegacyAPIGroupPrefixes sets.String
+	LegacyAPIGroupPrefixes sets.Set[string]
 	LongRunningFunc        apirequest.LongRunningRequestCheck
 	HandlerChainWaitGroup  *utilwaitgroup.SafeWaitGroup
 
@@ -59,7 +59,7 @@ func NewOptions() *Options {
 	o := &Options{
 		Config:                 new(rest.Config),
 		SecureServingOptions:   options.NewSecureServingOptions(),
-		LegacyAPIGroupPrefixes: sets.NewString(DefaultLegacyAPIPrefix),
+		LegacyAPIGroupPrefixes: sets.New[string](DefaultLegacyAPIPrefix),
 		LongRunningFunc: genericfilters.BasicLongRunningRequestCheck(
 			sets.NewString("watch", "proxy"),
 			sets.NewString("attach", "exec", "proxy", "log", "portforward"),

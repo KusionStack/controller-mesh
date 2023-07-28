@@ -18,11 +18,9 @@ package main
 
 import (
 	"flag"
-	"math/rand"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
-	"time"
 
 	"github.com/spf13/pflag"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -81,8 +79,6 @@ func main() {
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 	pflag.Parse()
 	ctrl.SetLogger(klogr.New())
-
-	rand.Seed(time.Now().UnixNano())
 
 	go func() {
 		if err := http.ListenAndServe(pprofAddr, nil); err != nil {

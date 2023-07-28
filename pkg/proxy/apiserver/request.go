@@ -18,7 +18,6 @@ limitations under the License.
 package apiserver
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -68,7 +67,7 @@ func TrimUrl(inUrl *url.URL, prePath string) (*url.URL, error) {
 	segments := clear(strings.Split(inUrl.Path, "/"))
 	preSegments := clear(strings.Split(prePath, "/"))
 	if len(segments) < len(preSegments) {
-		return inUrl, errors.New(fmt.Sprintf("%s is too long than %s", prePath, inUrl.Path))
+		return inUrl, fmt.Errorf(fmt.Sprintf("%s is too long than %s", prePath, inUrl.Path))
 	}
 	resultPath := ""
 	done := true
@@ -82,7 +81,7 @@ func TrimUrl(inUrl *url.URL, prePath string) (*url.URL, error) {
 		}
 	}
 	if !done {
-		return inUrl, errors.New(fmt.Sprintf("fail to trim url, %s is not %s prefix", prePath, inUrl.Path))
+		return inUrl, fmt.Errorf(fmt.Sprintf("fail to trim url, %s is not %s prefix", prePath, inUrl.Path))
 	}
 	for i := len(preSegments); i < len(segments); i++ {
 		resultPath += "/" + segments[i]

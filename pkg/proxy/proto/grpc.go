@@ -25,6 +25,7 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
@@ -116,7 +117,7 @@ func (c *grpcClient) connect(ctx context.Context, initChan chan struct{}) {
 		klog.Infof("Preparing to connect kridge-manager %v", addr)
 		func() {
 			var opts []grpc.DialOption
-			opts = append(opts, grpc.WithInsecure())
+			opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 			grpcConn, err := grpc.Dial(addr, opts...)
 			if err != nil {
 				klog.Errorf("Failed to grpc connect to kridge-manager %s addr %s: %v", leader.Name, addr, err)

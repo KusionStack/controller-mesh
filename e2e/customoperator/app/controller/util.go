@@ -69,14 +69,14 @@ func add(c client.Client, namespace, kind string) error {
 		if cm.Data == nil {
 			cm.Data = map[string]string{}
 		}
-		val, _ := cm.Data[key]
+		val := cm.Data[key]
 		sto := &store{}
 		if val == "" {
 			sto.Kinds = map[string]string{}
 		} else {
 			json.Unmarshal([]byte(val), sto)
 		}
-		names, _ := sto.Kinds[kind]
+		names := sto.Kinds[kind]
 		nameSet := list(names)
 		if nameSet.Has(namespace) {
 			return nil

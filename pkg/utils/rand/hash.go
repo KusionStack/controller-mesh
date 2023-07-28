@@ -18,7 +18,7 @@ package rand
 
 func Hash(str string, mod int) int {
 	hash := 0
-	for _, char := range []rune(str) {
+	for _, char := range str {
 		hash = hash*33 + int(char)
 		hash %= mod
 	}

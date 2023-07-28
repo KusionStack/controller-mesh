@@ -19,7 +19,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"math/rand"
 	_ "net/http/pprof"
 	"os"
 	"time"
@@ -59,8 +58,6 @@ func main() {
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 	pflag.Parse()
 	ctrl.SetLogger(klogr.New())
-
-	rand.Seed(time.Now().UnixNano())
 
 	cfg := ctrl.GetConfigOrDie()
 	cfg.UserAgent = "testapp"

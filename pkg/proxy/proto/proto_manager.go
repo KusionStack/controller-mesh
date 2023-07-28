@@ -63,6 +63,9 @@ func newSpecManager(reportTriggerChan chan struct{}) (*SpecManager, error) {
 		reportTriggerChan: reportTriggerChan,
 	}
 	expectedSpec, currentSpec, err := sm.storage.loadData()
+	if err != nil {
+		klog.Errorf("Failed to load currentSpec, %v", err)
+	}
 	if currentSpec != nil {
 		klog.Infof("Loaded currentSpec from storage: %v", utils.DumpJSON(currentSpec))
 		sm.currentSpec = kridgeproto.ConvertProtoSpecToInternal(currentSpec)

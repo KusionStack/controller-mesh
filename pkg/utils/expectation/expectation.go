@@ -97,11 +97,7 @@ type Expectation struct {
 }
 
 func (e Expectation) isExpired() bool {
-	if time.Since(e.timestamp) >= ExpectationsTimeout {
-		return true
-	}
-
-	return false
+	return time.Since(e.timestamp) >= ExpectationsTimeout
 }
 
 func key(obj interface{}) (string, error) {

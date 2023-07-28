@@ -298,7 +298,7 @@ func isLeader(po *corev1.Pod, identity string) bool {
 func updateRolloutAnno(sts *appsv1.StatefulSet, upgradedPods []string) (updated bool) {
 	msg, _ := json.Marshal(upgradedPods)
 	val := string(msg)
-	if upgradedPods == nil || len(upgradedPods) == 0 {
+	if len(upgradedPods) == 0 {
 		val = ""
 	}
 	if sts.Annotations == nil {

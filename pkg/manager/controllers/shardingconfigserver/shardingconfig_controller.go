@@ -99,7 +99,6 @@ func (r *ShardingConfigReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	// filter and wait for all pods satisfied
-	var activePods []*v1.Pod
 	var syncPods []syncPod
 	for _, pod := range allPods {
 		if !utils.IsPodActive(pod) {
@@ -114,7 +113,6 @@ func (r *ShardingConfigReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 			klog.Warningf("Skip reconcile shardingConfig %s for Pod %s is expected to be already deleted", req, pod.Name)
 			return reconcile.Result{}, nil
 		}
-		activePods = append(activePods, pod)
 
 		var conn *grpcSrvConnection
 		if v, ok := cachedGrpcSrvConnection.Load(pod.UID); !ok || v == nil {

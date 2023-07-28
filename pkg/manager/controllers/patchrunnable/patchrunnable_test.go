@@ -19,6 +19,7 @@ package patchrunnable
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"net/url"
 	"path/filepath"
 	"testing"
@@ -168,4 +169,11 @@ func TestEnv(t *testing.T) {
 
 	err = testEnv.Stop()
 	g.Expect(err).NotTo(gomega.HaveOccurred())
+}
+
+func TestRand(t *testing.T) {
+
+	for i := 0; i < 10; i++ {
+		fmt.Println(rand.Int31())
+	}
 }

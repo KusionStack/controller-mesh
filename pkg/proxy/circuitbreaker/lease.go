@@ -48,7 +48,7 @@ func (l *lease) registerState(st *state) {
 		if _, ok := l.stateSet[st]; !ok {
 			if st.recoverAt != nil {
 				l.stateSet[st] = struct{}{}
-				d := st.recoverAt.Sub(time.Now())
+				d := time.Until(st.recoverAt.Time)
 				l.stateQueue.AddAfter(st, d)
 			}
 		}
@@ -62,7 +62,7 @@ func (l *lease) processingLoop() {
 		_, _, recoverAt := st.read()
 		if recoverAt != nil && time.Now().Before(recoverAt.Time) {
 			// recover time changed, requeue
-			l.stateQueue.AddAfter(st, recoverAt.Sub(time.Now()))
+			l.stateQueue.AddAfter(st, time.Until(recoverAt.Time))
 		} else {
 			l.mu.Lock()
 			delete(l.stateSet, st)

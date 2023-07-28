@@ -21,8 +21,8 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"io/ioutil"
 	"net/http"
+	"os"
 	"path"
 	"sync"
 
@@ -39,7 +39,7 @@ func Checker(_ *http.Request) error {
 	once.Do(func() {
 		var caCert []byte
 		certDir := utils.GetCertDir()
-		caCert, initErr = ioutil.ReadFile(path.Join(certDir, "ca-cert.pem"))
+		caCert, initErr = os.ReadFile(path.Join(certDir, "ca-cert.pem"))
 		if initErr != nil {
 			return
 		}

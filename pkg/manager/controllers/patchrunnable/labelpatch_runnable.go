@@ -282,7 +282,6 @@ func (p *PatchRunnable) setInvalid(gvk schema.GroupVersionKind) {
 	p.invalidL.Lock()
 	defer p.invalidL.Unlock()
 	p.invalid.Insert(groupVersionKindKey(gvk))
-	return
 }
 
 func groupVersionKindKey(gvk schema.GroupVersionKind) string {

@@ -19,7 +19,6 @@ package pod
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
 	"strconv"
@@ -192,7 +191,7 @@ func (h *MutatingHandler) injectByShardingConfig(ctx context.Context, pod *v1.Po
 		Image:           *initImage,
 		ImagePullPolicy: imagePullPolicy,
 		SecurityContext: &v1.SecurityContext{
-			Privileged:   utilpointer.BoolPtr(true),
+			Privileged:   utilpointer.Bool(true),
 			Capabilities: &v1.Capabilities{Add: []v1.Capability{"NET_ADMIN"}},
 		},
 	}
@@ -288,7 +287,7 @@ func (h *MutatingHandler) injectByShardingConfig(ctx context.Context, pod *v1.Po
 			}
 			if vol.ConfigMap == nil {
 				data, _ := json.Marshal(vol)
-				return errors.New(fmt.Sprintf("get kubeconfig from volume %s error: only support configmap volume, %s", volumeName, string(data)))
+				return fmt.Errorf(fmt.Sprintf("get kubeconfig from volume %s error: only support configmap volume, %s", volumeName, string(data)))
 			}
 			cmName = vol.ConfigMap.Name
 			break
@@ -298,7 +297,7 @@ func (h *MutatingHandler) injectByShardingConfig(ctx context.Context, pod *v1.Po
 			return err
 		}
 		if len(kubeconfigCm.Data) > 1 {
-			return errors.New(fmt.Sprintf("kubeconfig config map %s data size > 1", cmName))
+			return fmt.Errorf(fmt.Sprintf("kubeconfig config map %s data size > 1", cmName))
 		}
 		var kubeconfigFileName string
 		for k := range kubeconfigCm.Data {
@@ -334,11 +333,11 @@ func pickVolume(po *v1.Pod, name string) {
 }
 
 func (h *MutatingHandler) applyFakeConfigMap(po *v1.Pod) error {
-	if cm, err := h.directKubeClient.CoreV1().ConfigMaps(po.Namespace).Get(context.TODO(), *fakeKubeconfig, metav1.GetOptions{}); err != nil {
+	if _, err := h.directKubeClient.CoreV1().ConfigMaps(po.Namespace).Get(context.TODO(), *fakeKubeconfig, metav1.GetOptions{}); err != nil {
 		if !k8sErr.IsNotFound(err) {
 			return fmt.Errorf("fail to get configMap fake-kubeconfig %s", err)
 		}
-		cm = fakeConfigMap.DeepCopy()
+		cm := fakeConfigMap.DeepCopy()
 		cm.Namespace = po.Namespace
 		err = h.Client.Create(context.TODO(), cm)
 		if err != nil && !k8sErr.IsAlreadyExists(err) && !k8sErr.IsConflict(err) {
@@ -544,8 +543,8 @@ func mountFakeKubeConfig(pod *v1.Pod, name string) error {
 	if !findCm {
 		pod.Spec.Volumes = append(pod.Spec.Volumes, *fakeVol)
 	}
-	disableArg, _ := pod.Labels[kridge.KdDisableFakeKubeconfigArg]
-	disableEnv, _ := pod.Labels[kridge.KdDisableFakeKubeconfigEnv]
+	disableArg := pod.Labels[kridge.KdDisableFakeKubeconfigArg]
+	disableEnv := pod.Labels[kridge.KdDisableFakeKubeconfigEnv]
 	for i := range pod.Spec.Containers {
 		findVol := false
 		for _, mo := range pod.Spec.Containers[i].VolumeMounts {
