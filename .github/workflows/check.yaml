@@ -29,6 +29,10 @@ jobs:
       uses: actions/setup-go@v3
       with:
         go-version: ${{ env.GO_VERSION }}
+    - name: Setup protoc
+      run: |
+        wget https://github.com/protocolbuffers/protobuf/releases/download/v3.19.5/protoc-3.19.5-linux-x86_64.zip
+        unzip protoc-3.19.5-linux-x86_64.zip -d protoc3
     - name: Cache Go Dependencies
       uses: actions/cache@v2
       with:
@@ -37,7 +41,11 @@ jobs:
         restore-keys: ${{ runner.os }}-go-
     - name: Run Unit Tests
       run: |
+        export PATH="$PATH:$(pwd)/protoc3/bin"
+        echo $PATH
         make test
+        rm -rf protoc-3.19.5-linux-x86_64.zip
+        rm -rf protoc3
         git status
 # TODO: enable after public
 #    - name: Publish Unit Test Coverage
