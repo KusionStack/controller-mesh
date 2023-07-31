@@ -19,19 +19,27 @@ package shardingconfigserver
 import (
 	"testing"
 
+	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
-func TestShardingConfig(t *testing.T) {
-	mgr, err := manager.New(cfg, manager.Options{
-		MetricsBindAddress: "0",
+var _ = Describe("ShardingConfig controller", func() {
+	It("set controller", func() {
+		mgr, err := manager.New(cfg, manager.Options{
+			MetricsBindAddress: "0",
+		})
+		Expect(err).Should(BeNil())
+
+		err = (&ShardingConfigReconciler{
+			Client: mgr.GetClient(),
+		}).SetupWithManager(mgr)
+
+		Expect(err).Should(BeNil())
 	})
-	Expect(err).Should(BeNil())
+})
 
-	err = (&ShardingConfigReconciler{
-		Client: mgr.GetClient(),
-	}).SetupWithManager(mgr)
-
-	Expect(err).Should(BeNil())
+func TestShardingConfigController(t *testing.T) {
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "ShardingConfig controller test")
 }

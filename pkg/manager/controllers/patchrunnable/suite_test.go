@@ -50,7 +50,7 @@ var testEnv *envtest.Environment
 //	err := kridgev1alpha1.AddToScheme(scheme.Scheme)
 //	Expect(err).NotTo(HaveOccurred())
 //
-//	cfg, err := testEnv.Start()
+//	cfg, err = testEnv.Start()
 //	Expect(err).NotTo(HaveOccurred())
 //	Expect(cfg).NotTo(BeNil())
 //

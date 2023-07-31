@@ -19,14 +19,11 @@ package patchrunnable
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"net/url"
 	"path/filepath"
 	"testing"
 	"time"
 
-	. "github.com/onsi/ginkgo"
-	"github.com/onsi/ginkgo/reporters"
 	"github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -38,63 +35,6 @@ import (
 
 	kridgev1alpha1 "github.com/KusionStack/kridge/pkg/apis/kridge/v1alpha1"
 )
-
-func TestDeploy(t *testing.T) {
-	//RegisterFailHandler(Fail)
-	RunSpecsWithDefaultAndCustomReporters(t,
-		"Controller Suite",
-		[]Reporter{reporters.NewFakeReporter()})
-	replica := int32(3)
-	deploy := &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{Name: "nginx", Namespace: "default"},
-		Spec: appsv1.DeploymentSpec{
-			Replicas: &replica,
-			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{
-					"nginx": "v1",
-				},
-			},
-			Template: corev1.PodTemplateSpec{
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Name:  "nginx",
-							Image: "nginx:v1",
-							Resources: corev1.ResourceRequirements{
-								Limits: corev1.ResourceList{
-									corev1.ResourceCPU:              resource.MustParse("100m"),
-									corev1.ResourceMemory:           resource.MustParse("1Gi"),
-									corev1.ResourceEphemeralStorage: resource.MustParse("1Gi"),
-								},
-								Requests: corev1.ResourceList{
-									corev1.ResourceCPU:              resource.MustParse("100m"),
-									corev1.ResourceMemory:           resource.MustParse("1Gi"),
-									corev1.ResourceEphemeralStorage: resource.MustParse("1Gi"),
-								},
-							},
-						},
-					},
-				},
-			},
-			Strategy: appsv1.DeploymentStrategy{
-				Type: appsv1.RollingUpdateDeploymentStrategyType,
-			},
-		},
-	}
-	err := k8sClient.Create(context.TODO(), deploy)
-	if err != nil {
-		fmt.Println(err)
-	}
-	//g.Expect(err).NotTo(BeNil())
-}
-
-func Start(t *testing.T) {
-
-}
-
-func End(t *testing.T) {
-
-}
 
 func TestEnv(t *testing.T) {
 	g := gomega.NewGomegaWithT(t)
@@ -169,11 +109,4 @@ func TestEnv(t *testing.T) {
 
 	err = testEnv.Stop()
 	g.Expect(err).NotTo(gomega.HaveOccurred())
-}
-
-func TestRand(t *testing.T) {
-
-	for i := 0; i < 10; i++ {
-		fmt.Println(rand.Int31())
-	}
 }

@@ -23,10 +23,11 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega"
 )
 
 func TestDelay(t *testing.T) {
+	g := gomega.NewGomegaWithT(t)
 	EnableDelay()
 	cli := http.Client{}
 	timeOut := time.Now().Add(20 * time.Second)
@@ -51,5 +52,5 @@ func TestDelay(t *testing.T) {
 		}
 		<-time.After(1 * time.Second)
 	}
-	Expect(time.Now().After(timeOut)).NotTo(BeTrue())
+	g.Expect(time.Now().After(timeOut)).NotTo(gomega.BeTrue())
 }

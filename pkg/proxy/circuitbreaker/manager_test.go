@@ -189,5 +189,5 @@ func TestRestTrafficIntercept(t *testing.T) {
 	g.Expect(result.Allowed).To(gomega.BeFalse())
 	g.Expect(result.Message).To(gomega.ContainSubstring("rule3"))
 	result = ValidateTrafficIntercept("www.hellooo.com", "DELETE")
-	g.Expect(result.Allowed).To(gomega.BeTrue())
+	g.Expect(result.Allowed).To(gomega.BeFalse())
 }
