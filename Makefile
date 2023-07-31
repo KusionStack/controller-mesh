@@ -57,7 +57,7 @@ vet: ## Run go vet against code.
 	go vet ./...
 
 ENVTEST_ASSETS_DIR=$(shell pwd)/testbin
-test: fmt vet ## Run tests.
+test: fmt vet generate manifests ## Run tests.
 	mkdir -p ${ENVTEST_ASSETS_DIR}
 	source ./artifacts/scripts/setup-envtest.sh; fetch_envtest_tools $(ENVTEST_ASSETS_DIR); setup_envtest_env $(ENVTEST_ASSETS_DIR); go test ./pkg/... -coverprofile cover.out
 
