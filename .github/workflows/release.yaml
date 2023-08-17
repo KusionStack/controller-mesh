@@ -1,0 +1,110 @@
+# Reference from:
+# https://goreleaser.com/ci/actions/
+name: Release
+on:
+  push:
+    tags:
+    - "v*"
+permissions:
+  contents: write
+jobs:
+  Test:
+    name: Unit Test
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: true
+    - name: Fetch History
+      run: git fetch --prune --unshallow
+    - name: Setup Go
+      uses: actions/setup-go@v3
+      with:
+        go-version: ${{ env.GO_VERSION }}
+    - name: Setup protoc
+      run: |
+        wget https://github.com/protocolbuffers/protobuf/releases/download/v3.19.5/protoc-3.19.5-linux-x86_64.zip
+        unzip protoc-3.19.5-linux-x86_64.zip -d protoc3
+    - name: Cache Go Dependencies
+      uses: actions/cache@v2
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: ${{ runner.os }}-go-
+    - name: Run Unit Tests
+      run: |
+        export PATH="$PATH:$(pwd)/protoc3/bin"
+        echo $PATH
+        make test
+        rm -rf protoc-3.19.5-linux-x86_64.zip
+        rm -rf protoc3
+        git status
+
+  GolangLint:
+    name: Golang Lint
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+        cache: false
+    - name: golangci-lint
+      uses: golangci/golangci-lint-action@v3
+      with:
+        # Optional: version of golangci-lint to use in form of v1.2 or v1.2.3 or `latest` to use the latest version
+        version: v1.53
+        args: --timeout=30m
+
+
+  # Release the artifacts, release note and images.
+  Release:
+    runs-on: ubuntu-latest
+    needs: [Test, GolangLint]
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+
+    - name: Check if on tag
+      run: |
+        if [[ "${GITHUB_REF#refs/tags/}" != "$GITHUB_REF" ]]; then
+          echo "Running on tag ${GITHUB_REF#refs/tags/}"
+        else
+          echo "Not running on a tag"
+        fi
+
+    - name: Get version
+      id: get_version
+      run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
+
+    - name: Login to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v2
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.19
+
+    - name: Release the karbour with GoReleaser
+      uses: goreleaser/goreleaser-action@v2
+      with:
+        distribution: goreleaser
+        version: latest
+        args: release --clean
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
