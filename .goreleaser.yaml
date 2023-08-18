@@ -11,7 +11,6 @@ builds:
   # Default: [ 'darwin', 'linux', 'windows' ]
   goos:
   - linux
-  # - windows
   - darwin
   # GOARCH to build for.
   # For more info refer to: https://golang.org/doc/install/source#environment
@@ -22,9 +21,45 @@ builds:
   - arm64
   ldflags:
   - -s -w
-  main: ./cmd/
+  main: ./pkg/cmd/manager
+  id: "kridge-manager"
+  binary: kridge-manager
+- env:
+  - CGO_ENABLED=0
+  # GOOS list to build for.
+  # For more info refer to: https://golang.org/doc/install/source#environment
+  #
+  # Default: [ 'darwin', 'linux', 'windows' ]
+  goos:
+  - linux
+  - darwin
+  goarch:
+  - amd64
+  - arm64
+  ldflags:
+  - -s -w
+  main: ./pkg/cmd/proxy
+  id: "kridge-proxy"
+  binary: bin/kridge-proxy
+- env:
+  - CGO_ENABLED=0
+  goos:
+  - linux
+  - darwin
+  goarch:
+  - amd64
+  - arm64
+  ldflags:
+  - -s -w
+  main: ./pkg/cmd/cert-generator
+  id: "cert-generator"
+  binary: cert-generator
 archives:
 - id: release
+  builds:
+  - "manager"
+  - "proxy"
+  - "cert-generator"
   name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
   builds_info:
     mode: 0644
@@ -101,31 +136,63 @@ release:
     ## Docker Images
     * `kusionstack/kridge-manager:{{ .Tag }}`
     * `kusionstack/kridge-proxy:{{ .Tag }}`
-    ## Thanks!
+    * `kusionstack/kridge-init:{{ .Tag }}`
 
 dockers:
-- image_templates:
+- id: manager
+  ids:
+  - kridge-manager
+  goos: linux
+  goarch: amd64
+  image_templates:
   - 'kusionstack/{{ .ProjectName }}-manager:{{ .Tag }}'
   - 'kusionstack/{{ .ProjectName }}-manager:latest'
-  dockerfile: ./artifacts/images/manager.Dockerfile
+  dockerfile: ./artifacts/goreleaser/manager.Dockerfile
   use: docker
   build_flag_templates:
   - "--pull"
   - "--label=org.opencontainers.image.created={{.Date}}"
-  - "--label=org.opencontainers.image.name={{.ProjectName}}"
+  - "--label=org.opencontainers.image.name={{.ProjectName}}-manager"
   - "--label=org.opencontainers.image.revision={{.FullCommit}}"
   - "--label=org.opencontainers.image.version={{.Version}}"
   - "--label=org.opencontainers.image.source={{.GitURL}}"
   - "--platform=linux/amd64"
-- image_templates:
+- id: proxy
+  ids:
+  - kridge-proxy
+  goos: linux
+  goarch: amd64
+  image_templates:
   - 'kusionstack/{{ .ProjectName }}-proxy:{{ .Tag }}'
   - 'kusionstack/{{ .ProjectName }}-proxy:latest'
-  dockerfile: ./artifacts/images/proxy.Dockerfile
+  dockerfile: ./artifacts/goreleaser/proxy.Dockerfile
+  extra_files:
+  - artifacts/scripts/
   use: docker
   build_flag_templates:
   - "--pull"
   - "--label=org.opencontainers.image.created={{.Date}}"
-  - "--label=org.opencontainers.image.name={{.ProjectName}}"
+  - "--label=org.opencontainers.image.name={{.ProjectName}}-proxy"
+  - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+  - "--label=org.opencontainers.image.version={{.Version}}"
+  - "--label=org.opencontainers.image.source={{.GitURL}}"
+  - "--platform=linux/amd64"
+- id: init
+  ids:
+  - cert-generator
+  goos: linux
+  goarch: amd64
+  image_templates:
+  - 'kusionstack/{{ .ProjectName }}-init:{{ .Tag }}'
+  - 'kusionstack/{{ .ProjectName }}-init:latest'
+  dockerfile: ./artifacts/goreleaser/init.Dockerfile
+  extra_files:
+  - artifacts/scripts/
+  use: docker
+  build_flag_templates:
+  - "--pull"
+  - "--label=org.opencontainers.image.created={{.Date}}"
+  - "--label=org.opencontainers.image.name={{.ProjectName}}-init"
   - "--label=org.opencontainers.image.revision={{.FullCommit}}"
   - "--label=org.opencontainers.image.version={{.Version}}"
   - "--label=org.opencontainers.image.source={{.GitURL}}"
