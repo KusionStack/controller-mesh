@@ -76,8 +76,8 @@ func (h *MutatingHandler) shouldUpdateNs(ns *v1.Namespace) (shouldUpdate bool) {
 		shouldUpdate = true
 	}
 	nsHash := strconv.Itoa(rand.Hash(ns.Name, constants.DefaultShardingSize))
-	if val, exist := ns.Labels[kridge.KdShardingHashKey]; !exist || nsHash != val {
-		ns.Labels[kridge.KdShardingHashKey] = nsHash
+	if val, exist := ns.Labels[kridge.KdShardHashKey]; !exist || nsHash != val {
+		ns.Labels[kridge.KdShardHashKey] = nsHash
 		shouldUpdate = true
 	}
 	return shouldUpdate

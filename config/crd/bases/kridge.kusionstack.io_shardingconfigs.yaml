@@ -114,37 +114,35 @@ spec:
                 type: array
               root:
                 properties:
+                  auto:
+                    description: Auto is config to automatically generate child ShardingConfig
+                    properties:
+                      everyShardReplicas:
+                        type: integer
+                      shardingSize:
+                        type: integer
+                    required:
+                    - everyShardReplicas
+                    - shardingSize
+                    type: object
                   canary:
+                    description: Canary is canary shard config
                     properties:
                       inNamespaces:
                         items:
                           type: string
                         type: array
-                      inNumbers:
+                      inShardHash:
                         items:
                           type: string
                         type: array
+                      replicas:
+                        type: integer
+                    required:
+                    - replicas
                     type: object
-                  canaryReplicas:
-                    type: integer
                   disable:
                     type: boolean
-                  manual:
-                    items:
-                      properties:
-                        id:
-                          type: integer
-                        numbers:
-                          items:
-                            type: string
-                          type: array
-                      required:
-                      - id
-                      - numbers
-                      type: object
-                    type: array
-                  normalReplicas:
-                    type: integer
                   prefix:
                     type: string
                   resourceSelector:
@@ -214,12 +212,11 @@ spec:
                           x-kubernetes-map-type: atomic
                       type: object
                     type: array
-                  size:
-                    type: integer
                   targetStatefulSet:
                     type: string
-                  type:
-                    type: string
+                required:
+                - prefix
+                - targetStatefulSet
                 type: object
               selector:
                 description: Selector is a label query over pods of this configuration.

@@ -21,7 +21,10 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+
+	kridgev1alpha1 "github.com/KusionStack/kridge/pkg/apis/kridge/v1alpha1"
 )
 
 var _ = Describe("ShardingConfig controller", func() {
@@ -42,4 +45,48 @@ var _ = Describe("ShardingConfig controller", func() {
 func TestShardingConfigController(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "ShardingConfig controller test")
+}
+
+func TestGetChild(t *testing.T) {
+	canaryRep := 1
+	getChild(&kridgev1alpha1.ShardingConfig{
+		ObjectMeta: metav1.ObjectMeta{Name: "root", Namespace: "test"},
+		Spec: kridgev1alpha1.ShardingConfigSpec{
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"nginx": "v1",
+				},
+			},
+			Controller: &kridgev1alpha1.ShardingConfigControllerConfiguration{
+				LeaderElectionName: "leader-election-name",
+			},
+			Root: &kridgev1alpha1.ShardingConfigRoot{
+				Prefix:            "test",
+				TargetStatefulSet: "sts-name",
+				Canary: &kridgev1alpha1.CanaryConfig{
+					Replicas:     &canaryRep,
+					InNamespaces: []string{"ns1", "ns2"},
+				},
+				Auto: &kridgev1alpha1.AutoConfig{
+					ShardingSize:       2,
+					EveryShardReplicas: 2,
+				},
+				ResourceSelector: []kridgev1alpha1.ObjectLimiter{
+					{
+						RelatedResources: []kridgev1alpha1.ResourceGroup{
+							{
+								Resources: []string{"Pod"},
+								APIGroups: []string{"*"},
+							},
+						},
+						Selector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								"test": "test",
+							},
+						},
+					},
+				},
+			},
+		},
+	})
 }

@@ -16,47 +16,51 @@ limitations under the License.
 
 package kridge
 
+// Environments
 const (
 	EnvEnableWebhookServer     = "ENABLE_WEBHOOK_SERVER"
 	EnvEnableCalculateRunnable = "ENABLE_CALCULATE_RUNNABLE"
 	EnvTestMode                = "ENV_TEST_MODE"
+	EnvGlobalSelector          = "GLOBAL_SELECTOR"
+	EnvWatchOnLimit            = "WATCH_ON_LIMIT"
+)
 
-	EnvGlobalSelector = "GLOBAL_SELECTOR"
-	EnvWatchOnLimit   = "WATCH_ON_LIMIT"
+// Labels
+const (
+	KdControlPrefix                 = "kridge.kusionstack.io/"
+	KdShardHashKey                  = "kridge.kusionstack.io/shard-hash"
+	KdControlKey                    = "kridge.kusionstack.io/control"
+	KdNamespaceKey                  = "kridge.kusionstack.io/namespace"
+	KdIgnoreWebhookLabel            = "kridge.kusionstack.io/ignore-webhook"
+	KdIgnoreValidateLabel           = "kridge.kusionstack.io/ignore-validate"
+	KdDefaultReplicasLabel          = "kridge.kusionstack.io/default-replicas"
+	KdEnableProxyLabel              = "kridge.kusionstack.io/enable-proxy"
+	KdAutoShardingRootLabel         = "kridge.kusionstack.io/auto-sharding-root"
+	KdInRollingLabel                = "kridge.kusionstack.io/rolling"
+	KdDisableFakeKubeconfigArgLabel = "kridge.kusionstack.io/disable-fake-kubeconfig-arg"
+	KdDisableFakeKubeconfigEnvLabel = "kridge.kusionstack.io/disable-fake-kubeconfig-env"
+	KdSharedLogVolumeLabel          = "kridge.kusionstack.io/log-volume"
+	KdWatchOnLimitLabel             = "kridge.kusionstack.io/watching"
+	KdProxyKubeConfigVolumeLabel    = "kridge.kusionstack.io/kubeconfig-volume"
+)
 
-	KdControlPrefix = "kridge.kusionstack.io/"
-
-	KdShardingHashKey = "kridge.kusionstack.io/sharding-hash"
-	KdControlKey      = "kridge.kusionstack.io/control"
-	KdNamespaceKey    = "kridge.kusionstack.io/namespace"
-
-	KdIgnoreWebhookKey   = "kridge.kusionstack.io/ignore-webhook"
-	KdIgnoreValidateKey  = "kridge.kusionstack.io/ignore-validate"
-	KdDefaultReplicasKey = "kridge.kusionstack.io/default-replicas"
-
-	KdEnableProxyKey = "kridge.kusionstack.io/enable-proxy"
-
-	ProtectFinalizer = "finalizer.kridge.kusionstack.io/protected"
-
-	KdAutoShardingRootLabel = "kridge.kusionstack.io/auto-sharding-root"
-	KdAutoShardingHashAnno  = "kridge.kusionstack.io/auto-sharding-hash"
-
-	KdInRollingLabel      = "kridge.kusionstack.io/rolling"
-	KdRollingStatusAnno   = "kridge.kusionstack.io/roll-status"
-	KdRollingExpectedAnno = "kridge.kusionstack.io/roll-expected"
-
-	KdDisableFakeKubeconfigArg = "kridge.kusionstack.io/disable-fake-kubeconfig-arg"
-	KdDisableFakeKubeconfigEnv = "kridge.kusionstack.io/disable-fake-kubeconfig-env"
-
-	KdSharedLogPathAnnoKey = "kridge.kusionstack.io/log-path"
-	KdSharedLogVolumeKey   = "kridge.kusionstack.io/log-volume"
-
-	KdWatchOnLimitKey = "kridge.kusionstack.io/watching"
-
-	ShardingConfigMapName = "kridge-sharding-config"
-
+// Annotations
+const (
+	KdAutoShardingHashAnno       = "kridge.kusionstack.io/auto-sharding-hash"
+	KdRollingStatusAnno          = "kridge.kusionstack.io/roll-status"
+	KdRollingExpectedAnno        = "kridge.kusionstack.io/roll-expected"
+	KdSharedLogPathAnno          = "kridge.kusionstack.io/log-path"
 	KdWebhookEnvConfigAnno       = "kridge.kusionstack.io/env-sync"
 	KdEnvInjectAnno              = "kridge.kusionstack.io/env-inject"
-	KdProxyKubeConfigVolume      = "kridge.kusionstack.io/kubeconfig-volume"
 	KdProxyContainerResourceAnno = "kridge.kusionstack.io/proxy-resource"
+)
+
+// Finalizer
+const (
+	ProtectFinalizer = "finalizer.kridge.kusionstack.io/protected"
+)
+
+// Name
+const (
+	ShardingConfigMapName = "kridge-sharding-config"
 )

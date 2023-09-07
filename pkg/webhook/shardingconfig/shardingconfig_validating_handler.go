@@ -43,7 +43,7 @@ func init() {
 	configSelector, _ = metav1.LabelSelectorAsSelector(&metav1.LabelSelector{
 		MatchExpressions: []metav1.LabelSelectorRequirement{
 			{
-				Key:      kridge.KdIgnoreValidateKey,
+				Key:      kridge.KdIgnoreValidateLabel,
 				Operator: metav1.LabelSelectorOpDoesNotExist,
 			},
 		},
@@ -65,7 +65,7 @@ func (h *ValidatingHandler) Handle(ctx context.Context, req admission.Request) a
 		return admission.Errored(http.StatusBadRequest, err)
 	}
 
-	if _, ok := obj.GetLabels()[kridge.KdIgnoreValidateKey]; ok {
+	if _, ok := obj.GetLabels()[kridge.KdIgnoreValidateLabel]; ok {
 		return admission.ValidationResponse(true, "")
 	}
 
@@ -180,6 +180,13 @@ func getNamespaceNameSets(nss *v1.NamespaceList) []string {
 
 func validate(obj *kridgev1alpha1.ShardingConfig) error {
 
+	if obj.Spec.Root != nil {
+		err := validateRootConfig(obj.Spec.Root)
+		if err != nil {
+			return err
+		}
+	}
+
 	if selector, err := metav1.LabelSelectorAsSelector(obj.Spec.Selector); err != nil {
 		return fmt.Errorf("invalid selector: %v", err)
 	} else if (selector.Empty() || selector.String() == "") && obj.Spec.Root == nil {
@@ -218,6 +225,23 @@ func validate(obj *kridgev1alpha1.ShardingConfig) error {
 		}
 		if obj.Spec.Webhook.Port <= 0 {
 			return fmt.Errorf("port for webhook must be bigger than 0")
+		}
+	}
+	return nil
+}
+
+func validateRootConfig(root *kridgev1alpha1.ShardingConfigRoot) error {
+	if root.Canary != nil {
+		if len(root.Canary.InShardHash) == 0 && len(root.Canary.InNamespaces) == 0 {
+			return fmt.Errorf("canary config must have at least one inShardHash or inNamespaces")
+		}
+		if root.Canary.Replicas == nil {
+			return fmt.Errorf("canary shard replicas must not be nil")
+		}
+	}
+	if root.Auto != nil {
+		if root.Auto.EveryShardReplicas == 0 || root.Auto.ShardingSize == 0 {
+			return fmt.Errorf("illegal root auto config")
 		}
 	}
 	return nil

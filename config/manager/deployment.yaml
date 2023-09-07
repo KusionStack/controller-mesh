@@ -25,15 +25,15 @@ spec:
     spec:
       containers:
         - args:
-            - --logtostderr=true
-            - --v=4
-            - --leader-election-namespace=kridge
-            - --proxy-image=${proxy-image}
-            - --proxy-cpu=1
-            - --proxy-memory=2Gi
-            - --proxy-ephemeral-storage=6Gi
-            - --leader-election-lease-duration-seconds=15
-            - --leader-election-renew-deadline-seconds=10
+          - --logtostderr=true
+          - --v=4
+          - --leader-election-namespace=kridge
+          - --proxy-image=kusionstack/kridge-proxy:latest
+          - --proxy-cpu=100m
+          - --proxy-memory=100Mi
+          - --proxy-ephemeral-storage=100Mi
+          - --leader-election-lease-duration-seconds=15
+          - --leader-election-renew-deadline-seconds=10
           command:
             - /manager
           env:
@@ -55,7 +55,7 @@ spec:
               value: secret
             - name: WATCH_ON_LIMIT
               value: 'true'
-          image: ${manager-image}
+          image: kusionstack/kridge-manager:latest
           imagePullPolicy: IfNotPresent
           livenessProbe:
             failureThreshold: 3
@@ -80,13 +80,11 @@ spec:
             timeoutSeconds: 2
           resources:
             limits:
-              cpu: '4'
-              memory: 8Gi
-              ephemeral-storage: 30Gi
+              cpu: 500m
+              memory: 128Mi
             requests:
-              cpu: '4'
-              memory: 8Gi
-              ephemeral-storage: 30Gi
+              cpu: 10m
+              memory: 64Mi
           securityContext:
             allowPrivilegeEscalation: false
           terminationMessagePath: /dev/termination-log

@@ -1,4 +1,4 @@
-<!-- Thank you for contributing to Karbour!
+<!-- Thank you for contributing to Kridge!
 
 Note: 
 

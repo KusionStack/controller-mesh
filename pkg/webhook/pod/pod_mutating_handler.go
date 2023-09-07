@@ -56,11 +56,11 @@ func (h *MutatingHandler) Handle(ctx context.Context, req admission.Request) adm
 	if obj.Namespace == "" {
 		obj.Namespace = req.Namespace
 	}
-	if obj.Labels == nil || obj.Labels[kridge.KdEnableProxyKey] != "true" {
+	if obj.Labels == nil || obj.Labels[kridge.KdEnableProxyLabel] != "true" {
 		return admission.Allowed("")
 	}
 
-	obj.Labels[kridge.KdWatchOnLimitKey] = "true"
+	obj.Labels[kridge.KdWatchOnLimitLabel] = "true"
 	if err = h.injectByShardingConfig(ctx, obj); err != nil {
 		return admission.Errored(http.StatusBadRequest, err)
 	}
