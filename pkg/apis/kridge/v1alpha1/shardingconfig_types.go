@@ -40,34 +40,37 @@ type ShardingConfigSpec struct {
 }
 
 type ShardingConfigRoot struct {
-	Disable           *bool           `json:"disable,omitempty"`
-	Prefix            string          `json:"prefix,omitempty"`
-	Canary            *CanaryConfig   `json:"canary,omitempty"`
-	Size              int             `json:"size,omitempty"`
-	Type              ShardingType    `json:"type,omitempty"`
-	Manual            []ManualConfig  `json:"manual,omitempty"`
-	CanaryReplicas    int             `json:"canaryReplicas,omitempty"`
-	NormalReplicas    int             `json:"normalReplicas,omitempty"`
-	TargetStatefulSet string          `json:"targetStatefulSet,omitempty"`
-	ResourceSelector  []ObjectLimiter `json:"resourceSelector,omitempty"`
+	Disable           *bool  `json:"disable,omitempty"`
+	Prefix            string `json:"prefix"`
+	TargetStatefulSet string `json:"targetStatefulSet"`
+
+	// Canary is canary shard config
+	Canary *CanaryConfig `json:"canary,omitempty"`
+
+	// Auto is config to automatically generate child ShardingConfig
+	Auto *AutoConfig `json:"auto,omitempty"`
+
+	// TODO: config every shard
+	//Manual            []ManualConfig  `json:"manual,omitempty"`
+
+	ResourceSelector []ObjectLimiter `json:"resourceSelector,omitempty"`
+}
+
+type AutoConfig struct {
+	ShardingSize       int `json:"shardingSize"`
+	EveryShardReplicas int `json:"everyShardReplicas"`
 }
 
 type CanaryConfig struct {
+	Replicas     *int     `json:"replicas"`
 	InNamespaces []string `json:"inNamespaces,omitempty"`
-	InNumbers    []string `json:"inNumbers,omitempty"`
+	InShardHash  []string `json:"inShardHash,omitempty"`
 }
 
 type ManualConfig struct {
 	ID      int      `json:"id"`
 	Numbers []string `json:"numbers"`
 }
-
-type ShardingType string
-
-const (
-	ShardingAuto   ShardingType = "Auto"
-	ShardingManual ShardingType = "Manual"
-)
 
 // ShardingConfigRestConfigOverrides defines overrides to the application's rest config.
 type ShardingConfigRestConfigOverrides struct {

@@ -92,6 +92,13 @@ func (r *ShardingConfigReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		}
 		return reconcile.Result{}, err
 	}
+	if shardingConfig.Spec.Root != nil {
+		err = r.AutoSharding(ctx, shardingConfig)
+		if err != nil {
+			klog.Errorf("Fail to auto generate ShardingConfig by %s: %v", req, err)
+		}
+		return reconcile.Result{}, err
+	}
 
 	allPods, err := r.getPodsForShardingConfig(ctx, shardingConfig)
 	if err != nil {

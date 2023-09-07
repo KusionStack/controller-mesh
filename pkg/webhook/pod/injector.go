@@ -58,7 +58,7 @@ var (
 			Name:      *fakeKubeconfig,
 			Namespace: "default",
 			Labels: map[string]string{
-				kridge.KdWatchOnLimitKey: "true",
+				kridge.KdWatchOnLimitLabel: "true",
 			},
 		},
 		Data: map[string]string{"fake-kubeconfig.yaml": "apiVersion: v1\n" +
@@ -278,7 +278,7 @@ func (h *MutatingHandler) injectByShardingConfig(ctx context.Context, pod *v1.Po
 		pod.Labels = map[string]string{}
 	}
 
-	if volumeName, ok := pod.Labels[kridge.KdProxyKubeConfigVolume]; ok {
+	if volumeName, ok := pod.Labels[kridge.KdProxyKubeConfigVolumeLabel]; ok {
 		pickVolume(pod, volumeName)
 		var cmName string
 		for _, vol := range pod.Spec.Volumes {
@@ -315,7 +315,7 @@ func (h *MutatingHandler) injectByShardingConfig(ctx context.Context, pod *v1.Po
 	pod.Spec.Containers = append([]v1.Container{*proxyContainer}, pod.Spec.Containers...)
 	injectEnv(pod)
 	pod.Labels[kridgev1alpha1.ShardingConfigInjectedKey] = matchedCfg.Name
-	if logPath, find := pod.Annotations[kridge.KdSharedLogPathAnnoKey]; find {
+	if logPath, find := pod.Annotations[kridge.KdSharedLogPathAnno]; find {
 		return mountLogVolume(pod, logPath, "app-shared-logs")
 	}
 	return nil
@@ -543,8 +543,8 @@ func mountFakeKubeConfig(pod *v1.Pod, name string) error {
 	if !findCm {
 		pod.Spec.Volumes = append(pod.Spec.Volumes, *fakeVol)
 	}
-	disableArg := pod.Labels[kridge.KdDisableFakeKubeconfigArg]
-	disableEnv := pod.Labels[kridge.KdDisableFakeKubeconfigEnv]
+	disableArg := pod.Labels[kridge.KdDisableFakeKubeconfigArgLabel]
+	disableEnv := pod.Labels[kridge.KdDisableFakeKubeconfigEnvLabel]
 	for i := range pod.Spec.Containers {
 		findVol := false
 		for _, mo := range pod.Spec.Containers[i].VolumeMounts {

@@ -45,7 +45,7 @@ var (
 	DefaultSelector = func() cache.ObjectSelector {
 		selector, _ := metav1.LabelSelectorAsSelector(&metav1.LabelSelector{
 			MatchLabels: map[string]string{
-				kridge.KdWatchOnLimitKey: "true",
+				kridge.KdWatchOnLimitLabel: "true",
 			},
 		})
 		return cache.ObjectSelector{

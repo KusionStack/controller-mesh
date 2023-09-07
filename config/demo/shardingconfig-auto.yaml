@@ -1,0 +1,32 @@
+apiVersion: kridge.kusionstack.io/v1alpha1
+kind: ShardingConfig
+metadata:
+  name: sharding-root
+  namespace: operator-demo
+spec:
+  root:
+    prefix: operator-demo
+    targetStatefulSet: operator-demo
+    canary:
+      replicas: 1
+      inNamespaces:
+      - ns-canary
+    auto:
+      everyShardReplicas: 2
+      shardingSize: 2
+    resourceSelector:
+    - objectSelector:
+        relateResources:
+        - apiGroups:
+          - '*'
+          resources:
+          - pods
+          - services
+  controller:
+    leaderElectionName: operator-leader
+  selector:
+    matchExpressions:
+    - key: statefulset.kubernetes.io/pod-name
+      operator: In
+      values:
+      - operator-demo-0

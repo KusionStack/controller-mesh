@@ -296,20 +296,20 @@ func updateLabel(ns *v1.Namespace) (bool, error) {
 	nsHash := strconv.Itoa(rand.Hash(ns.Name, constants.DefaultShardingSize))
 
 	if _, ok := ns.Labels[kridge.KdControlKey]; !ok {
-		if _, exist := ns.Labels[kridge.KdShardingHashKey]; exist {
-			return false, fmt.Errorf("label %s already exist but can not find %s", kridge.KdShardingHashKey, kridge.KdControlKey)
+		if _, exist := ns.Labels[kridge.KdShardHashKey]; exist {
+			return false, fmt.Errorf("label %s already exist but can not find %s", kridge.KdShardHashKey, kridge.KdControlKey)
 		}
 		if _, exist := ns.Labels[kridge.KdNamespaceKey]; exist {
 			return false, fmt.Errorf("label %s already exist but can not find %s", kridge.KdNamespaceKey, kridge.KdControlKey)
 		}
 		ns.Labels[kridge.KdControlKey] = "true"
 		ns.Labels[kridge.KdNamespaceKey] = ns.Name
-		ns.Labels[kridge.KdShardingHashKey] = nsHash
+		ns.Labels[kridge.KdShardHashKey] = nsHash
 		return true, nil
 	} else {
-		if val, exist := ns.Labels[kridge.KdShardingHashKey]; !exist || nsHash != val {
+		if val, exist := ns.Labels[kridge.KdShardHashKey]; !exist || nsHash != val {
 			ns.Labels[kridge.KdNamespaceKey] = ns.Name
-			ns.Labels[kridge.KdShardingHashKey] = nsHash
+			ns.Labels[kridge.KdShardHashKey] = nsHash
 			return true, nil
 		}
 		if val, exist := ns.Labels[kridge.KdNamespaceKey]; !exist || val != ns.Name {

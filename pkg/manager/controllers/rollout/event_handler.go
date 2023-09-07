@@ -104,7 +104,7 @@ func (h *stsEventHandler) Generic(evt event.GenericEvent, q workqueue.RateLimiti
 }
 
 func onMeshStsControl(po *v1.Pod) bool {
-	_, ok := po.Labels[kridge.KdEnableProxyKey]
+	_, ok := po.Labels[kridge.KdEnableProxyLabel]
 	if !ok {
 		return false
 	}
