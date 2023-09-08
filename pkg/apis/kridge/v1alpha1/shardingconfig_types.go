@@ -28,7 +28,7 @@ const (
 // ShardingConfigSpec defines the desired state of ShardingConfig
 type ShardingConfigSpec struct {
 	// Selector is a label query over pods of this configuration.
-	Selector *metav1.LabelSelector `json:"selector"`
+	Selector *metav1.LabelSelector `json:"selector,omitempty"`
 
 	Controller *ShardingConfigControllerConfiguration `json:"controller,omitempty"`
 

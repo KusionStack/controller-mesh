@@ -130,7 +130,7 @@ func getChild(root *kridgev1alpha1.ShardingConfig) (result []*kridgev1alpha1.Sha
 		if root.Spec.Webhook != nil {
 			canary.Spec.Webhook = root.Spec.Webhook.DeepCopy()
 		}
-		root.Spec.Limits = genCanaryLimits(root.Spec.Root.Canary, root.Spec.Root.ResourceSelector)
+		canary.Spec.Limits = genCanaryLimits(root.Spec.Root.Canary, root.Spec.Root.ResourceSelector)
 		result = append(result, canary)
 	} else {
 		var rp int

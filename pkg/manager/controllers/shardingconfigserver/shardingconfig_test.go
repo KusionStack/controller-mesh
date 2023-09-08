@@ -75,7 +75,7 @@ func TestGetChild(t *testing.T) {
 					{
 						RelatedResources: []kridgev1alpha1.ResourceGroup{
 							{
-								Resources: []string{"Pod"},
+								Resources: []string{"pods"},
 								APIGroups: []string{"*"},
 							},
 						},

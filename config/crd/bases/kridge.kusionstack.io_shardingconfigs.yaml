@@ -275,8 +275,6 @@ spec:
                 - certDir
                 - port
                 type: object
-            required:
-            - selector
             type: object
           status:
             description: ShardingConfigStatus defines the observed state of ShardingConfig
