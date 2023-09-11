@@ -15,13 +15,12 @@ spec:
       everyShardReplicas: 2
       shardingSize: 2
     resourceSelector:
-    - objectSelector:
-        relateResources:
-        - apiGroups:
-          - '*'
-          resources:
-          - pods
-          - services
+    - relateResources:
+      - apiGroups:
+        - '*'
+        resources:
+        - pods
+        - services
   controller:
     leaderElectionName: operator-leader
   selector:
