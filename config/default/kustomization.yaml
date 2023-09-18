@@ -1,5 +1,5 @@
 
-namespace: kridge
+namespace: ctrlmesh
 bases:
 - ../crd
 - ../rbac

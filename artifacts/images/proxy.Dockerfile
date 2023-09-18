@@ -8,7 +8,7 @@ COPY artifacts/ artifacts/
 COPY pkg/ pkg/
 COPY vendor/ vendor/
 
-RUN CGO_ENABLED=0 GO111MODULE=on GOOS=linux GOARCH=amd64 go build -mod=vendor -a -o kridge-proxy ./pkg/cmd/proxy/main.go
+RUN CGO_ENABLED=0 GO111MODULE=on GOOS=linux GOARCH=amd64 go build -mod=vendor -a -o ctrlmesh-proxy ./pkg/cmd/proxy/main.go
 
 FROM ubuntu:focal
 
@@ -29,10 +29,10 @@ RUN apt-get update && \
   rm -rf  /var/log/*log /var/lib/apt/lists/* /var/log/apt/* /var/lib/dpkg/*-old /var/cache/debconf/*-old
 
 # Sudoers used to allow tcpdump and other debug utilities.
-RUN useradd -m --uid 1359 kridge-proxy && \
-  echo "kridge-proxy ALL=NOPASSWD: ALL" >> /etc/sudoers
+RUN useradd -m --uid 1359 ctrlmesh-proxy && \
+  echo "ctrlmesh-proxy ALL=NOPASSWD: ALL" >> /etc/sudoers
 WORKDIR /
 COPY artifacts/scripts/proxy-poststart.sh /poststart.sh
-RUN mkdir /kridge && chmod 777 /kridge
-COPY --from=builder /workspace/kridge-proxy .
-ENTRYPOINT ["/kridge-proxy"]
+RUN mkdir /ctrlmesh && chmod 777 /ctrlmesh
+COPY --from=builder /workspace/ctrlmesh-proxy .
+ENTRYPOINT ["/ctrlmesh-proxy"]

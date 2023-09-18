@@ -18,7 +18,7 @@ package resources
 
 import "sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
-// +kubebuilder:webhook:path=/mutate-resource,mutating=true,failurePolicy=fail,sideEffects=None,admissionReviewVersions=v1;v1beta1,groups="",resources=pods;services;statefulsets;controllerrevisions;configmaps;persistentvolumeclaims;endpoints,verbs=create;update,versions=v1,name=resource.kridge.mutating.io
+// +kubebuilder:webhook:path=/mutate-resource,mutating=true,failurePolicy=fail,sideEffects=None,admissionReviewVersions=v1;v1beta1,groups="",resources=pods;services;statefulsets;controllerrevisions;configmaps;persistentvolumeclaims;endpoints,verbs=create;update,versions=v1,name=resource.ctrlmesh.mutating.io
 
 var (
 	// HandlerMap contains admission webhook handlers

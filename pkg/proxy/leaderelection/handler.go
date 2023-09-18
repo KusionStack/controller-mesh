@@ -28,9 +28,9 @@ import (
 	"k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/klog/v2"
 
-	kridgeproto "github.com/KusionStack/kridge/pkg/apis/kridge/proto"
-	protomanager "github.com/KusionStack/kridge/pkg/proxy/proto"
-	"github.com/KusionStack/kridge/pkg/utils"
+	ctrlmeshproto "github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh/proto"
+	protomanager "github.com/KusionStack/ctrlmesh/pkg/proxy/proto"
+	"github.com/KusionStack/ctrlmesh/pkg/utils"
 )
 
 type Handler interface {
@@ -104,7 +104,7 @@ func (h *handler) Handle(req *request.RequestInfo, r *http.Request) (handled boo
 
 		modifyResponse = func(resp *http.Response) error {
 			if resp.StatusCode == http.StatusOK {
-				h.specManger.UpdateLeaderElection(&kridgeproto.LeaderElectionState{
+				h.specManger.UpdateLeaderElection(&ctrlmeshproto.LeaderElectionState{
 					Identity: holdIdentity,
 					IsLeader: true,
 				})
@@ -133,7 +133,7 @@ func (h *handler) Handle(req *request.RequestInfo, r *http.Request) (handled boo
 
 		modifyResponse = func(resp *http.Response) error {
 			if resp.StatusCode == http.StatusOK {
-				h.specManger.UpdateLeaderElection(&kridgeproto.LeaderElectionState{
+				h.specManger.UpdateLeaderElection(&ctrlmeshproto.LeaderElectionState{
 					Identity: holdIdentity,
 					IsLeader: true,
 				})

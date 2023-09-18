@@ -21,7 +21,7 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/KusionStack/kridge/pkg/webhook/util/generator"
+	"github.com/KusionStack/ctrlmesh/pkg/webhook/util/generator"
 )
 
 // CertGenerator is a certGenerator for testing.

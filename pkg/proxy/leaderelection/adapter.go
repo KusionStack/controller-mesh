@@ -34,7 +34,7 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 
-	"github.com/KusionStack/kridge/pkg/utils"
+	"github.com/KusionStack/ctrlmesh/pkg/utils"
 )
 
 var (

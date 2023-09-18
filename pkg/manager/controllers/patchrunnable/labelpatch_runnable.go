@@ -38,10 +38,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	"github.com/KusionStack/kridge/pkg/apis/kridge"
-	"github.com/KusionStack/kridge/pkg/apis/kridge/constants"
-	util "github.com/KusionStack/kridge/pkg/utils"
-	"github.com/KusionStack/kridge/pkg/utils/rand"
+	"github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh"
+	"github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh/constants"
+	util "github.com/KusionStack/ctrlmesh/pkg/utils"
+	"github.com/KusionStack/ctrlmesh/pkg/utils/rand"
 )
 
 var (
@@ -83,7 +83,7 @@ type PatchRunnable struct {
 }
 
 //+kubebuilder:rbac:groups=core,resources=namespaces,verbs=get;list;watch
-//+kubebuilder:rbac:groups=kridge.kusionstack.io,resources="",verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=ctrlmesh.kusionstack.io,resources="",verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=apps,resources="",verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups="*",resources=pods;services;statefulsets;controllerrevisions;configmaps;persistentvolumeclaims;endpoints;deployments,verbs=get;list;watch;create;update;patch;delete
 
@@ -295,25 +295,25 @@ func updateLabel(ns *v1.Namespace) (bool, error) {
 
 	nsHash := strconv.Itoa(rand.Hash(ns.Name, constants.DefaultShardingSize))
 
-	if _, ok := ns.Labels[kridge.KdControlKey]; !ok {
-		if _, exist := ns.Labels[kridge.KdShardHashKey]; exist {
-			return false, fmt.Errorf("label %s already exist but can not find %s", kridge.KdShardHashKey, kridge.KdControlKey)
+	if _, ok := ns.Labels[ctrlmesh.KdControlKey]; !ok {
+		if _, exist := ns.Labels[ctrlmesh.KdShardHashKey]; exist {
+			return false, fmt.Errorf("label %s already exist but can not find %s", ctrlmesh.KdShardHashKey, ctrlmesh.KdControlKey)
 		}
-		if _, exist := ns.Labels[kridge.KdNamespaceKey]; exist {
-			return false, fmt.Errorf("label %s already exist but can not find %s", kridge.KdNamespaceKey, kridge.KdControlKey)
+		if _, exist := ns.Labels[ctrlmesh.KdNamespaceKey]; exist {
+			return false, fmt.Errorf("label %s already exist but can not find %s", ctrlmesh.KdNamespaceKey, ctrlmesh.KdControlKey)
 		}
-		ns.Labels[kridge.KdControlKey] = "true"
-		ns.Labels[kridge.KdNamespaceKey] = ns.Name
-		ns.Labels[kridge.KdShardHashKey] = nsHash
+		ns.Labels[ctrlmesh.KdControlKey] = "true"
+		ns.Labels[ctrlmesh.KdNamespaceKey] = ns.Name
+		ns.Labels[ctrlmesh.KdShardHashKey] = nsHash
 		return true, nil
 	} else {
-		if val, exist := ns.Labels[kridge.KdShardHashKey]; !exist || nsHash != val {
-			ns.Labels[kridge.KdNamespaceKey] = ns.Name
-			ns.Labels[kridge.KdShardHashKey] = nsHash
+		if val, exist := ns.Labels[ctrlmesh.KdShardHashKey]; !exist || nsHash != val {
+			ns.Labels[ctrlmesh.KdNamespaceKey] = ns.Name
+			ns.Labels[ctrlmesh.KdShardHashKey] = nsHash
 			return true, nil
 		}
-		if val, exist := ns.Labels[kridge.KdNamespaceKey]; !exist || val != ns.Name {
-			ns.Labels[kridge.KdNamespaceKey] = ns.Name
+		if val, exist := ns.Labels[ctrlmesh.KdNamespaceKey]; !exist || val != ns.Name {
+			ns.Labels[ctrlmesh.KdNamespaceKey] = ns.Name
 			return true, nil
 		}
 	}

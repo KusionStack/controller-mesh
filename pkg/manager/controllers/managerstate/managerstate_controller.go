@@ -40,9 +40,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	kridgev1alpha1 "github.com/KusionStack/kridge/pkg/apis/kridge/v1alpha1"
-	"github.com/KusionStack/kridge/pkg/grpcregistry"
-	"github.com/KusionStack/kridge/pkg/utils"
+	ctrlmeshv1alpha1 "github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh/v1alpha1"
+	"github.com/KusionStack/ctrlmesh/pkg/grpcregistry"
+	"github.com/KusionStack/ctrlmesh/pkg/utils"
 )
 
 var (
@@ -58,12 +58,12 @@ type ManagerStateReconciler struct {
 
 //+kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;watch
 //+kubebuilder:rbac:groups=core,resources=services,verbs=get;list;watch
-//+kubebuilder:rbac:groups=kridge.kusionstack.io,resources=managerstates,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=kridge.kusionstack.io,resources=managerstates/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=kridge.kusionstack.io,resources=managerstates/finalizers,verbs=update
+//+kubebuilder:rbac:groups=ctrlmesh.kusionstack.io,resources=managerstates,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=ctrlmesh.kusionstack.io,resources=managerstates/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=ctrlmesh.kusionstack.io,resources=managerstates/finalizers,verbs=update
 
 func (r *ManagerStateReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ctrl.Result, err error) {
-	if req.Name != kridgev1alpha1.NameOfManager {
+	if req.Name != ctrlmeshv1alpha1.NameOfManager {
 		klog.Infof("Ignore ManagerState %s", req.Name)
 		return reconcile.Result{}, nil
 	}
@@ -85,14 +85,14 @@ func (r *ManagerStateReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	}
 
 	var hasLeader bool
-	endpoints := make(kridgev1alpha1.ManagerStateEndpoints, 0, len(podList.Items))
+	endpoints := make(ctrlmeshv1alpha1.ManagerStateEndpoints, 0, len(podList.Items))
 	for i := range podList.Items {
 		pod := &podList.Items[i]
 		if !utils.IsPodActive(pod) {
 			continue
 		}
 
-		e := kridgev1alpha1.ManagerStateEndpoint{Name: pod.Name, PodIP: pod.Status.PodIP}
+		e := ctrlmeshv1alpha1.ManagerStateEndpoint{Name: pod.Name, PodIP: pod.Status.PodIP}
 		if pod.Name == localName {
 			e.Leader = true
 			hasLeader = true
@@ -104,23 +104,23 @@ func (r *ManagerStateReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		return reconcile.Result{}, fmt.Errorf("no leader %s in new endpoints %v", localName, utils.DumpJSON(endpoints))
 	}
 	tm := metav1.NewTime(start)
-	ports := kridgev1alpha1.ManagerStatePorts{}
+	ports := ctrlmeshv1alpha1.ManagerStatePorts{}
 	ports.GrpcLeaderElectionPort, ports.GrpcNonLeaderElectionPort = grpcregistry.GetGrpcPorts()
-	newStatus := kridgev1alpha1.ManagerStateStatus{
+	newStatus := ctrlmeshv1alpha1.ManagerStateStatus{
 		Namespace:       namespace,
 		Endpoints:       endpoints,
 		Ports:           &ports,
 		UpdateTimestamp: &tm,
 	}
 
-	managerState := &kridgev1alpha1.ManagerState{}
+	managerState := &ctrlmeshv1alpha1.ManagerState{}
 	err = r.Get(context.TODO(), req.NamespacedName, managerState)
 	if err != nil {
 		if !errors.IsNotFound(err) {
 			return reconcile.Result{}, fmt.Errorf("get ManagerState %s error: %v", req.Name, err)
 		}
 
-		managerState.Name = kridgev1alpha1.NameOfManager
+		managerState.Name = ctrlmeshv1alpha1.NameOfManager
 		managerState.Status = newStatus
 		err = r.Create(context.TODO(), managerState)
 		if err != nil && !errors.IsAlreadyExists(err) {
@@ -149,7 +149,7 @@ func (r *ManagerStateReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		return fmt.Errorf("find no POD_NAME in env")
 	}
 
-	// Read the service of kridge-manager's webhook, to get the pod selector
+	// Read the service of ctrlmesh-manager's webhook, to get the pod selector
 	svc := &v1.Service{}
 	svcNamespacedName := types.NamespacedName{Namespace: namespace, Name: utils.GetServiceName()}
 	err := mgr.GetAPIReader().Get(context.TODO(), svcNamespacedName, svc)
@@ -163,7 +163,7 @@ func (r *ManagerStateReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&kridgev1alpha1.ManagerState{}).
+		For(&ctrlmeshv1alpha1.ManagerState{}).
 		Watches(&source.Kind{Type: &v1.Pod{}}, &enqueueHandler{}, builder.WithPredicates(predicate.Funcs{
 			CreateFunc: func(e event.CreateEvent) bool {
 				pod := e.Object.(*v1.Pod)
@@ -189,24 +189,24 @@ type enqueueHandler struct{}
 
 func (e *enqueueHandler) Create(_ event.CreateEvent, q workqueue.RateLimitingInterface) {
 	q.Add(reconcile.Request{NamespacedName: types.NamespacedName{
-		Name: kridgev1alpha1.NameOfManager,
+		Name: ctrlmeshv1alpha1.NameOfManager,
 	}})
 }
 
 func (e *enqueueHandler) Update(_ event.UpdateEvent, q workqueue.RateLimitingInterface) {
 	q.Add(reconcile.Request{NamespacedName: types.NamespacedName{
-		Name: kridgev1alpha1.NameOfManager,
+		Name: ctrlmeshv1alpha1.NameOfManager,
 	}})
 }
 
 func (e *enqueueHandler) Delete(_ event.DeleteEvent, q workqueue.RateLimitingInterface) {
 	q.Add(reconcile.Request{NamespacedName: types.NamespacedName{
-		Name: kridgev1alpha1.NameOfManager,
+		Name: ctrlmeshv1alpha1.NameOfManager,
 	}})
 }
 
 func (e *enqueueHandler) Generic(_ event.GenericEvent, q workqueue.RateLimitingInterface) {
 	q.Add(reconcile.Request{NamespacedName: types.NamespacedName{
-		Name: kridgev1alpha1.NameOfManager,
+		Name: ctrlmeshv1alpha1.NameOfManager,
 	}})
 }

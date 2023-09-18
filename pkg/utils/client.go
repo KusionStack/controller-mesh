@@ -35,7 +35,7 @@ func NewClientFromManager(mgr manager.Manager, name string) client.Client {
 
 func NewDirectorClientFromManager(mgr manager.Manager, name string) client.Client {
 	cfg := rest.CopyConfig(mgr.GetConfig())
-	cfg.UserAgent = fmt.Sprintf("kridge-manager/%s", name)
+	cfg.UserAgent = fmt.Sprintf("ctrlmesh-manager/%s", name)
 
 	c, err := client.New(cfg, client.Options{Scheme: mgr.GetScheme(), Mapper: mgr.GetRESTMapper()})
 	if err != nil {

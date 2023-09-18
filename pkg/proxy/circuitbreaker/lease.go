@@ -22,7 +22,7 @@ import (
 
 	"k8s.io/client-go/util/workqueue"
 
-	appsv1alpha1 "github.com/KusionStack/kridge/pkg/apis/kridge/v1alpha1"
+	appsv1alpha1 "github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh/v1alpha1"
 )
 
 type lease struct {

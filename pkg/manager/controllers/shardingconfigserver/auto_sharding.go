@@ -25,15 +25,15 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/KusionStack/kridge/pkg/apis/kridge"
-	kridgev1alpha1 "github.com/KusionStack/kridge/pkg/apis/kridge/v1alpha1"
-	"github.com/KusionStack/kridge/pkg/utils"
+	"github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh"
+	ctrlmeshv1alpha1 "github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh/v1alpha1"
+	"github.com/KusionStack/ctrlmesh/pkg/utils"
 )
 
-func (r *ShardingConfigReconciler) AutoSharding(ctx context.Context, root *kridgev1alpha1.ShardingConfig) error {
+func (r *ShardingConfigReconciler) AutoSharding(ctx context.Context, root *ctrlmeshv1alpha1.ShardingConfig) error {
 
-	oldCfgs := &kridgev1alpha1.ShardingConfigList{}
-	if err := r.List(ctx, oldCfgs, client.MatchingLabels{kridge.KdAutoShardingRootLabel: root.Name}); err != nil && !errors.IsNotFound(err) {
+	oldCfgs := &ctrlmeshv1alpha1.ShardingConfigList{}
+	if err := r.List(ctx, oldCfgs, client.MatchingLabels{ctrlmesh.KdAutoShardingRootLabel: root.Name}); err != nil && !errors.IsNotFound(err) {
 		return err
 	}
 
@@ -50,22 +50,22 @@ func (r *ShardingConfigReconciler) AutoSharding(ctx context.Context, root *kridg
 				return err
 			}
 		}
-		if clearFinalizers(root, kridge.ProtectFinalizer) {
+		if clearFinalizers(root, ctrlmesh.ProtectFinalizer) {
 			return r.Update(ctx, root)
 		}
 		return nil
 	}
 
-	if addFinalizers(root, kridge.ProtectFinalizer) {
+	if addFinalizers(root, ctrlmesh.ProtectFinalizer) {
 		if err := r.Update(ctx, root); err != nil {
 			return err
 		}
 	}
 
 	newHash := utils.GetMD5Hash(utils.DumpJSON(root.Spec.Root))
-	oldMap := map[string]*kridgev1alpha1.ShardingConfig{}
+	oldMap := map[string]*ctrlmeshv1alpha1.ShardingConfig{}
 	for i, cfg := range oldCfgs.Items {
-		if cfg.Annotations[kridge.KdAutoShardingHashAnno] != newHash {
+		if cfg.Annotations[ctrlmesh.KdAutoShardingHashAnno] != newHash {
 			err := r.Delete(ctx, &oldCfgs.Items[i])
 			if err != nil {
 				return err
@@ -89,7 +89,7 @@ func (r *ShardingConfigReconciler) AutoSharding(ctx context.Context, root *kridg
 	return nil
 }
 
-func getChild(root *kridgev1alpha1.ShardingConfig) (result []*kridgev1alpha1.ShardingConfig) {
+func getChild(root *ctrlmeshv1alpha1.ShardingConfig) (result []*ctrlmeshv1alpha1.ShardingConfig) {
 
 	if root.Spec.Root.Auto == nil {
 		// TODO: Manual
@@ -109,18 +109,18 @@ func getChild(root *kridgev1alpha1.ShardingConfig) (result []*kridgev1alpha1.Sha
 			Operator: metav1.LabelSelectorOpIn,
 			Values:   genNameInRange(root.Spec.Root.TargetStatefulSet, 0, *root.Spec.Root.Canary.Replicas-1),
 		})
-		canary := &kridgev1alpha1.ShardingConfig{
+		canary := &ctrlmeshv1alpha1.ShardingConfig{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      root.Spec.Root.Prefix + "-0-canary",
 				Namespace: root.Namespace,
 				Annotations: map[string]string{
-					kridge.KdAutoShardingHashAnno: hash,
+					ctrlmesh.KdAutoShardingHashAnno: hash,
 				},
 				Labels: map[string]string{
-					kridge.KdAutoShardingRootLabel: root.Name,
+					ctrlmesh.KdAutoShardingRootLabel: root.Name,
 				},
 			},
-			Spec: kridgev1alpha1.ShardingConfigSpec{
+			Spec: ctrlmeshv1alpha1.ShardingConfigSpec{
 				Selector: podSelector,
 			},
 		}
@@ -150,18 +150,18 @@ func getChild(root *kridgev1alpha1.ShardingConfig) (result []*kridgev1alpha1.Sha
 			Values:   genNameInRange(root.Spec.Root.TargetStatefulSet, *root.Spec.Root.Canary.Replicas+root.Spec.Root.Auto.EveryShardReplicas*(id-1), *root.Spec.Root.Canary.Replicas+root.Spec.Root.Auto.EveryShardReplicas*id-1),
 		})
 		_, _, batch := getRange(id, root.Spec.Root.Auto.ShardingSize, 32)
-		cfg := &kridgev1alpha1.ShardingConfig{
+		cfg := &ctrlmeshv1alpha1.ShardingConfig{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      root.Spec.Root.Prefix + "-" + strconv.Itoa(id) + "-normal",
 				Namespace: root.Namespace,
 				Annotations: map[string]string{
-					kridge.KdAutoShardingHashAnno: hash,
+					ctrlmesh.KdAutoShardingHashAnno: hash,
 				},
 				Labels: map[string]string{
-					kridge.KdAutoShardingRootLabel: root.Name,
+					ctrlmesh.KdAutoShardingRootLabel: root.Name,
 				},
 			},
-			Spec: kridgev1alpha1.ShardingConfigSpec{
+			Spec: ctrlmeshv1alpha1.ShardingConfigSpec{
 				Selector: podSelector,
 			},
 		}
@@ -177,7 +177,7 @@ func getChild(root *kridgev1alpha1.ShardingConfig) (result []*kridgev1alpha1.Sha
 	return result
 }
 
-func genCanaryLimits(canaryConfig *kridgev1alpha1.CanaryConfig, originLimiter []kridgev1alpha1.ObjectLimiter) (result []kridgev1alpha1.ObjectLimiter) {
+func genCanaryLimits(canaryConfig *ctrlmeshv1alpha1.CanaryConfig, originLimiter []ctrlmeshv1alpha1.ObjectLimiter) (result []ctrlmeshv1alpha1.ObjectLimiter) {
 	for i := range originLimiter {
 		newSel := originLimiter[i].DeepCopy()
 		if newSel.Selector == nil {
@@ -185,14 +185,14 @@ func genCanaryLimits(canaryConfig *kridgev1alpha1.CanaryConfig, originLimiter []
 		}
 		if len(canaryConfig.InNamespaces) > 0 {
 			newSel.Selector.MatchExpressions = append(newSel.Selector.MatchExpressions, metav1.LabelSelectorRequirement{
-				Key:      kridge.KdNamespaceKey,
+				Key:      ctrlmesh.KdNamespaceKey,
 				Operator: metav1.LabelSelectorOpIn,
 				Values:   canaryConfig.InNamespaces,
 			})
 		}
 		if len(canaryConfig.InShardHash) > 0 {
 			newSel.Selector.MatchExpressions = append(newSel.Selector.MatchExpressions, metav1.LabelSelectorRequirement{
-				Key:      kridge.KdShardHashKey,
+				Key:      ctrlmesh.KdShardHashKey,
 				Operator: metav1.LabelSelectorOpIn,
 				Values:   canaryConfig.InShardHash,
 			})
@@ -202,7 +202,7 @@ func genCanaryLimits(canaryConfig *kridgev1alpha1.CanaryConfig, originLimiter []
 	return result
 }
 
-func genShardingGlobalLimits(root *kridgev1alpha1.ShardingConfig, batch []string, originLimiter []kridgev1alpha1.ObjectLimiter) (result []kridgev1alpha1.ObjectLimiter) {
+func genShardingGlobalLimits(root *ctrlmeshv1alpha1.ShardingConfig, batch []string, originLimiter []ctrlmeshv1alpha1.ObjectLimiter) (result []ctrlmeshv1alpha1.ObjectLimiter) {
 	canaryConfig := root.Spec.Root.Canary
 	if canaryConfig != nil && len(canaryConfig.InShardHash) > 0 {
 		batch = clearSame(batch, canaryConfig.InShardHash)
@@ -214,20 +214,20 @@ func genShardingGlobalLimits(root *kridgev1alpha1.ShardingConfig, batch []string
 		}
 		if canaryConfig != nil && len(canaryConfig.InNamespaces) > 0 && *root.Spec.Root.Canary.Replicas > 0 {
 			newSel.Selector.MatchExpressions = append(newSel.Selector.MatchExpressions, metav1.LabelSelectorRequirement{
-				Key:      kridge.KdNamespaceKey,
+				Key:      ctrlmesh.KdNamespaceKey,
 				Operator: metav1.LabelSelectorOpNotIn,
 				Values:   canaryConfig.InNamespaces,
 			})
 		}
 		if canaryConfig != nil && len(canaryConfig.InShardHash) > 0 && *root.Spec.Root.Canary.Replicas > 0 {
 			newSel.Selector.MatchExpressions = append(newSel.Selector.MatchExpressions, metav1.LabelSelectorRequirement{
-				Key:      kridge.KdShardHashKey,
+				Key:      ctrlmesh.KdShardHashKey,
 				Operator: metav1.LabelSelectorOpNotIn,
 				Values:   canaryConfig.InShardHash,
 			})
 		}
 		newSel.Selector.MatchExpressions = append(newSel.Selector.MatchExpressions, metav1.LabelSelectorRequirement{
-			Key:      kridge.KdShardHashKey,
+			Key:      ctrlmesh.KdShardHashKey,
 			Operator: metav1.LabelSelectorOpIn,
 			Values:   batch,
 		})
@@ -236,7 +236,7 @@ func genShardingGlobalLimits(root *kridgev1alpha1.ShardingConfig, batch []string
 	return
 }
 
-func syncStatus(root *kridgev1alpha1.ShardingConfig, scs []*kridgev1alpha1.ShardingConfig) bool {
+func syncStatus(root *ctrlmeshv1alpha1.ShardingConfig, scs []*ctrlmeshv1alpha1.ShardingConfig) bool {
 	var newScs []string
 	for _, cfg := range scs {
 		newScs = append(newScs, cfg.Name)
@@ -248,7 +248,7 @@ func syncStatus(root *kridgev1alpha1.ShardingConfig, scs []*kridgev1alpha1.Shard
 	return false
 }
 
-func clearStatus(cfg *kridgev1alpha1.ShardingConfig) bool {
+func clearStatus(cfg *ctrlmeshv1alpha1.ShardingConfig) bool {
 	if len(cfg.Status.Root.Child) > 0 {
 		cfg.Status.Root.Child = nil
 		return true
@@ -288,7 +288,7 @@ func genNameInRange(prefix string, s, t int) (result []string) {
 	return result
 }
 
-func clearFinalizers(cfg *kridgev1alpha1.ShardingConfig, key string) (res bool) {
+func clearFinalizers(cfg *ctrlmeshv1alpha1.ShardingConfig, key string) (res bool) {
 	for i := range cfg.Finalizers {
 		if cfg.Finalizers[i] == key {
 			cfg.Finalizers = append(cfg.Finalizers[:i], cfg.Finalizers[i+1:]...)
@@ -298,7 +298,7 @@ func clearFinalizers(cfg *kridgev1alpha1.ShardingConfig, key string) (res bool) 
 	return res
 }
 
-func addFinalizers(cfg *kridgev1alpha1.ShardingConfig, key string) bool {
+func addFinalizers(cfg *ctrlmeshv1alpha1.ShardingConfig, key string) bool {
 	for i := range cfg.Finalizers {
 		if cfg.Finalizers[i] == key {
 			return false

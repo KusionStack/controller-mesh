@@ -18,11 +18,11 @@ package shardingconfig
 
 import "sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
-// +kubebuilder:webhook:path=/validate-kridge-shardingconfig,mutating=false,failurePolicy=fail,sideEffects=None,admissionReviewVersions=v1;v1beta1,groups=kridge.kusionstack.io,resources=shardingconfigs,verbs=create;update,versions=v1alpha1,name=shardingconfigs.kridge.validating.io
+// +kubebuilder:webhook:path=/validate-ctrlmesh-shardingconfig,mutating=false,failurePolicy=fail,sideEffects=None,admissionReviewVersions=v1;v1beta1,groups=ctrlmesh.kusionstack.io,resources=shardingconfigs,verbs=create;update,versions=v1alpha1,name=shardingconfigs.ctrlmesh.validating.io
 
 var (
 	// HandlerMap contains admission webhook handlers
 	HandlerMap = map[string]admission.Handler{
-		"validate-kridge-shardingconfig": &ValidatingHandler{},
+		"validate-ctrlmesh-shardingconfig": &ValidatingHandler{},
 	}
 )

@@ -31,22 +31,22 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
 
-	kridgeproto "github.com/KusionStack/kridge/pkg/apis/kridge/proto"
-	kridgev1alpha1 "github.com/KusionStack/kridge/pkg/apis/kridge/v1alpha1"
-	kridgeclient "github.com/KusionStack/kridge/pkg/client"
-	kridgeinformers "github.com/KusionStack/kridge/pkg/client/informers/externalversions/kridge/v1alpha1"
-	kridgev1alpha1listers "github.com/KusionStack/kridge/pkg/client/listers/kridge/v1alpha1"
-	"github.com/KusionStack/kridge/pkg/utils"
+	ctrlmeshproto "github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh/proto"
+	ctrlmeshv1alpha1 "github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh/v1alpha1"
+	ctrlmeshclient "github.com/KusionStack/ctrlmesh/pkg/client"
+	ctrlmeshinformers "github.com/KusionStack/ctrlmesh/pkg/client/informers/externalversions/ctrlmesh/v1alpha1"
+	ctrlmeshv1alpha1listers "github.com/KusionStack/ctrlmesh/pkg/client/listers/ctrlmesh/v1alpha1"
+	"github.com/KusionStack/ctrlmesh/pkg/utils"
 )
 
 type grpcClient struct {
 	informer cache.SharedIndexInformer
-	lister   kridgev1alpha1listers.ManagerStateLister
+	lister   ctrlmeshv1alpha1listers.ManagerStateLister
 
 	reportTriggerChan chan struct{}
 	specManager       *SpecManager
 
-	prevSpec *kridgeproto.ProxySpec
+	prevSpec *ctrlmeshproto.ProxySpec
 }
 
 func NewGrpcClient() Client {
@@ -59,11 +59,11 @@ func (c *grpcClient) Start(ctx context.Context) (err error) {
 		return fmt.Errorf("error new spec manager: %v", err)
 	}
 
-	clientset := kridgeclient.GetGenericClient().KridgeClient
-	c.informer = kridgeinformers.NewFilteredManagerStateInformer(clientset, 0, cache.Indexers{}, func(opts *metav1.ListOptions) {
-		opts.FieldSelector = "metadata.name=" + kridgev1alpha1.NameOfManager
+	clientset := ctrlmeshclient.GetGenericClient().MeshClient
+	c.informer = ctrlmeshinformers.NewFilteredManagerStateInformer(clientset, 0, cache.Indexers{}, func(opts *metav1.ListOptions) {
+		opts.FieldSelector = "metadata.name=" + ctrlmeshv1alpha1.NameOfManager
 	})
-	c.lister = kridgev1alpha1listers.NewManagerStateLister(c.informer.GetIndexer())
+	c.lister = ctrlmeshv1alpha1listers.NewManagerStateLister(c.informer.GetIndexer())
 
 	go func() {
 		c.informer.Run(ctx.Done())
@@ -85,12 +85,12 @@ func (c *grpcClient) connect(ctx context.Context, initChan chan struct{}) {
 		}
 		klog.Infof("Starting grpc connecting...")
 
-		managerState, err := c.lister.Get(kridgev1alpha1.NameOfManager)
+		managerState, err := c.lister.Get(ctrlmeshv1alpha1.NameOfManager)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				klog.Warningf("Not found ManagerState %s, waiting...", kridgev1alpha1.NameOfManager)
+				klog.Warningf("Not found ManagerState %s, waiting...", ctrlmeshv1alpha1.NameOfManager)
 			} else {
-				klog.Warningf("Failed to get ManagerState %s: %v, waiting...", kridgev1alpha1.NameOfManager, err)
+				klog.Warningf("Failed to get ManagerState %s: %v, waiting...", ctrlmeshv1alpha1.NameOfManager, err)
 			}
 			continue
 		}
@@ -100,7 +100,7 @@ func (c *grpcClient) connect(ctx context.Context, initChan chan struct{}) {
 			continue
 		}
 
-		var leader *kridgev1alpha1.ManagerStateEndpoint
+		var leader *ctrlmeshv1alpha1.ManagerStateEndpoint
 		for i := range managerState.Status.Endpoints {
 			e := &managerState.Status.Endpoints[i]
 			if e.Leader {
@@ -114,13 +114,13 @@ func (c *grpcClient) connect(ctx context.Context, initChan chan struct{}) {
 		}
 
 		addr := fmt.Sprintf("%s:%d", leader.PodIP, managerState.Status.Ports.GrpcLeaderElectionPort)
-		klog.Infof("Preparing to connect kridge-manager %v", addr)
+		klog.Infof("Preparing to connect ctrlmesh-manager %v", addr)
 		func() {
 			var opts []grpc.DialOption
 			opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 			grpcConn, err := grpc.Dial(addr, opts...)
 			if err != nil {
-				klog.Errorf("Failed to grpc connect to kridge-manager %s addr %s: %v", leader.Name, addr, err)
+				klog.Errorf("Failed to grpc connect to ctrlmesh-manager %s addr %s: %v", leader.Name, addr, err)
 				return
 			}
 			ctx, cancel := context.WithCancel(ctx)
@@ -129,25 +129,25 @@ func (c *grpcClient) connect(ctx context.Context, initChan chan struct{}) {
 				_ = grpcConn.Close()
 			}()
 
-			grpcCtrlMeshClient := kridgeproto.NewControllerMeshClient(grpcConn)
+			grpcCtrlMeshClient := ctrlmeshproto.NewControllerMeshClient(grpcConn)
 			connStream, err := grpcCtrlMeshClient.Register(ctx)
 			if err != nil {
-				klog.Errorf("Failed to register to kridge-manager %s addr %s: %v", leader.Name, addr, err)
+				klog.Errorf("Failed to register to ctrlmesh-manager %s addr %s: %v", leader.Name, addr, err)
 				return
 			}
 
 			if err := c.syncing(connStream, initChan); err != nil {
-				klog.Errorf("Failed syncing grpc connection to kridge-manager %s addr %s: %v", leader.Name, addr, err)
+				klog.Errorf("Failed syncing grpc connection to ctrlmesh-manager %s addr %s: %v", leader.Name, addr, err)
 			}
 		}()
 	}
 }
 
-func (c *grpcClient) syncing(connStream kridgeproto.ControllerMesh_RegisterClient, initChan chan struct{}) error {
+func (c *grpcClient) syncing(connStream ctrlmeshproto.ControllerMesh_RegisterClient, initChan chan struct{}) error {
 	// Do the first send for self info
 	firstStatus := c.specManager.GetStatus()
 	if firstStatus == nil {
-		firstStatus = &kridgeproto.ProxyStatus{}
+		firstStatus = &ctrlmeshproto.ProxyStatus{}
 	}
 	firstStatus.SelfInfo = selfInfo
 	klog.Infof("Preparing to send first status: %v", utils.DumpJSON(firstStatus))
@@ -161,7 +161,7 @@ func (c *grpcClient) syncing(connStream kridgeproto.ControllerMesh_RegisterClien
 		// wait for the first recv
 		<-initChan
 
-		var prevStatus *kridgeproto.ProxyStatus
+		var prevStatus *ctrlmeshproto.ProxyStatus
 		sendTimer := time.NewTimer(time.Minute)
 		for {
 			select {
@@ -200,7 +200,7 @@ func (c *grpcClient) syncing(connStream kridgeproto.ControllerMesh_RegisterClien
 	}
 }
 
-func (c *grpcClient) send(connStream kridgeproto.ControllerMesh_RegisterClient, prevStatus *kridgeproto.ProxyStatus) (*kridgeproto.ProxyStatus, error) {
+func (c *grpcClient) send(connStream ctrlmeshproto.ControllerMesh_RegisterClient, prevStatus *ctrlmeshproto.ProxyStatus) (*ctrlmeshproto.ProxyStatus, error) {
 	newStatus := c.specManager.GetStatus()
 	if newStatus == nil {
 		klog.Infof("Skip to send gRPC status for it is nil.")
@@ -217,7 +217,7 @@ func (c *grpcClient) send(connStream kridgeproto.ControllerMesh_RegisterClient, 
 	return newStatus, nil
 }
 
-func (c *grpcClient) recv(connStream kridgeproto.ControllerMesh_RegisterClient) error {
+func (c *grpcClient) recv(connStream ctrlmeshproto.ControllerMesh_RegisterClient) error {
 	spec, err := connStream.Recv()
 	if err != nil {
 		return fmt.Errorf("receive spec error: %v", err)
@@ -245,7 +245,7 @@ func (c *grpcClient) recv(connStream kridgeproto.ControllerMesh_RegisterClient) 
 	return nil
 }
 
-func limitsChanged(old, new []*kridgeproto.Limit) bool {
+func limitsChanged(old, new []*ctrlmeshproto.Limit) bool {
 	if len(old) != len(new) {
 		return false
 	}

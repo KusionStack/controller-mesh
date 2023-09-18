@@ -26,7 +26,7 @@ import (
 	"path"
 	"sync"
 
-	"github.com/KusionStack/kridge/pkg/utils"
+	"github.com/KusionStack/ctrlmesh/pkg/utils"
 )
 
 var (

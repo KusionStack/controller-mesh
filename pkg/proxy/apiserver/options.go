@@ -29,7 +29,7 @@ import (
 	"k8s.io/apiserver/pkg/server/options"
 	"k8s.io/client-go/rest"
 
-	protomanager "github.com/KusionStack/kridge/pkg/proxy/proto"
+	protomanager "github.com/KusionStack/ctrlmesh/pkg/proxy/proto"
 )
 
 const (

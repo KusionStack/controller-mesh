@@ -27,8 +27,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	kridgev1alpha1 "github.com/KusionStack/kridge/pkg/apis/kridge/v1alpha1"
-	"github.com/KusionStack/kridge/pkg/utils"
+	ctrlmeshv1alpha1 "github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh/v1alpha1"
+	"github.com/KusionStack/ctrlmesh/pkg/utils"
 )
 
 type podEventHandler struct {
@@ -100,12 +100,12 @@ func (h *podEventHandler) Delete(e event.DeleteEvent, q workqueue.RateLimitingIn
 func (h *podEventHandler) Generic(e event.GenericEvent, q workqueue.RateLimitingInterface) {
 }
 
-func (h *podEventHandler) getShardingConfigForPod(pod *v1.Pod) (*kridgev1alpha1.ShardingConfig, error) {
-	name := pod.Labels[kridgev1alpha1.ShardingConfigInjectedKey]
+func (h *podEventHandler) getShardingConfigForPod(pod *v1.Pod) (*ctrlmeshv1alpha1.ShardingConfig, error) {
+	name := pod.Labels[ctrlmeshv1alpha1.ShardingConfigInjectedKey]
 	if name == "" {
 		return nil, nil
 	}
-	cfg := &kridgev1alpha1.ShardingConfig{}
+	cfg := &ctrlmeshv1alpha1.ShardingConfig{}
 	err := h.reader.Get(context.TODO(), types.NamespacedName{Namespace: pod.Namespace, Name: name}, cfg)
 	return cfg, err
 }

@@ -39,15 +39,15 @@ import (
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
-	"github.com/KusionStack/kridge/pkg/client"
-	"github.com/KusionStack/kridge/pkg/utils"
-	"github.com/KusionStack/kridge/pkg/webhook/util/generator"
-	"github.com/KusionStack/kridge/pkg/webhook/util/writer"
+	"github.com/KusionStack/ctrlmesh/pkg/client"
+	"github.com/KusionStack/ctrlmesh/pkg/utils"
+	"github.com/KusionStack/ctrlmesh/pkg/webhook/util/generator"
+	"github.com/KusionStack/ctrlmesh/pkg/webhook/util/writer"
 )
 
 var (
-	validatingWebhookConfigurationName = "kridge-validating"
-	mutatingWebhookConfigurationName   = "kridge-mutating"
+	validatingWebhookConfigurationName = "ctrlmesh-validating"
+	mutatingWebhookConfigurationName   = "ctrlmesh-mutating"
 )
 
 var (

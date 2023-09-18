@@ -36,9 +36,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
-	"github.com/KusionStack/kridge/pkg/apis/kridge/constants"
-	appsv1alpha1 "github.com/KusionStack/kridge/pkg/apis/kridge/v1alpha1"
-	"github.com/KusionStack/kridge/pkg/utils"
+	"github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh/constants"
+	appsv1alpha1 "github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh/v1alpha1"
+	"github.com/KusionStack/ctrlmesh/pkg/utils"
 )
 
 const (

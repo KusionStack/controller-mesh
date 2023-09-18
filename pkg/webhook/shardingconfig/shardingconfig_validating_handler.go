@@ -30,8 +30,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
-	"github.com/KusionStack/kridge/pkg/apis/kridge"
-	kridgev1alpha1 "github.com/KusionStack/kridge/pkg/apis/kridge/v1alpha1"
+	"github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh"
+	ctrlmeshv1alpha1 "github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh/v1alpha1"
 )
 
 var (
@@ -43,7 +43,7 @@ func init() {
 	configSelector, _ = metav1.LabelSelectorAsSelector(&metav1.LabelSelector{
 		MatchExpressions: []metav1.LabelSelectorRequirement{
 			{
-				Key:      kridge.KdIgnoreValidateLabel,
+				Key:      ctrlmesh.KdIgnoreValidateLabel,
 				Operator: metav1.LabelSelectorOpDoesNotExist,
 			},
 		},
@@ -59,13 +59,13 @@ var _ admission.Handler = &ValidatingHandler{}
 
 // Handle handles admission requests.
 func (h *ValidatingHandler) Handle(ctx context.Context, req admission.Request) admission.Response {
-	obj := &kridgev1alpha1.ShardingConfig{}
+	obj := &ctrlmeshv1alpha1.ShardingConfig{}
 	err := h.Decoder.Decode(req, obj)
 	if err != nil {
 		return admission.Errored(http.StatusBadRequest, err)
 	}
 
-	if _, ok := obj.GetLabels()[kridge.KdIgnoreValidateLabel]; ok {
+	if _, ok := obj.GetLabels()[ctrlmesh.KdIgnoreValidateLabel]; ok {
 		return admission.ValidationResponse(true, "")
 	}
 
@@ -74,7 +74,7 @@ func (h *ValidatingHandler) Handle(ctx context.Context, req admission.Request) a
 	}
 
 	if req.AdmissionRequest.Operation == admissionv1.Update {
-		oldObj := &kridgev1alpha1.ShardingConfig{}
+		oldObj := &ctrlmeshv1alpha1.ShardingConfig{}
 		if err := h.Decoder.DecodeRaw(req.AdmissionRequest.OldObject, oldObj); err != nil {
 			return admission.Errored(http.StatusBadRequest, err)
 		}
@@ -85,11 +85,11 @@ func (h *ValidatingHandler) Handle(ctx context.Context, req admission.Request) a
 	return validateConfigResource(h.Client, obj)
 }
 
-func validateConfigResource(c client.Client, obj *kridgev1alpha1.ShardingConfig) admission.Response {
+func validateConfigResource(c client.Client, obj *ctrlmeshv1alpha1.ShardingConfig) admission.Response {
 	if !enableForceValidate {
 		return admission.ValidationResponse(true, "")
 	}
-	cfgs := &kridgev1alpha1.ShardingConfigList{}
+	cfgs := &ctrlmeshv1alpha1.ShardingConfigList{}
 
 	if err := c.List(context.TODO(), cfgs, client.InNamespace(obj.Namespace), client.MatchingLabelsSelector{Selector: configSelector}); err != nil {
 		return admission.Errored(http.StatusInternalServerError, err)
@@ -178,7 +178,7 @@ func getNamespaceNameSets(nss *v1.NamespaceList) []string {
 	return names
 }
 
-func validate(obj *kridgev1alpha1.ShardingConfig) error {
+func validate(obj *ctrlmeshv1alpha1.ShardingConfig) error {
 
 	if obj.Spec.Root != nil {
 		err := validateRootConfig(obj.Spec.Root)
@@ -230,7 +230,7 @@ func validate(obj *kridgev1alpha1.ShardingConfig) error {
 	return nil
 }
 
-func validateRootConfig(root *kridgev1alpha1.ShardingConfigRoot) error {
+func validateRootConfig(root *ctrlmeshv1alpha1.ShardingConfigRoot) error {
 	if root.Canary != nil {
 		if len(root.Canary.InShardHash) == 0 && len(root.Canary.InNamespaces) == 0 {
 			return fmt.Errorf("canary config must have at least one inShardHash or inNamespaces")
@@ -247,7 +247,7 @@ func validateRootConfig(root *kridgev1alpha1.ShardingConfigRoot) error {
 	return nil
 }
 
-func validateUpdate(obj, oldObj *kridgev1alpha1.ShardingConfig) error {
+func validateUpdate(obj, oldObj *ctrlmeshv1alpha1.ShardingConfig) error {
 	if !reflect.DeepEqual(obj.Spec.Selector, oldObj.Spec.Selector) {
 		return fmt.Errorf("selector can not be modified")
 	}

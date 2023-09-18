@@ -2,7 +2,7 @@ apiVersion: v1
 data:
   resource-config: |
     groupVersionKinds:
-      kridge.kusionstack.io/v1alpha1:
+      ctrlmesh.kusionstack.io/v1alpha1:
       - '*'
       v1:
       - Pod
@@ -16,5 +16,5 @@ data:
       - ControllerRevision
 kind: ConfigMap
 metadata:
-  name: kridge-sharding-resource
-  namespace: kridge
+  name: ctrlmesh-sharding-resource
+  namespace: ctrlmesh

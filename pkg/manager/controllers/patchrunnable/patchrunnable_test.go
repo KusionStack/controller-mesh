@@ -33,7 +33,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 
-	kridgev1alpha1 "github.com/KusionStack/kridge/pkg/apis/kridge/v1alpha1"
+	ctrlmeshv1alpha1 "github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh/v1alpha1"
 )
 
 func TestEnv(t *testing.T) {
@@ -47,7 +47,7 @@ func TestEnv(t *testing.T) {
 	}
 	//testEnv.ControlPlane.GetAPIServer().Configure()
 
-	err := kridgev1alpha1.AddToScheme(scheme.Scheme)
+	err := ctrlmeshv1alpha1.AddToScheme(scheme.Scheme)
 	g.Expect(err).NotTo(gomega.HaveOccurred())
 
 	cfg, err = testEnv.Start()

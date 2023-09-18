@@ -1,4 +1,4 @@
-<!-- Thank you for contributing to Kridge!
+<!-- Thank you for contributing to ctrlmesh!
 
 Note: 
 

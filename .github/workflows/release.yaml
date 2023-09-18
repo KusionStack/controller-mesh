@@ -103,7 +103,7 @@ jobs:
       with:
         go-version: ${{ env.GO_VERSION }}
         cache: false
-    - name: Release the kridge with GoReleaser
+    - name: Release the ctrlmesh with GoReleaser
       uses: goreleaser/goreleaser-action@v4
       with:
         distribution: goreleaser

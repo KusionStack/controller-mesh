@@ -35,13 +35,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	kridgeproto "github.com/KusionStack/kridge/pkg/apis/kridge/proto"
-	kridgev1alpha1 "github.com/KusionStack/kridge/pkg/apis/kridge/v1alpha1"
-	"github.com/KusionStack/kridge/pkg/utils"
+	ctrlmeshproto "github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh/proto"
+	ctrlmeshv1alpha1 "github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh/v1alpha1"
+	"github.com/KusionStack/ctrlmesh/pkg/utils"
 )
 
 var (
-	concurrentReconciles = flag.Int("kridge-server-workers", 3, "Max concurrent workers for CtrlMesh Server controller.")
+	concurrentReconciles = flag.Int("ctrlmesh-server-workers", 3, "Max concurrent workers for CtrlMesh Server controller.")
 
 	// podHashExpectation type is map[types.UID]string
 	podHashExpectation = sync.Map{}
@@ -58,13 +58,13 @@ type syncPod struct {
 	pod           *v1.Pod
 	conn          *grpcSrvConnection
 	dispatched    bool
-	currentStatus *kridgeproto.ProxyStatus
-	newSpec       *kridgeproto.ProxySpec
+	currentStatus *ctrlmeshproto.ProxyStatus
+	newSpec       *ctrlmeshproto.ProxySpec
 }
 
-//+kubebuilder:rbac:groups=kridge.kusionstack.io,resources=shardingconfigs,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=kridge.kusionstack.io,resources=shardingconfigs/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=kridge.kusionstack.io,resources=shardingconfigs/finalizers,verbs=update
+//+kubebuilder:rbac:groups=ctrlmesh.kusionstack.io,resources=shardingconfigs,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=ctrlmesh.kusionstack.io,resources=shardingconfigs/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=ctrlmesh.kusionstack.io,resources=shardingconfigs/finalizers,verbs=update
 //+kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;watch;delete
 //+kubebuilder:rbac:groups=core,resources=namespaces,verbs=get;list;watch;update;patch
 //+kubebuilder:rbac:groups=core,resources=events,verbs=get;list;watch;create;update;patch;delete
@@ -83,7 +83,7 @@ func (r *ShardingConfigReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		}
 	}()
 
-	shardingConfig := &kridgev1alpha1.ShardingConfig{}
+	shardingConfig := &ctrlmeshv1alpha1.ShardingConfig{}
 	err := r.Get(ctx, req.NamespacedName, shardingConfig)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -271,9 +271,9 @@ func (r *ShardingConfigReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	return ctrl.Result{}, err
 }
 
-func (r *ShardingConfigReconciler) getPodsForShardingConfig(ctx context.Context, shardingConfig *kridgev1alpha1.ShardingConfig) ([]*v1.Pod, error) {
+func (r *ShardingConfigReconciler) getPodsForShardingConfig(ctx context.Context, shardingConfig *ctrlmeshv1alpha1.ShardingConfig) ([]*v1.Pod, error) {
 	podList := v1.PodList{}
-	if err := r.List(ctx, &podList, client.InNamespace(shardingConfig.Namespace), client.MatchingLabels{kridgev1alpha1.ShardingConfigInjectedKey: shardingConfig.Name}); err != nil {
+	if err := r.List(ctx, &podList, client.InNamespace(shardingConfig.Namespace), client.MatchingLabels{ctrlmeshv1alpha1.ShardingConfigInjectedKey: shardingConfig.Name}); err != nil {
 		return nil, err
 	}
 	var pods []*v1.Pod
@@ -289,7 +289,7 @@ func (r *ShardingConfigReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	r.recorder = mgr.GetEventRecorderFor("sharding-config-controller")
 	return ctrl.NewControllerManagedBy(mgr).
 		WithOptions(controller.Options{MaxConcurrentReconciles: *concurrentReconciles}).
-		For(&kridgev1alpha1.ShardingConfig{}).
+		For(&ctrlmeshv1alpha1.ShardingConfig{}).
 		Watches(&source.Kind{Type: &v1.Pod{}}, &podEventHandler{reader: mgr.GetCache()}).
 		Watches(&source.Channel{Source: grpcRecvTriggerChannel}, &handler.EnqueueRequestForObject{}).
 		Complete(r)

@@ -27,11 +27,11 @@ import (
 	"k8s.io/apiserver/pkg/endpoints/handlers/responsewriters"
 	"k8s.io/apiserver/pkg/endpoints/request"
 
-	kridgehttp "github.com/KusionStack/kridge/pkg/apis/kridge/http"
+	ctrlmeshhttp "github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh/http"
 )
 
 var (
-	trimApiServerPathPrefix = os.Getenv(kridgehttp.HeaderHttpApiServerPreUrl)
+	trimApiServerPathPrefix = os.Getenv(ctrlmeshhttp.HeaderHttpApiServerPreUrl)
 )
 
 // WithRequestInfo attaches a RequestInfo to the context.

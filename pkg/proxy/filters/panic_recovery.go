@@ -54,8 +54,8 @@ func WithPanicRecovery(handler http.Handler, resolver request.RequestInfoResolve
 			runtime.HandleError(fmt.Errorf("timeout or abort while handling: %v %q", req.Method, req.URL.Path))
 			return
 		}
-		http.Error(w, "This request caused kridge-proxy to panic. Look in the logs for details.", http.StatusInternalServerError)
-		klog.Errorf("kridge-proxy panic'd on %v %v", req.Method, req.RequestURI)
+		http.Error(w, "This request caused ctrlmesh-proxy to panic. Look in the logs for details.", http.StatusInternalServerError)
+		klog.Errorf("ctrlmesh-proxy panic'd on %v %v", req.Method, req.RequestURI)
 	})
 }
 

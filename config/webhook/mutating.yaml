@@ -1,24 +1,24 @@
 apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
-  name: kridge-mutating
+  name: ctrlmesh-mutating
 webhooks:
   - admissionReviewVersions:
       - v1beta1
     clientConfig:
-      url: https://kridge-webhook-service.kridge.svc:9443/mutate-resource
+      url: https://ctrlmesh-webhook-service.ctrlmesh.svc:9443/mutate-resource
     failurePolicy: Fail
     matchPolicy: Exact
-    name: mutating-resource.kridge.sofastack.io
+    name: mutating-resource.ctrlmesh.sofastack.io
     namespaceSelector:
       matchExpressions:
-        - key: kridge.kusionstack.io/control
+        - key: ctrlmesh.kusionstack.io/control
           operator: In
           values:
             - "true"
     objectSelector:
       matchExpressions:
-        - key: kridge.kusionstack.io/ignore-webhook
+        - key: ctrlmesh.kusionstack.io/ignore-webhook
           operator: DoesNotExist
     reinvocationPolicy: Never
     rules:
@@ -50,7 +50,7 @@ webhooks:
           - configmaps
         scope: Namespaced
       - apiGroups:
-          - kridge.kusionstack.io
+          - ctrlmesh.kusionstack.io
         apiVersions:
           - '*'
         operations:
@@ -64,14 +64,14 @@ webhooks:
   - admissionReviewVersions:
       - v1beta1
     clientConfig:
-      url: https://kridge-webhook-service.kridge.svc:9443/mutate-namespace
+      url: https://ctrlmesh-webhook-service.ctrlmesh.svc:9443/mutate-namespace
     failurePolicy: Fail
     matchPolicy: Exact
-    name: mutating-namespace.kridge.kusionstack.io
+    name: mutating-namespace.ctrlmesh.kusionstack.io
     namespaceSelector: {}
     objectSelector:
       matchExpressions:
-        - key: kridge.kusionstack.io/ignore-webhook
+        - key: ctrlmesh.kusionstack.io/ignore-webhook
           operator: DoesNotExist
     reinvocationPolicy: Never
     rules:
@@ -90,14 +90,14 @@ webhooks:
   - admissionReviewVersions:
       - v1beta1
     clientConfig:
-      url: https://kridge-webhook-service.kridge.svc:9443/mutate-pod
+      url: https://ctrlmesh-webhook-service.ctrlmesh.svc:9443/mutate-pod
     failurePolicy: Fail
     matchPolicy: Exact
-    name: mutating-pod.kridge.kusionstack.io
+    name: mutating-pod.ctrlmesh.kusionstack.io
     namespaceSelector: {}
     objectSelector:
       matchExpressions:
-        - key: kridge.kusionstack.io/inject-proxy
+        - key: ctrlmesh.kusionstack.io/inject-proxy
           operator: In
           values:
             - "true"

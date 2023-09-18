@@ -22,7 +22,7 @@ import (
 
 	"k8s.io/klog/v2"
 
-	"github.com/KusionStack/kridge/pkg/webhook/util/writer"
+	"github.com/KusionStack/ctrlmesh/pkg/webhook/util/writer"
 )
 
 var (

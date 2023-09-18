@@ -14,7 +14,7 @@ webhooks:
       namespace: system
       path: /mutate-namespace
   failurePolicy: Fail
-  name: namesapace.kridge.mutating.io
+  name: namesapace.ctrlmesh.mutating.io
   rules:
   - apiGroups:
     - ""
@@ -34,7 +34,7 @@ webhooks:
       namespace: system
       path: /mutate-pod
   failurePolicy: Fail
-  name: pod.kridge.mutating.io
+  name: pod.ctrlmesh.mutating.io
   rules:
   - apiGroups:
     - ""
@@ -54,7 +54,7 @@ webhooks:
       namespace: system
       path: /mutate-resource
   failurePolicy: Fail
-  name: resource.kridge.mutating.io
+  name: resource.ctrlmesh.mutating.io
   rules:
   - apiGroups:
     - ""
@@ -86,12 +86,12 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
-      path: /validate-kridge-shardingconfig
+      path: /validate-ctrlmesh-shardingconfig
   failurePolicy: Fail
-  name: shardingconfigs.kridge.validating.io
+  name: shardingconfigs.ctrlmesh.validating.io
   rules:
   - apiGroups:
-    - kridge.kusionstack.io
+    - ctrlmesh.kusionstack.io
     apiVersions:
     - v1alpha1
     operations:

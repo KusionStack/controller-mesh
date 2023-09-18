@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: testapp
-  namespace: kridge
+  namespace: ctrlmesh
 spec:
   podManagementPolicy: Parallel
   replicas: 3
@@ -13,7 +13,7 @@ spec:
     metadata:
       labels:
         control-plane: testapp
-        kridge.kusionstack.io/watching: "true"
+        ctrlmesh.kusionstack.io/watching: "true"
     spec:
       containers:
       - command:
@@ -29,7 +29,7 @@ spec:
             fieldRef:
               apiVersion: v1
               fieldPath: metadata.name
-        image: reg.docker.alibaba-inc.com/paascore-library/kridge-test:test-v0.0.1
+        image: reg.docker.alibaba-inc.com/paascore-library/ctrlmesh-test:test-v0.0.1
         imagePullPolicy: IfNotPresent
         name: testapp
         resources:
@@ -42,6 +42,6 @@ spec:
             ephemeral-storage: 100Mi
             memory: 100Mi
       dnsPolicy: ClusterFirst
-      serviceAccount: kridge-serviceaccount
-      serviceAccountName: kridge-serviceaccount
+      serviceAccount: ctrlmesh-serviceaccount
+      serviceAccountName: ctrlmesh-serviceaccount
   serviceName: testapp

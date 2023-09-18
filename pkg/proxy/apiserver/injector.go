@@ -26,9 +26,9 @@ import (
 	"k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/klog/v2"
 
-	protomanager "github.com/KusionStack/kridge/pkg/proxy/proto"
-	"github.com/KusionStack/kridge/pkg/utils"
-	httputil "github.com/KusionStack/kridge/pkg/utils/http"
+	protomanager "github.com/KusionStack/ctrlmesh/pkg/proxy/proto"
+	"github.com/KusionStack/ctrlmesh/pkg/utils"
+	httputil "github.com/KusionStack/ctrlmesh/pkg/utils/http"
 )
 
 const (

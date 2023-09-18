@@ -40,12 +40,12 @@ import (
 	"k8s.io/client-go/transport"
 	"k8s.io/klog/v2"
 
-	"github.com/KusionStack/kridge/pkg/apis/kridge/constants"
-	proxyfilters "github.com/KusionStack/kridge/pkg/proxy/filters"
-	"github.com/KusionStack/kridge/pkg/proxy/leaderelection"
-	"github.com/KusionStack/kridge/pkg/utils"
-	utilshttp "github.com/KusionStack/kridge/pkg/utils/http"
-	"github.com/KusionStack/kridge/pkg/utils/pool"
+	"github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh/constants"
+	proxyfilters "github.com/KusionStack/ctrlmesh/pkg/proxy/filters"
+	"github.com/KusionStack/ctrlmesh/pkg/proxy/leaderelection"
+	"github.com/KusionStack/ctrlmesh/pkg/utils"
+	utilshttp "github.com/KusionStack/ctrlmesh/pkg/utils/http"
+	"github.com/KusionStack/ctrlmesh/pkg/utils/pool"
 )
 
 var (

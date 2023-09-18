@@ -1,4 +1,4 @@
-apiVersion: kridge.kusionstack.io/v1alpha1
+apiVersion: ctrlmesh.kusionstack.io/v1alpha1
 kind: ShardingConfig
 metadata:
   name: sharding-root

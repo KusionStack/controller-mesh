@@ -10,9 +10,9 @@ $ helm repo add kusionstack https://kusionstack.io/charts
 $ helm repo update
 
 # Install the latest version.
-$ helm install kridge kusionstack/kridge --version v0.1.0
+$ helm install ctrlmesh kusionstack/ctrlmesh --version v0.1.0
 
 # Uninstall
-$ helm uninstall kridge
+$ helm uninstall ctrlmesh
 ```
 

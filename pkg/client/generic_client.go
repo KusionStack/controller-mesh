@@ -22,14 +22,14 @@ import (
 	kubeclientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
-	kridgeclientset "github.com/KusionStack/kridge/pkg/client/clientset/versioned"
+	ctrlmeshclientset "github.com/KusionStack/ctrlmesh/pkg/client/clientset/versioned"
 )
 
 // GenericClientset defines a generic client
 type GenericClientset struct {
 	DiscoveryClient discovery.DiscoveryInterface
 	KubeClient      kubeclientset.Interface
-	KridgeClient    kridgeclientset.Interface
+	MeshClient      ctrlmeshclientset.Interface
 }
 
 // newForConfig creates a new Clientset for the given config.
@@ -42,14 +42,14 @@ func newForConfig(c *rest.Config) (*GenericClientset, error) {
 	if err != nil {
 		return nil, err
 	}
-	kridgeClient, err := kridgeclientset.NewForConfig(c)
+	ctrlmeshClient, err := ctrlmeshclientset.NewForConfig(c)
 	if err != nil {
 		return nil, err
 	}
 	return &GenericClientset{
 		DiscoveryClient: discoveryClient,
 		KubeClient:      kubeClient,
-		KridgeClient:    kridgeClient,
+		MeshClient:      ctrlmeshClient,
 	}, nil
 }
 

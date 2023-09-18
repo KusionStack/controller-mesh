@@ -11,12 +11,12 @@ webhooks:
       service:
         name: webhook-service
         namespace: system
-        path: /validate-kridge-shardingconfig
+        path: /validate-ctrlmesh-shardingconfig
     failurePolicy: Fail
-    name: shardingconfigs.kridge.validating.io
+    name: shardingconfigs.ctrlmesh.validating.io
     rules:
       - apiGroups:
-          - kridge.kusionstack.io
+          - ctrlmesh.kusionstack.io
         apiVersions:
           - v1alpha1
         operations:

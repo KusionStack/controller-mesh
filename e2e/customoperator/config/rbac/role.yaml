@@ -1,10 +1,10 @@
 ---
-# Source: mykridge/templates/rbac/role.yaml
+# Source: myctrlmesh/templates/rbac/role.yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   creationTimestamp: null
-  name: kridge-kusionstack-role
+  name: ctrlmesh-kusionstack-role
 rules:
 - apiGroups:
   - '*'
@@ -67,7 +67,7 @@ rules:
   - update
   - watch
 - apiGroups:
-  - kridge.kusionstack.io
+  - ctrlmesh.kusionstack.io
   resources:
   - managerstates
   - managerstates/finalizers
@@ -80,7 +80,7 @@ rules:
   - update
   - watch
 - apiGroups:
-  - kridge.kusionstack.io
+  - ctrlmesh.kusionstack.io
   resources:
   - '*'
   - '*/status'

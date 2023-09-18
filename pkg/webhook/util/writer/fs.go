@@ -25,8 +25,8 @@ import (
 
 	"k8s.io/klog/v2"
 
-	"github.com/KusionStack/kridge/pkg/webhook/util/generator"
-	"github.com/KusionStack/kridge/pkg/webhook/util/writer/atomic"
+	"github.com/KusionStack/ctrlmesh/pkg/webhook/util/generator"
+	"github.com/KusionStack/ctrlmesh/pkg/webhook/util/writer/atomic"
 )
 
 const (

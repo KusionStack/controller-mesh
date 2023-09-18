@@ -1,7 +1,7 @@
 FROM ubuntu:focal
 
 WORKDIR /
-COPY kridge-proxy .
+COPY ctrlmesh-proxy .
 
 RUN apt-get update && \
   apt-get install --no-install-recommends -y \
@@ -20,10 +20,10 @@ RUN apt-get update && \
   rm -rf  /var/log/*log /var/lib/apt/lists/* /var/log/apt/* /var/lib/dpkg/*-old /var/cache/debconf/*-old
 
 # Sudoers used to allow tcpdump and other debug utilities.
-RUN useradd -m --uid 1359 kridge-proxy && \
-  echo "kridge-proxy ALL=NOPASSWD: ALL" >> /etc/sudoers
+RUN useradd -m --uid 1359 ctrlmesh-proxy && \
+  echo "ctrlmesh-proxy ALL=NOPASSWD: ALL" >> /etc/sudoers
 
 COPY artifacts/scripts/proxy-poststart.sh /poststart.sh
-RUN mkdir /kridge && chmod 777 /kridge
+RUN mkdir /ctrlmesh && chmod 777 /ctrlmesh
 
-ENTRYPOINT ["/kridge-proxy"]
+ENTRYPOINT ["/ctrlmesh-proxy"]

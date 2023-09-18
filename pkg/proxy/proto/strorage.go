@@ -25,14 +25,14 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"k8s.io/klog/v2"
 
-	kridgeproto "github.com/KusionStack/kridge/pkg/apis/kridge/proto"
+	ctrlmeshproto "github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh/proto"
 )
 
 const (
-	expectedSpecFilePath = "/kridge/expected-spec"
-	currentSpecFilePath  = "/kridge/current-spec"
+	expectedSpecFilePath = "/ctrlmesh/expected-spec"
+	currentSpecFilePath  = "/ctrlmesh/current-spec"
 
-	testBlockLoadingFilePath = "/kridge/mock-proto-manage-failure"
+	testBlockLoadingFilePath = "/ctrlmesh/mock-proto-manage-failure"
 )
 
 type storage struct {
@@ -41,7 +41,7 @@ type storage struct {
 }
 
 func init() {
-	if err := os.MkdirAll("/home/kridge-proxy/kridge", 0777); err != nil {
+	if err := os.MkdirAll("/home/ctrlmesh-proxy/ctrlmesh", 0777); err != nil {
 		klog.Error(err)
 	}
 }
@@ -66,7 +66,7 @@ func newStorage() (*storage, error) {
 	return s, nil
 }
 
-func (s *storage) loadData() (expectedSpec, currentSpec *kridgeproto.ProxySpec, err error) {
+func (s *storage) loadData() (expectedSpec, currentSpec *ctrlmeshproto.ProxySpec, err error) {
 	expectedSpecBytes, err := io.ReadAll(s.expectedSpecFile)
 	if err != nil {
 		return nil, nil, err
@@ -77,13 +77,13 @@ func (s *storage) loadData() (expectedSpec, currentSpec *kridgeproto.ProxySpec, 
 	}
 
 	if len(expectedSpecBytes) > 0 {
-		expectedSpec = &kridgeproto.ProxySpec{}
+		expectedSpec = &ctrlmeshproto.ProxySpec{}
 		if err = proto.Unmarshal(expectedSpecBytes, expectedSpec); err != nil {
 			return nil, nil, err
 		}
 	}
 	if len(currentSpecBytes) > 0 {
-		currentSpec = &kridgeproto.ProxySpec{}
+		currentSpec = &ctrlmeshproto.ProxySpec{}
 		if err = proto.Unmarshal(currentSpecBytes, currentSpec); err != nil {
 			return nil, nil, err
 		}
@@ -91,7 +91,7 @@ func (s *storage) loadData() (expectedSpec, currentSpec *kridgeproto.ProxySpec, 
 	return
 }
 
-func (s *storage) writeExpectedSpec(spec *kridgeproto.ProxySpec) error {
+func (s *storage) writeExpectedSpec(spec *ctrlmeshproto.ProxySpec) error {
 	var err error
 	if err = s.mockFailure(); err != nil {
 		return err
@@ -104,7 +104,7 @@ func (s *storage) writeExpectedSpec(spec *kridgeproto.ProxySpec) error {
 	return err
 }
 
-func (s *storage) writeCurrentSpec(spec *kridgeproto.ProxySpec) error {
+func (s *storage) writeCurrentSpec(spec *ctrlmeshproto.ProxySpec) error {
 	var err error
 	if err = s.mockFailure(); err != nil {
 		return err

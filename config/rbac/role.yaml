@@ -3,7 +3,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   creationTimestamp: null
-  name: kridge-kusionstack-role
+  name: ctrlmesh-kusionstack-role
 rules:
 - apiGroups:
   - '*'
@@ -108,7 +108,7 @@ rules:
   - list
   - watch
 - apiGroups:
-  - kridge.kusionstack.io
+  - ctrlmesh.kusionstack.io
   resources:
   - ""
   verbs:
@@ -120,7 +120,7 @@ rules:
   - update
   - watch
 - apiGroups:
-  - kridge.kusionstack.io
+  - ctrlmesh.kusionstack.io
   resources:
   - managerstates
   verbs:
@@ -132,13 +132,13 @@ rules:
   - update
   - watch
 - apiGroups:
-  - kridge.kusionstack.io
+  - ctrlmesh.kusionstack.io
   resources:
   - managerstates/finalizers
   verbs:
   - update
 - apiGroups:
-  - kridge.kusionstack.io
+  - ctrlmesh.kusionstack.io
   resources:
   - managerstates/status
   verbs:
@@ -146,7 +146,7 @@ rules:
   - patch
   - update
 - apiGroups:
-  - kridge.kusionstack.io
+  - ctrlmesh.kusionstack.io
   resources:
   - shardingconfigs
   verbs:
@@ -158,13 +158,13 @@ rules:
   - update
   - watch
 - apiGroups:
-  - kridge.kusionstack.io
+  - ctrlmesh.kusionstack.io
   resources:
   - shardingconfigs/finalizers
   verbs:
   - update
 - apiGroups:
-  - kridge.kusionstack.io
+  - ctrlmesh.kusionstack.io
   resources:
   - shardingconfigs/status
   verbs:

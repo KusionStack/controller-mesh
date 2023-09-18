@@ -31,8 +31,8 @@ import (
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/KusionStack/kridge/pkg/apis/kridge"
-	"github.com/KusionStack/kridge/pkg/utils"
+	"github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh"
+	"github.com/KusionStack/ctrlmesh/pkg/utils"
 )
 
 const (
@@ -40,7 +40,7 @@ const (
 )
 
 var (
-	configMapName      = flag.String("resource-configmap-name", "kridge-sharding-resource", "Define some resources to sync kridge label")
+	configMapName      = flag.String("resource-configmap-name", "ctrlmesh-sharding-resource", "Define some resources to sync ctrlmesh label")
 	configMapNamespace = utils.GetNamespace()
 )
 
@@ -105,7 +105,7 @@ func getShardingLabel(obj client.Object) map[string]string {
 		return shardingLabels
 	}
 	for k, v := range obj.GetLabels() {
-		if strings.HasPrefix(k, kridge.KdControlPrefix) {
+		if strings.HasPrefix(k, ctrlmesh.KdControlPrefix) {
 			shardingLabels[k] = v
 		}
 	}

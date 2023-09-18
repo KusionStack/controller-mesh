@@ -1,12 +1,12 @@
 ---
-# Source: mykridge/templates/rbac/public_role.yaml
+# Source: myctrlmesh/templates/rbac/public_role.yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: kridge-public-role
+  name: ctrlmesh-public-role
 rules:
 - apiGroups:
-  - kridge.kusionstack.io
+  - ctrlmesh.kusionstack.io
   resources:
   - managerstates
   - trafficpolicies

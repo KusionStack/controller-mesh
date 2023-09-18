@@ -1,5 +1,5 @@
 ---
-# Source: mykridge/templates/rbac/managerstate_editor_role.yaml
+# Source: myctrlmesh/templates/rbac/managerstate_editor_role.yaml
 # permissions for end users to edit managerstates.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -7,7 +7,7 @@ metadata:
   name: managerstate-editor-role
 rules:
 - apiGroups:
-  - kridge.kusionstack.io
+  - ctrlmesh.kusionstack.io
   resources:
   - managerstates
   verbs:
@@ -19,7 +19,7 @@ rules:
   - update
   - watch
 - apiGroups:
-  - kridge.kusionstack.io
+  - ctrlmesh.kusionstack.io
   resources:
   - managerstates/status
   verbs:

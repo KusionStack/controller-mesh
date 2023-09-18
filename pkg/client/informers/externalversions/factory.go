@@ -22,9 +22,9 @@ import (
 	sync "sync"
 	time "time"
 
-	versioned "github.com/KusionStack/kridge/pkg/client/clientset/versioned"
-	internalinterfaces "github.com/KusionStack/kridge/pkg/client/informers/externalversions/internalinterfaces"
-	kridge "github.com/KusionStack/kridge/pkg/client/informers/externalversions/kridge"
+	versioned "github.com/KusionStack/ctrlmesh/pkg/client/clientset/versioned"
+	ctrlmesh "github.com/KusionStack/ctrlmesh/pkg/client/informers/externalversions/ctrlmesh"
+	internalinterfaces "github.com/KusionStack/ctrlmesh/pkg/client/informers/externalversions/internalinterfaces"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -242,9 +242,9 @@ type SharedInformerFactory interface {
 	// client.
 	InformerFor(obj runtime.Object, newFunc internalinterfaces.NewInformerFunc) cache.SharedIndexInformer
 
-	Kridge() kridge.Interface
+	Ctrlmesh() ctrlmesh.Interface
 }
 
-func (f *sharedInformerFactory) Kridge() kridge.Interface {
-	return kridge.New(f, f.namespace, f.tweakListOptions)
+func (f *sharedInformerFactory) Ctrlmesh() ctrlmesh.Interface {
+	return ctrlmesh.New(f, f.namespace, f.tweakListOptions)
 }

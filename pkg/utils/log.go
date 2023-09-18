@@ -38,7 +38,7 @@ var (
 	userName = "unknownuser"
 
 	logDir   = "/home/admin/logs"
-	logFile  = "kridge.log"
+	logFile  = "ctrlmesh.log"
 	logLevel = "info"
 	// 100Mi
 	maxSize = 200

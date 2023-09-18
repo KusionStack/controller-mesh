@@ -37,7 +37,7 @@ import (
 )
 
 var (
-	SelectorPrefix = "kridge.kusionstack.io"
+	SelectorPrefix = "ctrlmesh.kusionstack.io"
 )
 
 var _ inject.Client = &MutatingHandler{}

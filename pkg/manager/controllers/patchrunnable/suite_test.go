@@ -47,7 +47,7 @@ var testEnv *envtest.Environment
 //		Host: "127.0.0.1:65221",
 //	}
 //	testEnv.ControlPlane.GetAPIServer().Configure()
-//	err := kridgev1alpha1.AddToScheme(scheme.Scheme)
+//	err := ctrlmeshv1alpha1.AddToScheme(scheme.Scheme)
 //	Expect(err).NotTo(HaveOccurred())
 //
 //	cfg, err = testEnv.Start()

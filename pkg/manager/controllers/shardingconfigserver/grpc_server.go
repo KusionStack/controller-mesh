@@ -34,10 +34,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 
-	kridgeproto "github.com/KusionStack/kridge/pkg/apis/kridge/proto"
-	kridgev1alpha1 "github.com/KusionStack/kridge/pkg/apis/kridge/v1alpha1"
-	"github.com/KusionStack/kridge/pkg/grpcregistry"
-	"github.com/KusionStack/kridge/pkg/utils"
+	ctrlmeshproto "github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh/proto"
+	ctrlmeshv1alpha1 "github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh/v1alpha1"
+	"github.com/KusionStack/ctrlmesh/pkg/grpcregistry"
+	"github.com/KusionStack/ctrlmesh/pkg/utils"
 )
 
 var (
@@ -50,23 +50,23 @@ var (
 )
 
 func init() {
-	_ = grpcregistry.Register("kridge-server", true, func(opts grpcregistry.RegisterOptions) {
+	_ = grpcregistry.Register("ctrlmesh-server", true, func(opts grpcregistry.RegisterOptions) {
 		grpcServer.reader = opts.Mgr.GetCache()
 		grpcServer.ctx = opts.Ctx
-		kridgeproto.RegisterControllerMeshServer(opts.GrpcServer, grpcServer)
+		ctrlmeshproto.RegisterControllerMeshServer(opts.GrpcServer, grpcServer)
 	})
 }
 
 type grpcSrvConnection struct {
 	mu     sync.Mutex
-	srv    kridgeproto.ControllerMesh_RegisterServer
-	status *kridgeproto.ProxyStatus
+	srv    ctrlmeshproto.ControllerMesh_RegisterServer
+	status *ctrlmeshproto.ProxyStatus
 
 	sendTimes    int
 	disconnected bool
 }
 
-func (conn *grpcSrvConnection) send(spec *kridgeproto.ProxySpec) error {
+func (conn *grpcSrvConnection) send(spec *ctrlmeshproto.ProxySpec) error {
 	conn.mu.Lock()
 	conn.sendTimes++
 	conn.mu.Unlock()
@@ -78,9 +78,9 @@ type GrpcServer struct {
 	ctx    context.Context
 }
 
-var _ kridgeproto.ControllerMeshServer = &GrpcServer{}
+var _ ctrlmeshproto.ControllerMeshServer = &GrpcServer{}
 
-func (s *GrpcServer) Register(srv kridgeproto.ControllerMesh_RegisterServer) error {
+func (s *GrpcServer) Register(srv ctrlmeshproto.ControllerMesh_RegisterServer) error {
 	// receive the first register message
 	pStatus, err := srv.Recv()
 	if err != nil {
@@ -101,9 +101,9 @@ func (s *GrpcServer) Register(srv kridgeproto.ControllerMesh_RegisterServer) err
 	} else if !utils.IsPodActive(pod) {
 		return status.Errorf(codes.Canceled, fmt.Sprintf("find pod %s inactive", podNamespacedName))
 	}
-	shardName := pod.Labels[kridgev1alpha1.ShardingConfigInjectedKey]
+	shardName := pod.Labels[ctrlmeshv1alpha1.ShardingConfigInjectedKey]
 	if shardName == "" {
-		return status.Errorf(codes.InvalidArgument, fmt.Sprintf("empty %s label in pod %s", kridgev1alpha1.ShardingConfigInjectedKey, podNamespacedName))
+		return status.Errorf(codes.InvalidArgument, fmt.Sprintf("empty %s label in pod %s", ctrlmeshv1alpha1.ShardingConfigInjectedKey, podNamespacedName))
 	}
 
 	if pStatus.MetaState == nil {

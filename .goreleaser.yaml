@@ -22,8 +22,8 @@ builds:
   ldflags:
   - -s -w
   main: ./pkg/cmd/manager
-  id: "kridge-manager"
-  binary: kridge-manager
+  id: "ctrlmesh-manager"
+  binary: ctrlmesh-manager
 - env:
   - CGO_ENABLED=0
   # GOOS list to build for.
@@ -39,8 +39,8 @@ builds:
   ldflags:
   - -s -w
   main: ./pkg/cmd/proxy
-  id: "kridge-proxy"
-  binary: kridge-proxy
+  id: "ctrlmesh-proxy"
+  binary: ctrlmesh-proxy
 - env:
   - CGO_ENABLED=0
   goos:
@@ -60,7 +60,7 @@ archives:
   - "manager"
   - "proxy"
   - "cert-generator"
-  name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+  name_template: "ctrlmesh_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
   builds_info:
     mode: 0644
     # format is `time.RFC3339Nano`
@@ -130,41 +130,41 @@ changelog:
 release:
   github:
     owner: KusionStack
-    name: kridge
+    name: controller-mesh
   draft: false
   footer: |
     ## Docker Images
-    * `kusionstack/kridge-manager:{{ .Tag }}`
-    * `kusionstack/kridge-proxy:{{ .Tag }}`
-    * `kusionstack/kridge-init:{{ .Tag }}`
+    * `kusionstack/ctrlmesh-manager:{{ .Tag }}`
+    * `kusionstack/ctrlmesh-proxy:{{ .Tag }}`
+    * `kusionstack/ctrlmesh-init:{{ .Tag }}`
 
 dockers:
 - id: manager
   ids:
-  - kridge-manager
+  - ctrlmesh-manager
   goos: linux
   goarch: amd64
   image_templates:
-  - 'kusionstack/{{ .ProjectName }}-manager:{{ .Tag }}'
-  - 'kusionstack/{{ .ProjectName }}-manager:latest'
+  - 'kusionstack/ctrlmesh-manager:{{ .Tag }}'
+  - 'kusionstack/ctrlmesh-manager:latest'
   dockerfile: ./artifacts/goreleaser/manager.Dockerfile
   use: docker
   build_flag_templates:
   - "--pull"
   - "--label=org.opencontainers.image.created={{.Date}}"
-  - "--label=org.opencontainers.image.name={{.ProjectName}}-manager"
+  - "--label=org.opencontainers.image.name=ctrlmesh-manager"
   - "--label=org.opencontainers.image.revision={{.FullCommit}}"
   - "--label=org.opencontainers.image.version={{.Version}}"
   - "--label=org.opencontainers.image.source={{.GitURL}}"
   - "--platform=linux/amd64"
 - id: proxy
   ids:
-  - kridge-proxy
+  - ctrlmesh-proxy
   goos: linux
   goarch: amd64
   image_templates:
-  - 'kusionstack/{{ .ProjectName }}-proxy:{{ .Tag }}'
-  - 'kusionstack/{{ .ProjectName }}-proxy:latest'
+  - 'kusionstack/ctrlmesh-proxy:{{ .Tag }}'
+  - 'kusionstack/ctrlmesh-proxy:latest'
   dockerfile: ./artifacts/goreleaser/proxy.Dockerfile
   extra_files:
   - artifacts/scripts/
@@ -172,7 +172,7 @@ dockers:
   build_flag_templates:
   - "--pull"
   - "--label=org.opencontainers.image.created={{.Date}}"
-  - "--label=org.opencontainers.image.name={{.ProjectName}}-proxy"
+  - "--label=org.opencontainers.image.name=ctrlmesh-proxy"
   - "--label=org.opencontainers.image.revision={{.FullCommit}}"
   - "--label=org.opencontainers.image.version={{.Version}}"
   - "--label=org.opencontainers.image.source={{.GitURL}}"
@@ -183,8 +183,8 @@ dockers:
   goos: linux
   goarch: amd64
   image_templates:
-  - 'kusionstack/{{ .ProjectName }}-init:{{ .Tag }}'
-  - 'kusionstack/{{ .ProjectName }}-init:latest'
+  - 'kusionstack/ctrlmesh-init:{{ .Tag }}'
+  - 'kusionstack/ctrlmesh-init:latest'
   dockerfile: ./artifacts/goreleaser/init.Dockerfile
   extra_files:
   - artifacts/scripts/
@@ -192,7 +192,7 @@ dockers:
   build_flag_templates:
   - "--pull"
   - "--label=org.opencontainers.image.created={{.Date}}"
-  - "--label=org.opencontainers.image.name={{.ProjectName}}-init"
+  - "--label=org.opencontainers.image.name=ctrlmesh-init"
   - "--label=org.opencontainers.image.revision={{.FullCommit}}"
   - "--label=org.opencontainers.image.version={{.Version}}"
   - "--label=org.opencontainers.image.source={{.GitURL}}"

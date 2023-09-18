@@ -1,4 +1,4 @@
-module github.com/KusionStack/kridge
+module github.com/KusionStack/ctrlmesh
 
 go 1.20
 

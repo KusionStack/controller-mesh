@@ -3,9 +3,9 @@
 [简体中文](https://github.com/KusionStack/kusion/blob/main/README-zh.md)
 | [English](https://github.com/KusionStack/kusion/blob/main/README.md)
 
-# Kridge
+# Controller Mesh
 
-Kridge is a solution that helps developers manage their controllers/operators better.
+KusionStack Controller Mesh is a solution that helps developers manage their controllers/operators better.
 
 The design architecture of this project is based on [openkruise/controllermesh](https://github.com/openkruise/controllermesh).
 
@@ -16,7 +16,7 @@ The design architecture of this project is based on [openkruise/controllermesh](
 3. **Circuit breaker and rate limiter**: Not only Kubernetes operation requests, but also other external operation requests.
 4. **Multicluster routing and sharding**: This feature is supported by [kusionstack/kaera(karbour)]()
 
-<p align="center"><img width="800" src="./docs/img/img5.png"/></p>
+<p align="center"><img width="800" src="./docs/img/mesh-arch-2.png"/></p>
 
 ## Quick Start
 Visit [Quick Start]().
@@ -32,34 +32,34 @@ $ helm repo add kusionstack https://kusionstack.io/charts
 $ helm repo update
 
 # Install the latest version.
-$ helm install kridge kusionstack/kridge --version v0.1.0
+$ helm install ctrlmesh kusionstack/ctrlmesh --version v0.1.0
 
 # Uninstall
-$ helm uninstall kridge
+$ helm uninstall ctrlmesh
 ```
 **Proxy**  
 1. Apply your [ShardingConfig]().
-2. Add label `kridge.kusionstack.io/enable-proxy=true` on pod template.
+2. Add label `ctrlmesh.kusionstack.io/enable-proxy=true` on pod template.
 
 
 ## Principles
 
-Generally, a `kridge-proxy` container will be injected into each operator Pod that has configured in Kridge.
+Generally, a `ctrlmesh-proxy` container will be injected into each operator Pod that has configured in ShardingConfigs.
 This proxy container will intercept and handle the connection by between API/Oth Server and controllers/webhooks in the Pod.
 
-<p align="center"><img width="550" src="./docs/img/img3.png"/></p>
+<p align="center"><img width="550" src="./docs/img/fake-configmap.png"/></p>
 
 ApiServer proxy method:
 - *iptables nat*: 
 - *fake kubeconfig*: 
 
-The `kridge-manager` dispatches rules to the proxies, so that they can route requests according to the rules.
+The `ctrlmesh-manager` dispatches rules to the proxies, so that they can route requests according to the rules.
 
 
-A core CRD in Kridge is `ShardingConfig`. It contains all rules for user's controller:
+A core CRD in ControllerMesh is `ShardingConfig`. It contains all rules for user's controller:
 
 ```yaml
-apiVersion: kridge.kusionstack.io/v1alpha1
+apiVersion: ctrlmesh.kusionstack.io/v1alpha1
 kind: ShardingConfig
 metadata:
   name: sharding-demo
@@ -79,7 +79,7 @@ spec:
       - services
     selector:
       matchExpressions:
-      - key: kridge.kusionstack.io/namespace
+      - key: ctrlmesh.kusionstack.io/namespace
         operator: In
         values:
         - ns-a
@@ -101,13 +101,13 @@ spec:
 
 When `manager` is first launched, shard labels will be added to all configured resources.
 
-- `kridge.kusionstack.io/sharding-hash`: the hash value calculated based on the namespace ranges from 0 to 31.
-- `kridge.kusionstack.io/namespace`: the namespace referring to this resource.
-- `kridge.kusionstack.io/control`: under kridge control.
+- `ctrlmesh.kusionstack.io/sharding-hash`: the hash value calculated based on the namespace ranges from 0 to 31.
+- `ctrlmesh.kusionstack.io/namespace`: the namespace referring to this resource.
+- `ctrlmesh.kusionstack.io/control`: under ctrlmesh-manager control.
 
 
-In this repo, Kridge only support `ObjectSelector` type of flow control,
-which means the `kridge-proxy `will proxy list&watch requests to the ApiServer, 
+In this repo, we only support `ObjectSelector` type of flow control,
+which means the `ctrlmesh-proxy `will proxy http/s requests to the ApiServer, 
 and inject a `LabelSelector` into the request param for the requested resource type.
 
 
@@ -115,5 +115,5 @@ and inject a `LabelSelector` into the request param for the requested resource t
 
 Router:
 
-<p align="center"><img width="500" src="./docs/img/img1.png"/></p>
+<p align="center"><img width="600" src="./docs/img/mesh-proxy.png"/></p>
 

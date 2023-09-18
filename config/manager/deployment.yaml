@@ -2,15 +2,15 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    kridge.kusionstack.io/ignore-webhook: 'true'
-  name: kridge
-  namespace: kridge
+    ctrlmesh.kusionstack.io/ignore-webhook: 'true'
+  name: ctrlmesh
+  namespace: ctrlmesh
 spec:
   replicas: 3
   revisionHistoryLimit: 10
   selector:
     matchLabels:
-      control-plane: kridge
+      control-plane: ctrlmesh
   strategy:
     rollingUpdate:
       maxSurge: 1
@@ -19,16 +19,16 @@ spec:
   template:
     metadata:
       labels:
-        control-plane: kridge
-        kridge.kusionstack.io/ignore-webhook: 'true'
-        kridge.kusionstack.io/watching: 'true'
+        control-plane: ctrlmesh
+        ctrlmesh.kusionstack.io/ignore-webhook: 'true'
+        ctrlmesh.kusionstack.io/watching: 'true'
     spec:
       containers:
         - args:
           - --logtostderr=true
           - --v=4
-          - --leader-election-namespace=kridge
-          - --proxy-image=kusionstack/kridge-proxy:latest
+          - --leader-election-namespace=ctrlmesh
+          - --proxy-image=kusionstack/ctrlmesh-proxy:latest
           - --proxy-cpu=100m
           - --proxy-memory=100Mi
           - --proxy-ephemeral-storage=100Mi
@@ -50,12 +50,12 @@ spec:
             - name: ENABLE_WEBHOOK_SERVER
               value: 'true'
             - name: WEBHOOK_HOST
-              value: kridge-webhook-service.kridge.svc
+              value: ctrlmesh-webhook-service.ctrlmesh.svc
             - name: WEBHOOK_CERT_WRITER
               value: secret
             - name: WATCH_ON_LIMIT
               value: 'true'
-          image: kusionstack/kridge-manager:latest
+          image: kusionstack/ctrlmesh-manager:latest
           imagePullPolicy: IfNotPresent
           livenessProbe:
             failureThreshold: 3
@@ -90,5 +90,5 @@ spec:
           terminationMessagePath: /dev/termination-log
           terminationMessagePolicy: File
       dnsPolicy: ClusterFirst
-      serviceAccount: kridge-serviceaccount
-      serviceAccountName: kridge-serviceaccount
+      serviceAccount: ctrlmesh-serviceaccount
+      serviceAccountName: ctrlmesh-serviceaccount

@@ -1,4 +1,4 @@
-apiVersion: kridge.kusionstack.io/v1alpha1
+apiVersion: ctrlmesh.kusionstack.io/v1alpha1
 kind: ShardingConfig
 metadata:
   name: sharding-demo
@@ -16,7 +16,7 @@ spec:
               - services
         selector:
           matchExpressions:
-            - key: kridge.kusionstack.io/namespace
+            - key: ctrlmesh.kusionstack.io/namespace
               operator: In
               values:
                 - namespace-a

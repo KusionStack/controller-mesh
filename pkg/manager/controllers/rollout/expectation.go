@@ -23,7 +23,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
 
-	"github.com/KusionStack/kridge/pkg/apis/kridge"
+	"github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh"
 )
 
 type ExpectedRevision struct {
@@ -32,7 +32,7 @@ type ExpectedRevision struct {
 }
 
 func GetExpectedRevision(sts *appsv1.StatefulSet) *ExpectedRevision {
-	val := sts.Annotations[kridge.KdRollingExpectedAnno]
+	val := sts.Annotations[ctrlmesh.KdRollingExpectedAnno]
 	result := &ExpectedRevision{}
 	if err := json.Unmarshal([]byte(val), result); err != nil {
 		klog.Errorf("fail to unmarshal MeshRollingExpectedAnno %v", err)
@@ -41,7 +41,7 @@ func GetExpectedRevision(sts *appsv1.StatefulSet) *ExpectedRevision {
 }
 
 func SetExpectedRevision(sts *appsv1.StatefulSet, podRevision map[string]string) bool {
-	val := sts.Annotations[kridge.KdRollingExpectedAnno]
+	val := sts.Annotations[ctrlmesh.KdRollingExpectedAnno]
 	rev := &ExpectedRevision{
 		UpdateRevision: recentRevision(sts),
 		PodRevision:    podRevision,
@@ -50,7 +50,7 @@ func SetExpectedRevision(sts *appsv1.StatefulSet, podRevision map[string]string)
 	if string(byt) == val {
 		return false
 	}
-	sts.Annotations[kridge.KdRollingExpectedAnno] = string(byt)
+	sts.Annotations[ctrlmesh.KdRollingExpectedAnno] = string(byt)
 	return true
 }
 

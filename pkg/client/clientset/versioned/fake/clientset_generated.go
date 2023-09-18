@@ -18,9 +18,9 @@ limitations under the License.
 package fake
 
 import (
-	clientset "github.com/KusionStack/kridge/pkg/client/clientset/versioned"
-	kridgev1alpha1 "github.com/KusionStack/kridge/pkg/client/clientset/versioned/typed/kridge/v1alpha1"
-	fakekridgev1alpha1 "github.com/KusionStack/kridge/pkg/client/clientset/versioned/typed/kridge/v1alpha1/fake"
+	clientset "github.com/KusionStack/ctrlmesh/pkg/client/clientset/versioned"
+	ctrlmeshv1alpha1 "github.com/KusionStack/ctrlmesh/pkg/client/clientset/versioned/typed/ctrlmesh/v1alpha1"
+	fakectrlmeshv1alpha1 "github.com/KusionStack/ctrlmesh/pkg/client/clientset/versioned/typed/ctrlmesh/v1alpha1/fake"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"
@@ -78,7 +78,7 @@ var (
 	_ testing.FakeClient  = &Clientset{}
 )
 
-// KridgeV1alpha1 retrieves the KridgeV1alpha1Client
-func (c *Clientset) KridgeV1alpha1() kridgev1alpha1.KridgeV1alpha1Interface {
-	return &fakekridgev1alpha1.FakeKridgeV1alpha1{Fake: &c.Fake}
+// CtrlmeshV1alpha1 retrieves the CtrlmeshV1alpha1Client
+func (c *Clientset) CtrlmeshV1alpha1() ctrlmeshv1alpha1.CtrlmeshV1alpha1Interface {
+	return &fakectrlmeshv1alpha1.FakeCtrlmeshV1alpha1{Fake: &c.Fake}
 }

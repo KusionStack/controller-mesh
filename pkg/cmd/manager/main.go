@@ -35,16 +35,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	kridgev1alpha1 "github.com/KusionStack/kridge/pkg/apis/kridge/v1alpha1"
-	"github.com/KusionStack/kridge/pkg/cachelimiter"
-	"github.com/KusionStack/kridge/pkg/client"
-	"github.com/KusionStack/kridge/pkg/grpcregistry"
-	"github.com/KusionStack/kridge/pkg/manager/controllers/managerstate"
-	"github.com/KusionStack/kridge/pkg/manager/controllers/patchrunnable"
-	"github.com/KusionStack/kridge/pkg/manager/controllers/shardingconfigserver"
-	pkgcache "github.com/KusionStack/kridge/pkg/utils/cache"
-	"github.com/KusionStack/kridge/pkg/utils/probe"
-	"github.com/KusionStack/kridge/pkg/webhook"
+	ctrlmeshv1alpha1 "github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh/v1alpha1"
+	"github.com/KusionStack/ctrlmesh/pkg/cachelimiter"
+	"github.com/KusionStack/ctrlmesh/pkg/client"
+	"github.com/KusionStack/ctrlmesh/pkg/grpcregistry"
+	"github.com/KusionStack/ctrlmesh/pkg/manager/controllers/managerstate"
+	"github.com/KusionStack/ctrlmesh/pkg/manager/controllers/patchrunnable"
+	"github.com/KusionStack/ctrlmesh/pkg/manager/controllers/shardingconfigserver"
+	pkgcache "github.com/KusionStack/ctrlmesh/pkg/utils/cache"
+	"github.com/KusionStack/ctrlmesh/pkg/utils/probe"
+	"github.com/KusionStack/ctrlmesh/pkg/webhook"
 )
 
 var (
@@ -58,7 +58,7 @@ var (
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
-	utilruntime.Must(kridgev1alpha1.AddToScheme(scheme))
+	utilruntime.Must(ctrlmeshv1alpha1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
 
@@ -71,7 +71,7 @@ func main() {
 	var leaderElectionNamespace string
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
-	flag.StringVar(&leaderElectionNamespace, "leader-election-namespace", "kridge-system",
+	flag.StringVar(&leaderElectionNamespace, "leader-election-namespace", "ctrlmesh-system",
 		"This determines the namespace in which the leader election configmap will be created, it will use in-cluster namespace if empty.")
 	flag.StringVar(&pprofAddr, "pprof-address", ":8090", "The address the pprof binds to.")
 
@@ -88,7 +88,7 @@ func main() {
 
 	cfg := ctrl.GetConfigOrDie()
 	setRestConfig(cfg)
-	cfg.UserAgent = "kridge-manager"
+	cfg.UserAgent = "ctrlmesh-manager"
 	if err := client.NewRegistry(cfg); err != nil {
 		setupLog.Error(err, "unable to init clientset and informer")
 		os.Exit(1)
@@ -99,7 +99,7 @@ func main() {
 		MetricsBindAddress:         metricsAddr,
 		HealthProbeBindAddress:     probeAddr,
 		LeaderElection:             true,
-		LeaderElectionID:           "kridge-manager",
+		LeaderElectionID:           "ctrlmesh-manager",
 		LeaderElectionNamespace:    leaderElectionNamespace,
 		LeaderElectionResourceLock: resourcelock.LeasesResourceLock,
 		// limit manager cache

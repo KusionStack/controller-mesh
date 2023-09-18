@@ -22,7 +22,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/KusionStack/kridge/pkg/apis/kridge"
+	"github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh"
 )
 
 func DefaultObjectSelector() cache.SelectorsByObject {
@@ -45,7 +45,7 @@ var (
 	DefaultSelector = func() cache.ObjectSelector {
 		selector, _ := metav1.LabelSelectorAsSelector(&metav1.LabelSelector{
 			MatchLabels: map[string]string{
-				kridge.KdWatchOnLimitLabel: "true",
+				ctrlmesh.KdWatchOnLimitLabel: "true",
 			},
 		})
 		return cache.ObjectSelector{

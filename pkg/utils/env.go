@@ -37,21 +37,21 @@ func GetNamespace() string {
 	if ns := os.Getenv("POD_NAMESPACE"); len(ns) > 0 {
 		return ns
 	}
-	return "kridge"
+	return "ctrlmesh"
 }
 
 func GetSecretName() string {
 	if name := os.Getenv("SECRET_NAME"); len(name) > 0 {
 		return name
 	}
-	return "kridge-webhook-certs"
+	return "ctrlmesh-webhook-certs"
 }
 
 func GetServiceName() string {
 	if name := os.Getenv("SERVICE_NAME"); len(name) > 0 {
 		return name
 	}
-	return "kridge-webhook-service"
+	return "ctrlmesh-webhook-service"
 }
 
 func GetPort() int {
@@ -70,7 +70,7 @@ func GetCertDir() string {
 	if p := os.Getenv("WEBHOOK_CERT_DIR"); len(p) > 0 {
 		return p
 	}
-	return "/tmp/kridge-webhook-certs"
+	return "/tmp/ctrlmesh-webhook-certs"
 }
 
 func GetCertWriter() string {

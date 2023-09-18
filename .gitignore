@@ -19,3 +19,4 @@ bin/
 .idea/**
 demo/**
 testdemo/**
+.DS_Store

@@ -40,11 +40,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	"github.com/KusionStack/kridge/pkg/apis/kridge"
-	kridgeutils "github.com/KusionStack/kridge/pkg/apis/kridge/utils"
-	kridgev1alpha1 "github.com/KusionStack/kridge/pkg/apis/kridge/v1alpha1"
-	"github.com/KusionStack/kridge/pkg/utils"
-	"github.com/KusionStack/kridge/pkg/utils/expectation"
+	"github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh"
+	ctrlmeshutils "github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh/utils"
+	ctrlmeshv1alpha1 "github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh/v1alpha1"
+	"github.com/KusionStack/ctrlmesh/pkg/utils"
+	"github.com/KusionStack/ctrlmesh/pkg/utils/expectation"
 )
 
 var (
@@ -61,16 +61,16 @@ func (r *RolloutReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		WithOptions(controller.Options{MaxConcurrentReconciles: 2}).
 		For(&appsv1.StatefulSet{}, builder.WithPredicates(predicate.Funcs{
 			CreateFunc: func(e event.CreateEvent) bool {
-				return constantsLabelKey(e.Object, kridge.KdInRollingLabel)
+				return constantsLabelKey(e.Object, ctrlmesh.KdInRollingLabel)
 			},
 			UpdateFunc: func(e event.UpdateEvent) bool {
-				return constantsLabelKey(e.ObjectNew, kridge.KdInRollingLabel)
+				return constantsLabelKey(e.ObjectNew, ctrlmesh.KdInRollingLabel)
 			},
 			DeleteFunc: func(e event.DeleteEvent) bool {
 				return false
 			},
 			GenericFunc: func(e event.GenericEvent) bool {
-				return constantsLabelKey(e.Object, kridge.KdInRollingLabel)
+				return constantsLabelKey(e.Object, ctrlmesh.KdInRollingLabel)
 			},
 		})).
 		Watches(&source.Kind{Type: &corev1.Pod{}}, &podEventHandler{client: mgr.GetClient()}).
@@ -96,18 +96,18 @@ func (r *RolloutReconciler) Reconcile(ctx context.Context, req reconcile.Request
 		return reconcile.Result{RequeueAfter: time.Second * 3}, fmt.Errorf("wait sts create pods, expected replicas %d, current replicas %d", *sts.Spec.Replicas, sts.Status.Replicas)
 	}
 
-	rollType, ok := sts.Labels[kridge.KdInRollingLabel]
+	rollType, ok := sts.Labels[ctrlmesh.KdInRollingLabel]
 	if !ok {
 		return reconcile.Result{}, nil
 	}
 
 	if !isOnDeleteStrategy(sts) {
-		deleteLabel(sts, kridge.KdInRollingLabel)
+		deleteLabel(sts, ctrlmesh.KdInRollingLabel)
 		return reconcile.Result{}, r.Update(ctx, sts)
 	}
 
 	// list ShardingConfigs
-	configs := &kridgev1alpha1.ShardingConfigList{}
+	configs := &ctrlmeshv1alpha1.ShardingConfigList{}
 	if err := r.List(ctx, configs, client.InNamespace(req.Namespace)); err != nil {
 		klog.Errorf("fail to list shardingConfig in namespace %s, %v", req.Namespace, err)
 		return reconcile.Result{}, err
@@ -132,13 +132,13 @@ func (r *RolloutReconciler) Reconcile(ctx context.Context, req reconcile.Request
 	}
 
 	shardingPods := map[string][]*corev1.Pod{}
-	allConfigs := kridgeutils.ShardingConfigs{}
+	allConfigs := ctrlmeshutils.ShardingConfigs{}
 
 	for i, po := range stsPods {
 		if po.OwnerReferences == nil || len(po.OwnerReferences) == 0 || po.OwnerReferences[0].Name != sts.Name {
 			continue
 		}
-		configName, ok := po.Labels[kridgev1alpha1.ShardingConfigInjectedKey]
+		configName, ok := po.Labels[ctrlmeshv1alpha1.ShardingConfigInjectedKey]
 		if !ok {
 			klog.Errorf("not found sharding-config-injected label on pod %s/%s ", po.Namespace, po.Name)
 			continue
@@ -160,7 +160,7 @@ func (r *RolloutReconciler) Reconcile(ctx context.Context, req reconcile.Request
 	finishRollout := false
 	defer func() {
 		updateAnno := updateRolloutAnno(sts, upgradedPods)
-		deleted := finishRollout && deleteLabel(sts, kridge.KdInRollingLabel)
+		deleted := finishRollout && deleteLabel(sts, ctrlmesh.KdInRollingLabel)
 		if updateAnno || deleted {
 			updateErr := r.Update(ctx, sts)
 			if updateErr != nil {
@@ -212,7 +212,7 @@ func (r *RolloutReconciler) Reconcile(ctx context.Context, req reconcile.Request
 	return reconcile.Result{}, reconcileErr
 }
 
-func (r *RolloutReconciler) upgrade(sts *appsv1.StatefulSet, cfg *kridgev1alpha1.ShardingConfig, pods []*corev1.Pod) (finish, requeue bool, upgradeErr error) {
+func (r *RolloutReconciler) upgrade(sts *appsv1.StatefulSet, cfg *ctrlmeshv1alpha1.ShardingConfig, pods []*corev1.Pod) (finish, requeue bool, upgradeErr error) {
 
 	hasTerminatingPod := false
 	expectDeletePods := map[string]*corev1.Pod{}
@@ -270,7 +270,7 @@ func (r *RolloutReconciler) upgrade(sts *appsv1.StatefulSet, cfg *kridgev1alpha1
 	return true, false, nil
 }
 
-func (r *RolloutReconciler) getHolderIdentity(ctx context.Context, cfg *kridgev1alpha1.ShardingConfig) *string {
+func (r *RolloutReconciler) getHolderIdentity(ctx context.Context, cfg *ctrlmeshv1alpha1.ShardingConfig) *string {
 	lease := &coordinationv1.Lease{}
 	laederName := ""
 	if cfg.Spec.Controller != nil {
@@ -302,11 +302,11 @@ func updateRolloutAnno(sts *appsv1.StatefulSet, upgradedPods []string) (updated 
 		val = ""
 	}
 	if sts.Annotations == nil {
-		sts.Annotations = map[string]string{kridge.KdRollingStatusAnno: val}
+		sts.Annotations = map[string]string{ctrlmesh.KdRollingStatusAnno: val}
 		return true
 	}
-	if sts.Annotations[kridge.KdRollingStatusAnno] != val {
-		sts.Annotations[kridge.KdRollingStatusAnno] = val
+	if sts.Annotations[ctrlmesh.KdRollingStatusAnno] != val {
+		sts.Annotations[ctrlmesh.KdRollingStatusAnno] = val
 		return true
 	}
 	return false

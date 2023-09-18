@@ -32,7 +32,7 @@ import (
 
 	"golang.org/x/net/http/httpguts"
 
-	"github.com/KusionStack/kridge/pkg/utils"
+	"github.com/KusionStack/ctrlmesh/pkg/utils"
 )
 
 // ReverseProxy is an HTTP Handler that takes an incoming request and

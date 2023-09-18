@@ -20,7 +20,7 @@ package externalversions
 import (
 	"fmt"
 
-	v1alpha1 "github.com/KusionStack/kridge/pkg/apis/kridge/v1alpha1"
+	v1alpha1 "github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh/v1alpha1"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	cache "k8s.io/client-go/tools/cache"
 )
@@ -51,13 +51,13 @@ func (f *genericInformer) Lister() cache.GenericLister {
 // TODO extend this to unknown resources with a client pool
 func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource) (GenericInformer, error) {
 	switch resource {
-	// Group=kridge.kusionstack.io, Version=v1alpha1
+	// Group=ctrlmesh.kusionstack.io, Version=v1alpha1
 	case v1alpha1.SchemeGroupVersion.WithResource("circuitbreakers"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Kridge().V1alpha1().CircuitBreakers().Informer()}, nil
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Ctrlmesh().V1alpha1().CircuitBreakers().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("managerstates"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Kridge().V1alpha1().ManagerStates().Informer()}, nil
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Ctrlmesh().V1alpha1().ManagerStates().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("shardingconfigs"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Kridge().V1alpha1().ShardingConfigs().Informer()}, nil
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Ctrlmesh().V1alpha1().ShardingConfigs().Informer()}, nil
 
 	}
 

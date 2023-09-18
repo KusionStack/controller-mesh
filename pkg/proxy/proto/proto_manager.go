@@ -26,13 +26,13 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"k8s.io/klog/v2"
 
-	"github.com/KusionStack/kridge/pkg/apis/kridge/constants"
-	kridgeproto "github.com/KusionStack/kridge/pkg/apis/kridge/proto"
-	"github.com/KusionStack/kridge/pkg/utils"
+	"github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh/constants"
+	ctrlmeshproto "github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh/proto"
+	"github.com/KusionStack/ctrlmesh/pkg/utils"
 )
 
 var (
-	selfInfo = &kridgeproto.SelfInfo{Namespace: os.Getenv(constants.EnvPodNamespace), Name: os.Getenv(constants.EnvPodName)}
+	selfInfo = &ctrlmeshproto.SelfInfo{Namespace: os.Getenv(constants.EnvPodNamespace), Name: os.Getenv(constants.EnvPodName)}
 	onceInit sync.Once
 )
 
@@ -46,11 +46,11 @@ type SpecManager struct {
 	storage           *storage
 	reportTriggerChan chan struct{}
 
-	expectedSpec *kridgeproto.InternalSpec
-	currentSpec  *kridgeproto.InternalSpec
+	expectedSpec *ctrlmeshproto.InternalSpec
+	currentSpec  *ctrlmeshproto.InternalSpec
 	unloadReason string
 
-	leaderElectionState *kridgeproto.LeaderElectionState
+	leaderElectionState *ctrlmeshproto.LeaderElectionState
 }
 
 func newSpecManager(reportTriggerChan chan struct{}) (*SpecManager, error) {
@@ -68,7 +68,7 @@ func newSpecManager(reportTriggerChan chan struct{}) (*SpecManager, error) {
 	}
 	if currentSpec != nil {
 		klog.Infof("Loaded currentSpec from storage: %v", utils.DumpJSON(currentSpec))
-		sm.currentSpec = kridgeproto.ConvertProtoSpecToInternal(currentSpec)
+		sm.currentSpec = ctrlmeshproto.ConvertProtoSpecToInternal(currentSpec)
 	}
 	if expectedSpec != nil {
 		klog.Infof("Loaded expectedSpec from storage: %v", utils.DumpJSON(expectedSpec))
@@ -77,7 +77,7 @@ func newSpecManager(reportTriggerChan chan struct{}) (*SpecManager, error) {
 	return sm, nil
 }
 
-func (sm *SpecManager) UpdateLeaderElection(le *kridgeproto.LeaderElectionState) {
+func (sm *SpecManager) UpdateLeaderElection(le *ctrlmeshproto.LeaderElectionState) {
 	sm.Lock()
 	defer sm.Unlock()
 	oldLe := sm.leaderElectionState
@@ -87,8 +87,8 @@ func (sm *SpecManager) UpdateLeaderElection(le *kridgeproto.LeaderElectionState)
 	}
 }
 
-func (sm *SpecManager) UpdateSpec(spec *kridgeproto.ProxySpec) {
-	sm.expectedSpec = kridgeproto.ConvertProtoSpecToInternal(spec)
+func (sm *SpecManager) UpdateSpec(spec *ctrlmeshproto.ProxySpec) {
+	sm.expectedSpec = ctrlmeshproto.ConvertProtoSpecToInternal(spec)
 	if err := sm.storage.writeExpectedSpec(sm.expectedSpec.ProxySpec); err != nil {
 		panic(fmt.Errorf("failed to write expected spec for %v: %v", utils.DumpJSON(sm.expectedSpec.ProxySpec), err))
 	}
@@ -105,14 +105,14 @@ func (sm *SpecManager) UpdateSpec(spec *kridgeproto.ProxySpec) {
 	}
 }
 
-func (sm *SpecManager) GetStatus() *kridgeproto.ProxyStatus {
+func (sm *SpecManager) GetStatus() *ctrlmeshproto.ProxyStatus {
 	sm.Lock()
 	defer sm.Unlock()
 	if sm.currentSpec == nil {
 		return nil
 	}
-	return &kridgeproto.ProxyStatus{
-		MetaState: &kridgeproto.MetaState{
+	return &ctrlmeshproto.ProxyStatus{
+		MetaState: &ctrlmeshproto.MetaState{
 			ExpectedHash:     sm.expectedSpec.Meta.Hash,
 			CurrentHash:      sm.currentSpec.Meta.Hash,
 			HashUnloadReason: sm.unloadReason,
@@ -121,7 +121,7 @@ func (sm *SpecManager) GetStatus() *kridgeproto.ProxyStatus {
 	}
 }
 
-func (sm *SpecManager) AcquireSpec() *kridgeproto.InternalSpec {
+func (sm *SpecManager) AcquireSpec() *ctrlmeshproto.InternalSpec {
 	sm.RLock()
 	return sm.currentSpec
 }
