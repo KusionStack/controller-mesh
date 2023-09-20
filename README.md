@@ -19,29 +19,11 @@ The design architecture of this project is based on [openkruise/controllermesh](
 <p align="center"><img width="800" src="./docs/img/mesh-arch-2.png"/></p>
 
 ## Quick Start
-Visit [Quick Start]().
+Visit [Quick Start](docs/getting-started.md).
 
 
 ## Installation
-**Install by helm**
-```shell
-# Firstly add charts repository if you haven't do this.
-$ helm repo add kusionstack https://kusionstack.io/charts
-
-# [Optional]
-$ helm repo update
-
-# Install the latest version.
-$ helm install ctrlmesh kusionstack/ctrlmesh --version v0.1.0
-
-# Uninstall
-$ helm uninstall ctrlmesh
-```
-**Proxy**  
-1. Apply your [ShardingConfig]().
-2. Add label `ctrlmesh.kusionstack.io/enable-proxy=true` on pod template.
-
-
+Visit [Installation](docs/installation.md).
 ## Principles
 
 Generally, a `ctrlmesh-proxy` container will be injected into each operator Pod that has configured in ShardingConfigs.
