@@ -11,6 +11,6 @@ The design architecture of this project is based on [openkruise/controllermesh](
 1. **Sharding**: Through relevant configurations, Kubernetes single-point deployed operator applications can be flexibly shard deployed.
 2. **Canary upgrade**: Depends on sharding, the controllers can be updated in canary progress instead of one time replace.
 3. **Circuit breaker and rate limiter**: Not only Kubernetes operation requests, but also other external operation requests.
-4. **Multicluster routing and sharding**: This feature is supported by [kusionstack/kaera(karbour)]()
+4. **Multicluster routing and sharding**.
 
 <p align="center"><img width="800" src="../docs/img/mesh-arch-2.png"/></p>
