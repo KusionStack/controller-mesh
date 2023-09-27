@@ -1,8 +1,5 @@
 
 
-[简体中文](https://github.com/KusionStack/kusion/blob/main/README-zh.md)
-| [English](https://github.com/KusionStack/kusion/blob/main/README.md)
-
 # Controller Mesh
 
 KusionStack Controller Mesh is a solution that helps developers manage their controllers/operators better.
