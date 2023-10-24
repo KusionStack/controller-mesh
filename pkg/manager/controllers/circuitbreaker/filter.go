@@ -1,10 +1,26 @@
+/*
+Copyright 2023 The KusionStack Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package circuitbreaker
 
 import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 
+	"github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/utils/conv"
 	ctrlmeshv1alpha1 "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/v1alpha1"
-	"github.com/KusionStack/controller-mesh/pkg/utils/conv"
 )
 
 type BreakerPredicate struct {
@@ -17,9 +33,6 @@ func (b *BreakerPredicate) Create(event.CreateEvent) bool {
 
 // Delete returns true if the Delete event should be processed
 func (b *BreakerPredicate) Delete(e event.DeleteEvent) bool {
-	cb := e.Object.(*ctrlmeshv1alpha1.CircuitBreaker)
-	protoCB := conv.ConvertCircuitBreaker(cb)
-	defaultHashCache.DeleteHash(protoCB.ConfigHash)
 	return true
 }
 
@@ -30,7 +43,6 @@ func (b *BreakerPredicate) Update(e event.UpdateEvent) bool {
 	oldProtoCB := conv.ConvertCircuitBreaker(oldCB)
 	newProtoCB := conv.ConvertCircuitBreaker(newCB)
 	if oldProtoCB.ConfigHash != newProtoCB.ConfigHash {
-		defaultHashCache.DeleteHash(oldProtoCB.ConfigHash)
 		return true
 	}
 	if newCB.DeletionTimestamp != nil {

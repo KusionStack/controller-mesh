@@ -15,3 +15,29 @@ limitations under the License.
 */
 
 package proto
+
+import (
+	"context"
+	"crypto/tls"
+	"net"
+	"net/http"
+	"time"
+
+	"golang.org/x/net/http2"
+)
+
+var (
+	DefaultHttpClient = &http.Client{
+		Transport: &http2.Transport{
+			AllowHTTP: true,
+			DialTLSContext: func(ctx context.Context, network, addr string, _ *tls.Config) (net.Conn, error) {
+				// TODO:
+				// If you're also using this client for non-h2c traffic, you may want
+				// to delegate to tls.Dial if the network isn't TCP or the addr isn't
+				// in an allowlist.
+				d := net.Dialer{Timeout: 5 * time.Second}
+				return d.DialContext(ctx, network, addr)
+			},
+		},
+	}
+)

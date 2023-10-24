@@ -21,12 +21,10 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"net/http"
 	"os"
 	"time"
 
 	"connectrpc.com/connect"
-	"golang.org/x/net/http2"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	k8sErr "k8s.io/apimachinery/pkg/api/errors"
@@ -45,9 +43,9 @@ import (
 	"github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/constants"
 	"github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/proto"
 	"github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/proto/protoconnect"
+	"github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/utils/conv"
 	ctrlmeshv1alpha1 "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/v1alpha1"
 	"github.com/KusionStack/controller-mesh/pkg/utils"
-	"github.com/KusionStack/controller-mesh/pkg/utils/conv"
 )
 
 var (
@@ -56,12 +54,6 @@ var (
 
 	defaultRequeueTime   = 60 * time.Second
 	concurrentReconciles = flag.Int("ctrlmesh-server-workers", 3, "Max concurrent workers for CtrlMesh Server controller.")
-
-	defaultHttpClient = &http.Client{
-		Transport: &http2.Transport{
-			AllowHTTP: true,
-		},
-	}
 )
 
 // CircuitBreakerReconciler reconciles a CircuitBreaker object
@@ -288,11 +280,11 @@ func (r *CircuitBreakerReconciler) disableConfig(ctx context.Context, podIp stri
 }
 
 func protoClient(podIp string) protoconnect.ThrottlingClient {
-	return protoconnect.NewThrottlingClient(defaultHttpClient, podAddr(podIp))
+	return protoconnect.NewThrottlingClient(proto.DefaultHttpClient, podAddr(podIp))
 }
 
 func podAddr(podIp string) string {
-	return fmt.Sprintf("%s:%d", podIp, constants.ProxyGRPCServerPort)
+	return fmt.Sprintf("https://%s:%d", podIp, constants.ProxyGRPCServerPort)
 }
 
 func isProxyAvailable(po *v1.Pod) bool {
