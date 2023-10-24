@@ -40,18 +40,20 @@ import (
 	"k8s.io/client-go/transport"
 	"k8s.io/klog/v2"
 
-	"github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh/constants"
-	proxyfilters "github.com/KusionStack/ctrlmesh/pkg/proxy/filters"
-	"github.com/KusionStack/ctrlmesh/pkg/proxy/leaderelection"
-	"github.com/KusionStack/ctrlmesh/pkg/utils"
-	utilshttp "github.com/KusionStack/ctrlmesh/pkg/utils/http"
-	"github.com/KusionStack/ctrlmesh/pkg/utils/pool"
+	"github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/constants"
+	proxyfilters "github.com/KusionStack/controller-mesh/pkg/proxy/filters"
+	"github.com/KusionStack/controller-mesh/pkg/proxy/leaderelection"
+	"github.com/KusionStack/controller-mesh/pkg/utils"
+	utilshttp "github.com/KusionStack/controller-mesh/pkg/utils/http"
+	"github.com/KusionStack/controller-mesh/pkg/utils/pool"
 )
 
 var (
 	upgradeSubresources = sets.NewString("exec", "attach")
 	enableIpTable       = os.Getenv(constants.EnvIPTable) == "true"
 	enableWebhookProxy  = os.Getenv(constants.EnvEnableWebHookProxy) == "true"
+
+	disableCircuitBreaker = os.Getenv(constants.EnvDisableCircuitBreaker) == "true"
 )
 
 type Proxy struct {
@@ -86,8 +88,9 @@ func NewProxy(opts *Options) (*Proxy, error) {
 	}
 
 	var handler http.Handler = inHandler
-	// TODO: CircuitBreaker handler
-	//handler = circuitbreaker.WithBreaker(handler)
+	if opts.BreakerWrapperFunc != nil && !disableCircuitBreaker {
+		handler = opts.BreakerWrapperFunc(handler)
+	}
 	handler = genericfilters.WithWaitGroup(handler, opts.LongRunningFunc, opts.HandlerChainWaitGroup)
 	handler = WithRequestInfo(handler, opts.RequestInfoResolver)
 	handler = proxyfilters.WithPanicRecovery(handler, opts.RequestInfoResolver)

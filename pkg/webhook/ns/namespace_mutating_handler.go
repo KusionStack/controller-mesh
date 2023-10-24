@@ -28,9 +28,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
-	"github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh"
-	"github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh/constants"
-	"github.com/KusionStack/ctrlmesh/pkg/utils/rand"
+	"github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh"
+	"github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/constants"
+	"github.com/KusionStack/controller-mesh/pkg/utils/rand"
 )
 
 type MutatingHandler struct {
@@ -67,17 +67,17 @@ func (h *MutatingHandler) Handle(ctx context.Context, req admission.Request) adm
 
 func (h *MutatingHandler) shouldUpdateNs(ns *v1.Namespace) (shouldUpdate bool) {
 	shouldUpdate = false
-	if _, exist := ns.Labels[ctrlmesh.KdControlKey]; !exist {
-		ns.Labels[ctrlmesh.KdControlKey] = "true"
+	if _, exist := ns.Labels[ctrlmesh.CtrlmeshControlKey]; !exist {
+		ns.Labels[ctrlmesh.CtrlmeshControlKey] = "true"
 		shouldUpdate = true
 	}
-	if val, exist := ns.Labels[ctrlmesh.KdNamespaceKey]; !exist || val != ns.Name {
-		ns.Labels[ctrlmesh.KdNamespaceKey] = ns.Name
+	if val, exist := ns.Labels[ctrlmesh.CtrlmeshNamespaceKey]; !exist || val != ns.Name {
+		ns.Labels[ctrlmesh.CtrlmeshNamespaceKey] = ns.Name
 		shouldUpdate = true
 	}
 	nsHash := strconv.Itoa(rand.Hash(ns.Name, constants.DefaultShardingSize))
-	if val, exist := ns.Labels[ctrlmesh.KdShardHashKey]; !exist || nsHash != val {
-		ns.Labels[ctrlmesh.KdShardHashKey] = nsHash
+	if val, exist := ns.Labels[ctrlmesh.CtrlmeshShardHashKey]; !exist || nsHash != val {
+		ns.Labels[ctrlmesh.CtrlmeshShardHashKey] = nsHash
 		shouldUpdate = true
 	}
 	return shouldUpdate

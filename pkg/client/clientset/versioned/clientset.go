@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"net/http"
 
-	ctrlmeshv1alpha1 "github.com/KusionStack/ctrlmesh/pkg/client/clientset/versioned/typed/ctrlmesh/v1alpha1"
+	ctrlmeshv1alpha1 "github.com/KusionStack/controller-mesh/pkg/client/clientset/versioned/typed/ctrlmesh/v1alpha1"
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
 	flowcontrol "k8s.io/client-go/util/flowcontrol"

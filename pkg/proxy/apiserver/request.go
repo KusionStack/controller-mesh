@@ -27,7 +27,7 @@ import (
 	"k8s.io/apiserver/pkg/endpoints/handlers/responsewriters"
 	"k8s.io/apiserver/pkg/endpoints/request"
 
-	ctrlmeshhttp "github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh/http"
+	ctrlmeshhttp "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/http"
 )
 
 var (

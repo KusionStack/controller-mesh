@@ -33,11 +33,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 
-	"github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh/constants"
-	"github.com/KusionStack/ctrlmesh/pkg/client"
-	proxyapiserver "github.com/KusionStack/ctrlmesh/pkg/proxy/apiserver"
-	protomanager "github.com/KusionStack/ctrlmesh/pkg/proxy/proto"
-	"github.com/KusionStack/ctrlmesh/pkg/utils"
+	"github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/constants"
+	"github.com/KusionStack/controller-mesh/pkg/client"
+	proxyapiserver "github.com/KusionStack/controller-mesh/pkg/proxy/apiserver"
+	proxycache "github.com/KusionStack/controller-mesh/pkg/proxy/cache"
+	"github.com/KusionStack/controller-mesh/pkg/proxy/circuitbreaker"
+	"github.com/KusionStack/controller-mesh/pkg/proxy/grpcserver"
+	protomanager "github.com/KusionStack/controller-mesh/pkg/proxy/proto"
+	"github.com/KusionStack/controller-mesh/pkg/utils"
 )
 
 var (
@@ -66,7 +69,16 @@ func main() {
 
 	ctx := signals.SetupSignalHandler()
 	readyHandler := &healthz.Handler{}
-	proxyClient := protomanager.NewGrpcClient()
+	managerStateCache, err := proxycache.NewManagerStateCache(ctx)
+	if err != nil {
+		klog.Fatalf(err.Error())
+	}
+	proxyClient := protomanager.NewGrpcClient(managerStateCache)
+
+	breakerMgr := circuitbreaker.NewManager(ctx)
+	proxyServer := grpcserver.GrpcServer{BreakerMgr: breakerMgr}
+	go proxyServer.Start(ctx)
+
 	if err := proxyClient.Start(ctx); err != nil {
 		klog.Fatalf("Failed to start proxy client: %v", err)
 	}
@@ -86,6 +98,7 @@ func main() {
 		opts.SecureServingOptions.BindPort = *proxyApiserverPort
 		opts.LeaderElectionName = *leaderElectionName
 		opts.SpecManager = proxyClient.GetSpecManager()
+		opts.BreakerWrapperFunc = breakerMgr.HandlerWrapper()
 		errs := opts.Validate()
 		if len(errs) > 0 {
 			klog.Fatalf("Failed to validate apiserver-proxy options %s: %v", utils.DumpJSON(opts), errs)

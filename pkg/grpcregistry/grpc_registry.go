@@ -21,10 +21,11 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"net"
+	"net/http"
 	"sync"
 
-	"google.golang.org/grpc"
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
@@ -46,9 +47,11 @@ var (
 type RegisterFunc = func(RegisterOptions)
 
 type RegisterOptions struct {
-	GrpcServer *grpc.Server
-	Mgr        manager.Manager
-	Ctx        context.Context
+	//GrpcServer *grpc.Server
+	ServeMux *http.ServeMux
+
+	Mgr manager.Manager
+	Ctx context.Context
 }
 
 type grpcRegistry struct {
@@ -80,30 +83,19 @@ func (r *grpcRegistry) Start(ctx context.Context) error {
 		return nil
 	}
 
-	var opts []grpc.ServerOption
-	// Set max message size in bytes is 64MB
-	opts = append(opts, grpc.MaxRecvMsgSize(1024*1024*64))
-	grpcServer := grpc.NewServer(opts...)
-
-	// register all servers
+	mux := http.NewServeMux()
 	subCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	for _, rf := range r.registry {
-		rf(RegisterOptions{GrpcServer: grpcServer, Mgr: globalManager, Ctx: subCtx})
+		rf(RegisterOptions{ServeMux: mux, Mgr: globalManager, Ctx: subCtx})
 	}
-
 	addr := fmt.Sprintf(":%d", *r.port)
-	lis, err := net.Listen("tcp", addr)
-	if err != nil {
-		return fmt.Errorf("error listening grpc server address %s: %v", addr, err)
-	}
-	klog.Infof("Start listening gRPC server with leaderElection=%v on %s", r.needLeaderElection, addr)
 	go func() {
-		if err = grpcServer.Serve(lis); err != nil {
+		// Use h2c so we can serve HTTP/2 without TLS.
+		if err := http.ListenAndServe(addr, h2c.NewHandler(mux, &http2.Server{})); err != nil {
 			klog.Errorf("serve gRPC error %v", err)
 		}
 	}()
-
 	<-ctx.Done()
 	return nil
 }

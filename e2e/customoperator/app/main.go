@@ -37,7 +37,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	appcontroller "github.com/KusionStack/ctrlmesh/e2e/customoperator/app/controller"
+	appcontroller "github.com/KusionStack/controller-mesh/e2e/customoperator/app/controller"
 )
 
 var (

@@ -34,7 +34,7 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 
-	"github.com/KusionStack/ctrlmesh/pkg/utils"
+	"github.com/KusionStack/controller-mesh/pkg/utils"
 )
 
 var (
@@ -69,6 +69,7 @@ type adapter interface {
 	GetHoldIdentity() (string, bool)
 	GetName() string
 	SetName(name string)
+	SetLabel(k, v string)
 	EncodeInto(*http.Request)
 }
 
@@ -109,6 +110,14 @@ func (oa *objectAdapter) SetName(name string) {
 	oa.metaObj.SetName(name)
 }
 
+func (oa *objectAdapter) SetLabel(k, v string) {
+	if oa.metaObj.GetLabels() == nil {
+		oa.metaObj.SetLabels(map[string]string{k: v})
+	} else {
+		oa.metaObj.GetLabels()[k] = v
+	}
+}
+
 func (oa *objectAdapter) EncodeInto(r *http.Request) {
 	var length int
 	ser, _ := getSerializer(r)
@@ -146,6 +155,14 @@ func (la *leaseAdapter) GetName() string {
 
 func (la *leaseAdapter) SetName(name string) {
 	la.lease.Name = name
+}
+
+func (la *leaseAdapter) SetLabel(k, v string) {
+	if la.lease.Labels == nil {
+		la.lease.Labels = map[string]string{k: v}
+	} else {
+		la.lease.Labels[k] = v
+	}
 }
 
 func (la *leaseAdapter) EncodeInto(r *http.Request) {

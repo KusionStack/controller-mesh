@@ -17,7 +17,7 @@ limitations under the License.
 package utils
 
 import (
-	ctrlmeshv1alpha1 "github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh/v1alpha1"
+	ctrlmeshv1alpha1 "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/v1alpha1"
 )
 
 type ShardingConfigs []*ctrlmeshv1alpha1.ShardingConfig

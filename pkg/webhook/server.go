@@ -28,13 +28,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/conversion"
 
-	webhookutil "github.com/KusionStack/ctrlmesh/pkg/utils"
-	"github.com/KusionStack/ctrlmesh/pkg/webhook/ns"
-	"github.com/KusionStack/ctrlmesh/pkg/webhook/pod"
-	"github.com/KusionStack/ctrlmesh/pkg/webhook/resources"
-	"github.com/KusionStack/ctrlmesh/pkg/webhook/shardingconfig"
-	webhookcontroller "github.com/KusionStack/ctrlmesh/pkg/webhook/util/controller"
-	"github.com/KusionStack/ctrlmesh/pkg/webhook/util/health"
+	webhookutil "github.com/KusionStack/controller-mesh/pkg/utils"
+	"github.com/KusionStack/controller-mesh/pkg/webhook/ns"
+	"github.com/KusionStack/controller-mesh/pkg/webhook/pod"
+	"github.com/KusionStack/controller-mesh/pkg/webhook/resources"
+	"github.com/KusionStack/controller-mesh/pkg/webhook/shardingconfig"
+	webhookcontroller "github.com/KusionStack/controller-mesh/pkg/webhook/util/controller"
+	"github.com/KusionStack/controller-mesh/pkg/webhook/util/health"
 )
 
 var (

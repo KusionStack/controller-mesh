@@ -1,8 +1,9 @@
-module github.com/KusionStack/ctrlmesh
+module github.com/KusionStack/controller-mesh
 
 go 1.20
 
 require (
+	connectrpc.com/connect v1.11.1
 	github.com/go-logr/zapr v1.2.3
 	github.com/gogo/protobuf v1.3.2
 	github.com/onsi/ginkgo v1.16.5
@@ -10,11 +11,12 @@ require (
 	github.com/prometheus/client_golang v1.14.0
 	github.com/spf13/pflag v1.0.5
 	go.uber.org/zap v1.24.0
-	golang.org/x/net v0.7.0
-	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4
+	golang.org/x/net v0.17.0
+	golang.org/x/sync v0.1.0
 	golang.org/x/time v0.3.0
 	gomodules.xyz/jsonpatch/v2 v2.2.0
 	google.golang.org/grpc v1.49.0
+	google.golang.org/protobuf v1.31.0
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 	k8s.io/api v0.26.1
 	k8s.io/apimachinery v0.26.1
@@ -27,8 +29,8 @@ require (
 	sigs.k8s.io/controller-runtime v0.14.5
 )
 
-// TODO: replace code-generator. [v0.26.1 command read bug]
-replace k8s.io/code-generator => k8s.io/code-generator v0.26.1
+// replace code-generator. [v0.26.1 command read bug]
+replace k8s.io/code-generator => github.com/Eikykun/code-generator v0.26.1-alpha2
 
 require (
 	github.com/NYTimes/gziphandler v1.1.1 // indirect
@@ -95,16 +97,15 @@ require (
 	go.opentelemetry.io/proto/otlp v0.19.0 // indirect
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
-	golang.org/x/crypto v0.5.0 // indirect
-	golang.org/x/mod v0.6.0 // indirect
+	golang.org/x/crypto v0.14.0 // indirect
+	golang.org/x/mod v0.8.0 // indirect
 	golang.org/x/oauth2 v0.0.0-20220223155221-ee480838109b // indirect
-	golang.org/x/sys v0.6.0 // indirect
-	golang.org/x/term v0.5.0 // indirect
-	golang.org/x/text v0.7.0 // indirect
-	golang.org/x/tools v0.2.0 // indirect
+	golang.org/x/sys v0.13.0 // indirect
+	golang.org/x/term v0.13.0 // indirect
+	golang.org/x/text v0.13.0 // indirect
+	golang.org/x/tools v0.6.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20220502173005-c8bf987b8c21 // indirect
-	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect

@@ -17,6 +17,7 @@ limitations under the License.
 package circuitbreaker
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"testing"
@@ -26,18 +27,19 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	appsv1alpha1 "github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh/v1alpha1"
+	ctrlmeshproto "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/proto"
+	ctrlmeshv1alpha1 "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/v1alpha1"
+	"github.com/KusionStack/controller-mesh/pkg/utils/conv"
 )
 
 func init() {
-	EnableCircuitBreaker = true
 	logf.SetLogger(zap.New(zap.WriteTo(os.Stdout), zap.UseDevMode(true)))
 }
 
 func TestRestTrafficIntercept(t *testing.T) {
-	fmt.Println("Test_Rest_Traffic_Intercept")
+	fmt.Println("TestRestTrafficIntercept")
 
-	cb1 := &appsv1alpha1.CircuitBreaker{
+	cb1 := &ctrlmeshv1alpha1.CircuitBreaker{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "testName1",
 			Namespace: "default",
@@ -46,12 +48,12 @@ func TestRestTrafficIntercept(t *testing.T) {
 			},
 			Labels: map[string]string{},
 		},
-		Spec: appsv1alpha1.CircuitBreakerSpec{
-			TrafficInterceptRules: []appsv1alpha1.TrafficInterceptRule{
+		Spec: ctrlmeshv1alpha1.CircuitBreakerSpec{
+			TrafficInterceptRules: []*ctrlmeshv1alpha1.TrafficInterceptRule{
 				{
 					Name:          "rule1",
-					InterceptType: appsv1alpha1.InterceptTypeWhite,
-					ContentType:   appsv1alpha1.ContentTypeNormal,
+					InterceptType: ctrlmeshv1alpha1.InterceptTypeWhitelist,
+					ContentType:   ctrlmeshv1alpha1.ContentTypeNormal,
 					Contents:      []string{"www.hello.com", "www.testa.com"},
 					Methods:       []string{"POST", "GET"},
 				},
@@ -59,22 +61,25 @@ func TestRestTrafficIntercept(t *testing.T) {
 		},
 	}
 	g := gomega.NewGomegaWithT(t)
-
-	RegisterRules(cb1)
-	result := ValidateTrafficIntercept("www.hello.com", "POST")
+	mgr := NewManager(context.TODO())
+	protoBreaker := conv.ConvertCircuitBreaker(cb1)
+	protoBreaker.Option = ctrlmeshproto.CircuitBreaker_UPDATE
+	_, err := mgr.Sync(protoBreaker)
+	g.Expect(err).Should(gomega.BeNil())
+	result := mgr.ValidateTrafficIntercept("www.hello.com", "POST")
 	g.Expect(result.Allowed).To(gomega.BeTrue())
-	result = ValidateTrafficIntercept("www.hello.com", "GET")
+	result = mgr.ValidateTrafficIntercept("www.hello.com", "GET")
 	g.Expect(result.Allowed).To(gomega.BeTrue())
-	result = ValidateTrafficIntercept("www.hello.com", "DELETE")
+	result = mgr.ValidateTrafficIntercept("www.hello.com", "DELETE")
 	g.Expect(result.Allowed).To(gomega.BeFalse())
-	result = ValidateTrafficIntercept("www.testa.com", "GET")
+	result = mgr.ValidateTrafficIntercept("www.testa.com", "GET")
 	g.Expect(result.Allowed).To(gomega.BeTrue())
-	result = ValidateTrafficIntercept("www.testa.com", "POST")
+	result = mgr.ValidateTrafficIntercept("www.testa.com", "POST")
 	g.Expect(result.Allowed).To(gomega.BeTrue())
-	result = ValidateTrafficIntercept("www.testa.com", "PUT")
+	result = mgr.ValidateTrafficIntercept("www.testa.com", "PUT")
 	g.Expect(result.Allowed).To(gomega.BeFalse())
 
-	cb2 := &appsv1alpha1.CircuitBreaker{
+	cb2 := &ctrlmeshv1alpha1.CircuitBreaker{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "testName2",
 			Namespace: "default",
@@ -83,30 +88,33 @@ func TestRestTrafficIntercept(t *testing.T) {
 			},
 			Labels: map[string]string{},
 		},
-		Spec: appsv1alpha1.CircuitBreakerSpec{
-			TrafficInterceptRules: []appsv1alpha1.TrafficInterceptRule{
+		Spec: ctrlmeshv1alpha1.CircuitBreakerSpec{
+			TrafficInterceptRules: []*ctrlmeshv1alpha1.TrafficInterceptRule{
 				{
 					Name:          "rule2",
-					InterceptType: appsv1alpha1.InterceptTypeWhite,
-					ContentType:   appsv1alpha1.ContentTypeNormal,
+					InterceptType: ctrlmeshv1alpha1.InterceptTypeWhitelist,
+					ContentType:   ctrlmeshv1alpha1.ContentTypeNormal,
 					Contents:      []string{"www.hello.com", "www.testa.com"},
 					Methods:       []string{"*", "GET"},
 				},
 			},
 		},
 	}
-	RegisterRules(cb2)
 
-	result = ValidateTrafficIntercept("www.hello.com", "GET")
+	protoBreaker2 := conv.ConvertCircuitBreaker(cb2)
+	_, err = mgr.Sync(protoBreaker2)
+	g.Expect(err).Should(gomega.BeNil())
+
+	result = mgr.ValidateTrafficIntercept("www.hello.com", "GET")
 	g.Expect(result.Allowed).To(gomega.BeTrue())
-	result = ValidateTrafficIntercept("www.hello.com", "DELETE")
+	result = mgr.ValidateTrafficIntercept("www.hello.com", "DELETE")
 	g.Expect(result.Allowed).To(gomega.BeTrue())
-	result = ValidateTrafficIntercept("www.testa.com", "DELETE")
+	result = mgr.ValidateTrafficIntercept("www.testa.com", "DELETE")
 	g.Expect(result.Allowed).To(gomega.BeTrue())
-	result = ValidateTrafficIntercept("www.testa.com1", "DELETE")
+	result = mgr.ValidateTrafficIntercept("www.testa.com1", "DELETE")
 	g.Expect(result.Allowed).To(gomega.BeFalse())
 
-	cb3 := &appsv1alpha1.CircuitBreaker{
+	cb3 := &ctrlmeshv1alpha1.CircuitBreaker{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "testName3",
 			Namespace: "default",
@@ -115,25 +123,28 @@ func TestRestTrafficIntercept(t *testing.T) {
 			},
 			Labels: map[string]string{},
 		},
-		Spec: appsv1alpha1.CircuitBreakerSpec{
-			TrafficInterceptRules: []appsv1alpha1.TrafficInterceptRule{
+		Spec: ctrlmeshv1alpha1.CircuitBreakerSpec{
+			TrafficInterceptRules: []*ctrlmeshv1alpha1.TrafficInterceptRule{
 				{
 					Name:          "rule3",
-					InterceptType: appsv1alpha1.InterceptTypeBlack,
-					ContentType:   appsv1alpha1.ContentTypeNormal,
+					InterceptType: ctrlmeshv1alpha1.InterceptTypeBlacklist,
+					ContentType:   ctrlmeshv1alpha1.ContentTypeNormal,
 					Contents:      []string{"www.hello.com", "www.testa.com"},
 					Methods:       []string{"DELETE"},
 				},
 			},
 		},
 	}
-	RegisterRules(cb3)
-	result = ValidateTrafficIntercept("www.hello.com", "DELETE")
+
+	protoBreaker3 := conv.ConvertCircuitBreaker(cb3)
+	_, err = mgr.Sync(protoBreaker3)
+	g.Expect(err).Should(gomega.BeNil())
+	result = mgr.ValidateTrafficIntercept("www.hello.com", "DELETE")
 	g.Expect(result.Allowed).To(gomega.BeFalse())
-	result = ValidateTrafficIntercept("www.testa.com", "DELETE")
+	result = mgr.ValidateTrafficIntercept("www.testa.com", "DELETE")
 	g.Expect(result.Allowed).To(gomega.BeFalse())
 
-	cb4 := &appsv1alpha1.CircuitBreaker{
+	cb4 := &ctrlmeshv1alpha1.CircuitBreaker{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "testName4",
 			Namespace: "default",
@@ -142,27 +153,29 @@ func TestRestTrafficIntercept(t *testing.T) {
 			},
 			Labels: map[string]string{},
 		},
-		Spec: appsv1alpha1.CircuitBreakerSpec{
-			TrafficInterceptRules: []appsv1alpha1.TrafficInterceptRule{
+		Spec: ctrlmeshv1alpha1.CircuitBreakerSpec{
+			TrafficInterceptRules: []*ctrlmeshv1alpha1.TrafficInterceptRule{
 				{
 					Name:          "rule4",
-					InterceptType: appsv1alpha1.InterceptTypeBlack,
-					ContentType:   appsv1alpha1.ContentTypeRegexp,
+					InterceptType: ctrlmeshv1alpha1.InterceptTypeBlacklist,
+					ContentType:   ctrlmeshv1alpha1.ContentTypeRegexp,
 					Contents:      []string{"(ali[a-z]+)"},
 					Methods:       []string{"DELETE"},
 				},
 			},
 		},
 	}
-	RegisterRules(cb4)
-	result = ValidateTrafficIntercept("www.testb.com", "DELETE")
+	protoBreaker4 := conv.ConvertCircuitBreaker(cb4)
+	_, err = mgr.Sync(protoBreaker4)
+	g.Expect(err).Should(gomega.BeNil())
+
+	result = mgr.ValidateTrafficIntercept("www.testb.com", "DELETE")
 	g.Expect(result.Allowed).To(gomega.BeFalse())
-	result = ValidateTrafficIntercept("www.testb.com", "PUT")
+	result = mgr.ValidateTrafficIntercept("www.testb.com", "PUT")
 	g.Expect(result.Allowed).To(gomega.BeFalse())
 	g.Expect(result.Reason).To(gomega.BeEquivalentTo("No rule match"))
-	//g.Expect(result.Message).To(gomega.BeEquivalentTo("Default strategy is unknown, should deny"))
 
-	cb5 := &appsv1alpha1.CircuitBreaker{
+	cb5 := &ctrlmeshv1alpha1.CircuitBreaker{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "testName5",
 			Namespace: "default",
@@ -171,23 +184,25 @@ func TestRestTrafficIntercept(t *testing.T) {
 			},
 			Labels: map[string]string{},
 		},
-		Spec: appsv1alpha1.CircuitBreakerSpec{
-			TrafficInterceptRules: []appsv1alpha1.TrafficInterceptRule{
+		Spec: ctrlmeshv1alpha1.CircuitBreakerSpec{
+			TrafficInterceptRules: []*ctrlmeshv1alpha1.TrafficInterceptRule{
 				{
 					Name:          "rule5",
-					InterceptType: appsv1alpha1.InterceptTypeWhite,
-					ContentType:   appsv1alpha1.ContentTypeRegexp,
+					InterceptType: ctrlmeshv1alpha1.InterceptTypeWhitelist,
+					ContentType:   ctrlmeshv1alpha1.ContentTypeRegexp,
 					Contents:      []string{"(bai[a-z]+)"},
 					Methods:       []string{"DELETE"},
 				},
 			},
 		},
 	}
-	RegisterRules(cb5)
+	protoBreaker5 := conv.ConvertCircuitBreaker(cb5)
+	_, err = mgr.Sync(protoBreaker5)
+	g.Expect(err).Should(gomega.BeNil())
 
-	result = ValidateTrafficIntercept("www.hello.com", "DELETE")
+	result = mgr.ValidateTrafficIntercept("www.hello.com", "DELETE")
 	g.Expect(result.Allowed).To(gomega.BeFalse())
 	g.Expect(result.Message).To(gomega.ContainSubstring("rule3"))
-	result = ValidateTrafficIntercept("www.hellooo.com", "DELETE")
+	result = mgr.ValidateTrafficIntercept("www.hellooo.com", "DELETE")
 	g.Expect(result.Allowed).To(gomega.BeFalse())
 }

@@ -30,8 +30,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
-	"github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh"
-	ctrlmeshv1alpha1 "github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh/v1alpha1"
+	"github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh"
+	ctrlmeshv1alpha1 "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/v1alpha1"
 )
 
 var (
@@ -43,7 +43,7 @@ func init() {
 	configSelector, _ = metav1.LabelSelectorAsSelector(&metav1.LabelSelector{
 		MatchExpressions: []metav1.LabelSelectorRequirement{
 			{
-				Key:      ctrlmesh.KdIgnoreValidateLabel,
+				Key:      ctrlmesh.CtrlmeshIgnoreValidateLabel,
 				Operator: metav1.LabelSelectorOpDoesNotExist,
 			},
 		},
@@ -65,7 +65,7 @@ func (h *ValidatingHandler) Handle(ctx context.Context, req admission.Request) a
 		return admission.Errored(http.StatusBadRequest, err)
 	}
 
-	if _, ok := obj.GetLabels()[ctrlmesh.KdIgnoreValidateLabel]; ok {
+	if _, ok := obj.GetLabels()[ctrlmesh.CtrlmeshIgnoreValidateLabel]; ok {
 		return admission.ValidationResponse(true, "")
 	}
 

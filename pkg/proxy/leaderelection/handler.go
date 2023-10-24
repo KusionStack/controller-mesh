@@ -28,9 +28,9 @@ import (
 	"k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/klog/v2"
 
-	ctrlmeshproto "github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh/proto"
-	protomanager "github.com/KusionStack/ctrlmesh/pkg/proxy/proto"
-	"github.com/KusionStack/ctrlmesh/pkg/utils"
+	ctrlmeshproto "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/proto"
+	protomanager "github.com/KusionStack/controller-mesh/pkg/proxy/proto"
+	"github.com/KusionStack/controller-mesh/pkg/utils"
 )
 
 type Handler interface {

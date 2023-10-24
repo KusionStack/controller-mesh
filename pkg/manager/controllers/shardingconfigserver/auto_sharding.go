@@ -25,15 +25,15 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh"
-	ctrlmeshv1alpha1 "github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh/v1alpha1"
-	"github.com/KusionStack/ctrlmesh/pkg/utils"
+	"github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh"
+	ctrlmeshv1alpha1 "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/v1alpha1"
+	"github.com/KusionStack/controller-mesh/pkg/utils"
 )
 
 func (r *ShardingConfigReconciler) AutoSharding(ctx context.Context, root *ctrlmeshv1alpha1.ShardingConfig) error {
 
 	oldCfgs := &ctrlmeshv1alpha1.ShardingConfigList{}
-	if err := r.List(ctx, oldCfgs, client.MatchingLabels{ctrlmesh.KdAutoShardingRootLabel: root.Name}); err != nil && !errors.IsNotFound(err) {
+	if err := r.List(ctx, oldCfgs, client.MatchingLabels{ctrlmesh.CtrlmeshAutoShardingRootLabel: root.Name}); err != nil && !errors.IsNotFound(err) {
 		return err
 	}
 
@@ -65,7 +65,7 @@ func (r *ShardingConfigReconciler) AutoSharding(ctx context.Context, root *ctrlm
 	newHash := utils.GetMD5Hash(utils.DumpJSON(root.Spec.Root))
 	oldMap := map[string]*ctrlmeshv1alpha1.ShardingConfig{}
 	for i, cfg := range oldCfgs.Items {
-		if cfg.Annotations[ctrlmesh.KdAutoShardingHashAnno] != newHash {
+		if cfg.Annotations[ctrlmesh.CtrlmeshAutoShardingHashAnno] != newHash {
 			err := r.Delete(ctx, &oldCfgs.Items[i])
 			if err != nil {
 				return err
@@ -114,10 +114,10 @@ func getChild(root *ctrlmeshv1alpha1.ShardingConfig) (result []*ctrlmeshv1alpha1
 				Name:      root.Spec.Root.Prefix + "-0-canary",
 				Namespace: root.Namespace,
 				Annotations: map[string]string{
-					ctrlmesh.KdAutoShardingHashAnno: hash,
+					ctrlmesh.CtrlmeshAutoShardingHashAnno: hash,
 				},
 				Labels: map[string]string{
-					ctrlmesh.KdAutoShardingRootLabel: root.Name,
+					ctrlmesh.CtrlmeshAutoShardingRootLabel: root.Name,
 				},
 			},
 			Spec: ctrlmeshv1alpha1.ShardingConfigSpec{
@@ -155,10 +155,10 @@ func getChild(root *ctrlmeshv1alpha1.ShardingConfig) (result []*ctrlmeshv1alpha1
 				Name:      root.Spec.Root.Prefix + "-" + strconv.Itoa(id) + "-normal",
 				Namespace: root.Namespace,
 				Annotations: map[string]string{
-					ctrlmesh.KdAutoShardingHashAnno: hash,
+					ctrlmesh.CtrlmeshAutoShardingHashAnno: hash,
 				},
 				Labels: map[string]string{
-					ctrlmesh.KdAutoShardingRootLabel: root.Name,
+					ctrlmesh.CtrlmeshAutoShardingRootLabel: root.Name,
 				},
 			},
 			Spec: ctrlmeshv1alpha1.ShardingConfigSpec{
@@ -185,14 +185,14 @@ func genCanaryLimits(canaryConfig *ctrlmeshv1alpha1.CanaryConfig, originLimiter 
 		}
 		if len(canaryConfig.InNamespaces) > 0 {
 			newSel.Selector.MatchExpressions = append(newSel.Selector.MatchExpressions, metav1.LabelSelectorRequirement{
-				Key:      ctrlmesh.KdNamespaceKey,
+				Key:      ctrlmesh.CtrlmeshNamespaceKey,
 				Operator: metav1.LabelSelectorOpIn,
 				Values:   canaryConfig.InNamespaces,
 			})
 		}
 		if len(canaryConfig.InShardHash) > 0 {
 			newSel.Selector.MatchExpressions = append(newSel.Selector.MatchExpressions, metav1.LabelSelectorRequirement{
-				Key:      ctrlmesh.KdShardHashKey,
+				Key:      ctrlmesh.CtrlmeshShardHashKey,
 				Operator: metav1.LabelSelectorOpIn,
 				Values:   canaryConfig.InShardHash,
 			})
@@ -214,20 +214,20 @@ func genShardingGlobalLimits(root *ctrlmeshv1alpha1.ShardingConfig, batch []stri
 		}
 		if canaryConfig != nil && len(canaryConfig.InNamespaces) > 0 && *root.Spec.Root.Canary.Replicas > 0 {
 			newSel.Selector.MatchExpressions = append(newSel.Selector.MatchExpressions, metav1.LabelSelectorRequirement{
-				Key:      ctrlmesh.KdNamespaceKey,
+				Key:      ctrlmesh.CtrlmeshNamespaceKey,
 				Operator: metav1.LabelSelectorOpNotIn,
 				Values:   canaryConfig.InNamespaces,
 			})
 		}
 		if canaryConfig != nil && len(canaryConfig.InShardHash) > 0 && *root.Spec.Root.Canary.Replicas > 0 {
 			newSel.Selector.MatchExpressions = append(newSel.Selector.MatchExpressions, metav1.LabelSelectorRequirement{
-				Key:      ctrlmesh.KdShardHashKey,
+				Key:      ctrlmesh.CtrlmeshShardHashKey,
 				Operator: metav1.LabelSelectorOpNotIn,
 				Values:   canaryConfig.InShardHash,
 			})
 		}
 		newSel.Selector.MatchExpressions = append(newSel.Selector.MatchExpressions, metav1.LabelSelectorRequirement{
-			Key:      ctrlmesh.KdShardHashKey,
+			Key:      ctrlmesh.CtrlmeshShardHashKey,
 			Operator: metav1.LabelSelectorOpIn,
 			Values:   batch,
 		})

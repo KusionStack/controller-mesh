@@ -22,7 +22,7 @@ import (
 	kubeclientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
-	ctrlmeshclientset "github.com/KusionStack/ctrlmesh/pkg/client/clientset/versioned"
+	ctrlmeshclientset "github.com/KusionStack/controller-mesh/pkg/client/clientset/versioned"
 )
 
 // GenericClientset defines a generic client

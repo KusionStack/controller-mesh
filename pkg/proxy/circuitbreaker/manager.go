@@ -18,257 +18,286 @@ package circuitbreaker
 
 import (
 	"context"
-	"encoding/json"
+	"errors"
 	"fmt"
-	"math"
+	"net/http"
 	"net/url"
-	"os"
-	"reflect"
 	"strings"
+	"sync"
 	"time"
-	"unsafe"
 
 	"golang.org/x/time/rate"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/util/retry"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	"k8s.io/apiserver/pkg/endpoints/handlers/responsewriters"
+	apirequest "k8s.io/apiserver/pkg/endpoints/request"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
-	"github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh/constants"
-	appsv1alpha1 "github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh/v1alpha1"
-	"github.com/KusionStack/ctrlmesh/pkg/utils"
-)
-
-const (
-	syncPeriod = 5 * time.Second
-	statusTTL  = 1 * time.Minute
+	ctrlmeshproto "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/proto"
 )
 
 var (
-	logger                       = logf.Log.WithName("limiter-manager")
-	defaultLimiterStore          = newLimiterStore()
-	defaultBreakerLease          = NewBreakerLease()
-	defaultTrafficInterceptStore = newTrafficInterceptStore()
-
-	EnableCircuitBreaker = os.Getenv(constants.EnvEnableCircuitBreaker) == "true"
+	logger = logf.Log.WithName("limiter-manager")
 )
+
+type ManagerInterface interface {
+	Validator
+	Sync(config *ctrlmeshproto.CircuitBreaker) (*ctrlmeshproto.ConfigResp, error)
+}
+
+type Validator interface {
+	ValidateTrafficIntercept(URL string, method string) (result *ValidateResult)
+	ValidateRest(URL string, method string) (result ValidateResult)
+	ValidateResource(namespace, apiGroup, resource, verb string) (result ValidateResult)
+	HandlerWrapper() func(http.Handler) http.Handler
+}
+
+type manager struct {
+	breakerMap map[string]*ctrlmeshproto.CircuitBreaker
+	mu         sync.RWMutex
+
+	limiterStore          *store
+	trafficInterceptStore *trafficInterceptStore
+}
+
+func NewManager(ctx context.Context) ManagerInterface {
+	return &manager{
+		breakerMap:            map[string]*ctrlmeshproto.CircuitBreaker{},
+		limiterStore:          newLimiterStore(ctx),
+		trafficInterceptStore: newTrafficInterceptStore(),
+	}
+}
+
+func (m *manager) Sync(config *ctrlmeshproto.CircuitBreaker) (*ctrlmeshproto.ConfigResp, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	switch config.Option {
+	case ctrlmeshproto.CircuitBreaker_CREATE, ctrlmeshproto.CircuitBreaker_UPDATE:
+		cb, ok := m.breakerMap[config.Name]
+		if ok && config.ConfigHash == cb.ConfigHash {
+			return &ctrlmeshproto.ConfigResp{
+				Success:          true,
+				Message:          fmt.Sprintf("circuitBreaker spec hash not updated, hash %s", cb.ConfigHash),
+				LimitingSnapshot: m.snapshot(config.Name),
+			}, nil
+		} else {
+			m.registerRules(config)
+			var msg string
+			if cb == nil {
+				msg = fmt.Sprintf("new circuitBreaker with spec hash %s", config.ConfigHash)
+			} else {
+				msg = fmt.Sprintf("circuitBreaker spec hash updated, old hash %s, new %s", cb.ConfigHash, config.ConfigHash)
+			}
+			return &ctrlmeshproto.ConfigResp{
+				Success:          true,
+				Message:          msg,
+				LimitingSnapshot: m.snapshot(config.Name),
+			}, nil
+		}
+	case ctrlmeshproto.CircuitBreaker_DELETE:
+		if cb, ok := m.breakerMap[config.Name]; ok {
+			m.unregisterRules(cb.Name)
+			return &ctrlmeshproto.ConfigResp{
+				Success: true,
+				Message: fmt.Sprintf("circuitBreaker config %s success deleted", cb.Name),
+			}, nil
+		} else {
+			return &ctrlmeshproto.ConfigResp{
+				Success: true,
+				Message: fmt.Sprintf("circuitBreaker config %s already deleted", cb.Name),
+			}, nil
+		}
+	case ctrlmeshproto.CircuitBreaker_CHECK:
+		cb, ok := m.breakerMap[config.Name]
+		if !ok {
+			return &ctrlmeshproto.ConfigResp{Success: false, Message: fmt.Sprintf("circuit breaker config %s not found", cb.Name), LimitingSnapshot: m.snapshot(config.Name)}, nil
+		} else if config.ConfigHash != cb.ConfigHash {
+			return &ctrlmeshproto.ConfigResp{Success: false, Message: fmt.Sprintf("unequal circuit breaker %s hash, old %s, new %s", cb.Name, cb.ConfigHash, config.ConfigHash), LimitingSnapshot: m.snapshot(config.Name)}, nil
+		}
+		return &ctrlmeshproto.ConfigResp{Success: true, Message: "", LimitingSnapshot: m.snapshot(config.Name)}, nil
+	case ctrlmeshproto.CircuitBreaker_RECOVER:
+		var recoverNames string
+		if config.RateLimitings != nil {
+			for _, rl := range config.RateLimitings {
+				key := fmt.Sprintf("%s:%s", config.Name, rl.Name)
+				m.recoverBreaker(key)
+				recoverNames = fmt.Sprintf("%s [%s]", recoverNames, key)
+			}
+		}
+		return &ctrlmeshproto.ConfigResp{Success: true, Message: fmt.Sprintf("recovered limiting rules %s", recoverNames), LimitingSnapshot: m.snapshot(config.Name)}, nil
+	default:
+		return &ctrlmeshproto.ConfigResp{
+			Success: false,
+			Message: fmt.Sprintf("illegal config option %s", config.Option),
+		}, fmt.Errorf("illegal config option %s", config.Option)
+	}
+}
+
+func (m *manager) snapshot(breaker string) []*ctrlmeshproto.LimitingSnapshot {
+	var res []*ctrlmeshproto.LimitingSnapshot
+	m.limiterStore.mu.RLock()
+	defer m.limiterStore.mu.RUnlock()
+	for key, sta := range m.limiterStore.states {
+		arr := strings.Split(key, ":")
+		cbName, limitName := arr[0], arr[1]
+		if cbName != breaker {
+			continue
+		}
+		breakerState, lastTransitionTime, recoverTime := sta.read()
+		res = append(res, &ctrlmeshproto.LimitingSnapshot{
+			LimitingName:       limitName,
+			State:              breakerState,
+			RecoverTime:        recoverTime,
+			LastTransitionTime: lastTransitionTime,
+		})
+	}
+	return res
+}
 
 type ValidateResult struct {
 	Allowed bool
 	Reason  string
 	Message string
-	Force   bool
 }
 
 // RegisterRules register a circuit breaker to the local limiter store
-func RegisterRules(cb *appsv1alpha1.CircuitBreaker) {
-	logger.Info("register rule", "circuit-breaker", cb.Namespace+"/"+cb.Name)
-	m := make(map[string]appsv1alpha1.LimitingSnapshot)
-	for i := range cb.Status.LimitingSnapshots {
-		snapshot := cb.Status.LimitingSnapshots[i]
-		if snapshot.Endpoint == utils.EnvPodIpVal && snapshot.PodName == utils.EnvPodNameVal {
-			m[snapshot.Name] = snapshot
-		}
+func (m *manager) registerRules(cb *ctrlmeshproto.CircuitBreaker) {
+	logger.Info("register rule", "circuit-breaker", cb.Name)
+	if _, ok := m.breakerMap[cb.Name]; ok {
+		m.unregisterRules(cb.Name)
 	}
-	for _, limiting := range cb.Spec.RateLimitings {
-		key := fmt.Sprintf("%s:%s:%s", cb.Namespace, cb.Name, limiting.Name)
-		snapshot, ok := m[limiting.Name]
-		if ok {
-			defaultLimiterStore.createOrUpdateRule(key, limiting.DeepCopy(), snapshot.DeepCopy())
-		} else {
-			defaultLimiterStore.createOrUpdateRule(key, limiting.DeepCopy(), &appsv1alpha1.LimitingSnapshot{Status: appsv1alpha1.BreakerStatusClosed})
-		}
+
+	for _, limiting := range cb.RateLimitings {
+		key := fmt.Sprintf("%s:%s", cb.Name, limiting.Name)
+		m.limiterStore.createOrUpdateRule(key, limiting.DeepCopy(), &ctrlmeshproto.LimitingSnapshot{State: ctrlmeshproto.BreakerState_CLOSED})
 	}
-	for _, trafficInterceptRule := range cb.Spec.TrafficInterceptRules {
-		key := fmt.Sprintf("%s:%s:%s", cb.Namespace, cb.Name, trafficInterceptRule.Name)
-		defaultTrafficInterceptStore.createOrUpdateRule(key, &trafficInterceptRule)
+	for _, trafficInterceptRule := range cb.TrafficInterceptRules {
+		key := fmt.Sprintf("%s:%s", cb.Name, trafficInterceptRule.Name)
+		m.trafficInterceptStore.createOrUpdateRule(key, trafficInterceptRule)
 	}
 }
 
 // UnregisterRules unregister a circuit breaker to the local limiter store
-func UnregisterRules(cb *appsv1alpha1.CircuitBreaker) {
-	logger.Info("unregister rule", "circuit-breaker", cb.Namespace+"/"+cb.Name)
-	for _, limiting := range cb.Spec.RateLimitings {
-		key := fmt.Sprintf("%s:%s:%s", cb.Namespace, cb.Name, limiting.Name)
-		defaultLimiterStore.deleteRule(key)
-	}
-	for _, trafficInterceptRule := range cb.Spec.TrafficInterceptRules {
-		key := fmt.Sprintf("%s:%s:%s", cb.Namespace, cb.Name, trafficInterceptRule.Name)
-		defaultTrafficInterceptStore.deleteRule(key)
-	}
-}
-
-func UnregisterLimitingRule(cb *appsv1alpha1.CircuitBreaker, limiting *appsv1alpha1.Limiting) {
-	logger.Info("unregister limiting rule", "circuit-breaker", cb.Namespace+"/"+cb.Name+"/"+limiting.Name)
-	key := fmt.Sprintf("%s:%s:%s", cb.Namespace, cb.Name, limiting.Name)
-	defaultLimiterStore.deleteRule(key)
-}
-
-func UnregisterTrafficInterceptRule(cb *appsv1alpha1.CircuitBreaker, intercept *appsv1alpha1.TrafficInterceptRule) {
-	logger.Info("unregister traffic intercept rule", "circuit-breaker", cb.Namespace+"/"+cb.Name+"/"+intercept.Name)
-	key := fmt.Sprintf("%s:%s:%s", cb.Namespace, cb.Name, intercept.Name)
-	defaultTrafficInterceptStore.deleteRule(key)
-}
-
-func RecoverBreaker(limitingName string) {
-	if defaultLimiterStore.states[limitingName] != nil {
-		logger.Info("RecoverBreaker", "name", limitingName, "status", defaultLimiterStore.states[limitingName].status)
-		defaultLimiterStore.states[limitingName].recoverBreaker()
+func (m *manager) unregisterRules(cbName string) {
+	logger.Info("unregister rule", "CircuitBreaker", cbName)
+	cb, ok := m.breakerMap[cbName]
+	if !ok {
 		return
 	}
-	logger.Error(fmt.Errorf("breaker not found"), fmt.Sprintf("limitingName %s not exist", limitingName))
+	for _, limiting := range cb.RateLimitings {
+		key := fmt.Sprintf("%s:%s", cb.Name, limiting.Name)
+		m.limiterStore.deleteRule(key)
+	}
+	for _, trafficInterceptRule := range cb.TrafficInterceptRules {
+		key := fmt.Sprintf("%s:%s", cb.Name, trafficInterceptRule.Name)
+		m.trafficInterceptStore.deleteRule(key)
+	}
+}
+
+func (m *manager) unregisterLimitingRule(cb *ctrlmeshproto.CircuitBreaker, limiting *ctrlmeshproto.RateLimiting) {
+	logger.Info("unregister limiting rule", "circuit-breaker", cb.Name+"/"+limiting.Name)
+	key := fmt.Sprintf("%s:%s", cb.Name, limiting.Name)
+	m.limiterStore.deleteRule(key)
+}
+
+func (m *manager) unregisterTrafficInterceptRule(cb *ctrlmeshproto.CircuitBreaker, intercept *ctrlmeshproto.TrafficInterceptRule) {
+	logger.Info("unregister traffic intercept rule", "circuit-breaker", cb.Name+"/"+intercept.Name)
+	key := fmt.Sprintf("%s:%s", cb.Name, intercept.Name)
+	m.trafficInterceptStore.deleteRule(key)
+}
+
+func (m *manager) recoverBreaker(key string) {
+	if m.limiterStore.states[key] == nil {
+		logger.Error(fmt.Errorf("breaker not found"), fmt.Sprintf("limitingName %s not exist", key))
+		return
+	}
+	logger.Info("RecoverBreaker", "name", key, "state", m.limiterStore.states[key].state)
+	m.limiterStore.states[key].recoverBreaker()
 }
 
 // ValidateTrafficIntercept validate a rest request
-func ValidateTrafficIntercept(URL string, method string) (result *ValidateResult) {
+func (m *manager) ValidateTrafficIntercept(URL string, method string) (result *ValidateResult) {
 	defer func() {
 		logger.Info("validate rest", "URL", URL, "method", method, "result", result)
 	}()
 
-	if !EnableCircuitBreaker {
-		result = &ValidateResult{Allowed: true, Reason: "disable CircuitBreaker"}
-		return result
-	}
-
-	indexes := defaultTrafficInterceptStore.normalIndexes[indexForRest(URL, method)]
+	indexes := m.trafficInterceptStore.normalIndexes[indexForRest(URL, method)]
 	if indexes == nil {
-		indexes = defaultTrafficInterceptStore.normalIndexes[indexForRest(URL, "*")]
+		indexes = m.trafficInterceptStore.normalIndexes[indexForRest(URL, "*")]
 	}
 	for key := range indexes {
-		trafficInterceptRule := defaultTrafficInterceptStore.rules[key]
+		trafficInterceptRule := m.trafficInterceptStore.rules[key]
 		if trafficInterceptRule != nil {
-			if appsv1alpha1.InterceptTypeWhite == trafficInterceptRule.InterceptType {
-				result = &ValidateResult{Allowed: true, Reason: "white", Message: fmt.Sprintf("Traffic is allow by white rule, name: %s", trafficInterceptRule.Name)}
+			if ctrlmeshproto.TrafficInterceptRule_INTERCEPT_WHITELIST == trafficInterceptRule.InterceptType {
+				result = &ValidateResult{Allowed: true, Reason: "Whitelist", Message: fmt.Sprintf("Traffic is allow by whitelist rule, name: %s", trafficInterceptRule.Name)}
 				return result
-			} else if appsv1alpha1.InterceptTypeBlack == trafficInterceptRule.InterceptType {
-				result = &ValidateResult{Allowed: false, Reason: "black", Message: fmt.Sprintf("Traffic is intercept by black rule, name: %s", trafficInterceptRule.Name)}
+			} else if ctrlmeshproto.TrafficInterceptRule_INTERCEPT_BLACKLIST == trafficInterceptRule.InterceptType {
+				result = &ValidateResult{Allowed: false, Reason: "Blacklist", Message: fmt.Sprintf("Traffic is intercept by blacklist rule, name: %s", trafficInterceptRule.Name)}
 				return result
 			}
 		}
 	}
 
-	for key, regs := range defaultTrafficInterceptStore.regexpIndexes {
+	for key, regs := range m.trafficInterceptStore.regexpIndexes {
 		for _, reg := range regs {
 			if reg.method == method && reg.reg.MatchString(URL) {
-				if appsv1alpha1.InterceptTypeWhite == reg.regType {
-					result = &ValidateResult{Allowed: true, Reason: "white", Message: fmt.Sprintf("Traffic is allow by white rule: %s, regexp: %s", key, reg.reg.String())}
+				if ctrlmeshproto.TrafficInterceptRule_INTERCEPT_WHITELIST == reg.regType {
+					result = &ValidateResult{Allowed: true, Reason: "Whitelist", Message: fmt.Sprintf("Traffic is allow by whitelist rule: %s, regexp: %s", key, reg.reg.String())}
 					return result
-				} else if appsv1alpha1.InterceptTypeBlack == reg.regType {
-					result = &ValidateResult{Allowed: false, Reason: "black", Message: fmt.Sprintf("Traffic is intercept by black rule: %s, regexp: %s", key, reg.reg.String())}
+				} else if ctrlmeshproto.TrafficInterceptRule_INTERCEPT_BLACKLIST == reg.regType {
+					result = &ValidateResult{Allowed: false, Reason: "Blacklist", Message: fmt.Sprintf("Traffic is intercept by blacklist rule: %s, regexp: %s", key, reg.reg.String())}
 					return result
 				}
 			}
 		}
 	}
 
-	for _, rule := range defaultTrafficInterceptStore.rules {
-		if rule.InterceptType == appsv1alpha1.InterceptTypeWhite {
-			result = &ValidateResult{Allowed: false, Reason: "No rule match", Message: "Default strategy is white, should deny"}
+	for _, rule := range m.trafficInterceptStore.rules {
+		if rule.InterceptType == ctrlmeshproto.TrafficInterceptRule_INTERCEPT_WHITELIST {
+			result = &ValidateResult{Allowed: false, Reason: "No rule match", Message: "Default strategy is whitelist, should deny"}
 			break
 		}
 	}
 	if result == nil {
-		result = &ValidateResult{Allowed: true, Reason: "No rule match", Message: "Default strategy is black, should allow"}
+		result = &ValidateResult{Allowed: true, Reason: "No rule match", Message: "Default strategy is blacklist, should allow"}
 	}
 	return result
 }
 
 // ValidateRest validate a rest request
 // TODO: consider regex matching
-func ValidateRest(URL string, method string) (result ValidateResult) {
+func (m *manager) ValidateRest(URL string, method string) (result ValidateResult) {
 	now := time.Now()
 	defer func() {
 		logger.Info("validate rest", "URL", URL, "method", method, "result", result, "cost time", time.Since(now).String())
 	}()
 
-	if !EnableCircuitBreaker {
-		result = ValidateResult{Allowed: true, Reason: "disable CircuitBreaker", Force: true}
-		return result
-	}
-
 	urls := generateWildcardUrls(URL, method)
 	for _, url := range urls {
-		limitings, limiters, states := defaultLimiterStore.byIndex(IndexRest, url)
+		limitings, limiters, states := m.limiterStore.byIndex(IndexRest, url)
 		if len(limitings) == 0 {
 			continue
 		}
-		result = doValidation(limitings, limiters, states, false)
-		return result
-	}
-	result = ValidateResult{Allowed: true, Reason: "No rule match", Force: true}
-	return result
-}
-
-func ValidateRestWithOption(URL string, method string, isPre bool) (result ValidateResult) {
-	now := time.Now()
-	defer func() {
-		logger.Info("validate rest", "URL", URL, "method", method, "result", result, "cost time", time.Since(now).String())
-	}()
-
-	if !EnableCircuitBreaker {
-		result = ValidateResult{Allowed: true, Reason: "disable CircuitBreaker", Force: true}
-		return result
-	}
-
-	urls := generateWildcardUrls(URL, method)
-	for _, url := range urls {
-		limitings, limiters, states := defaultLimiterStore.byIndex(IndexRest, url)
-		if len(limitings) == 0 {
-			continue
-		}
-		result = doValidation(limitings, limiters, states, isPre)
-		return result
-	}
-	result = ValidateResult{Allowed: true, Reason: "No rule match", Force: true}
-	return result
-}
-
-// ValidateResource validate a request to api server
-// TODO: consider regex matching
-func ValidateResource(namespace, apiGroup, resource, verb string) (result ValidateResult) {
-	now := time.Now()
-	defer func() {
-		logger.Info("validate resource", "namespace", namespace, "apiGroup", apiGroup, "resource", resource, "verb", verb, "result", result, "cost time", time.Since(now).String())
-	}()
-
-	if !EnableCircuitBreaker {
-		result = ValidateResult{Allowed: true, Reason: "disable CircuitBreaker", Force: true}
-		return result
-	}
-
-	seeds := generateWildcardSeeds(namespace, apiGroup, resource, verb)
-	for _, seed := range seeds {
-		limitings, limiters, states := defaultLimiterStore.byIndex(IndexResource, seed)
-		if len(limitings) == 0 {
-			continue
-		}
-		result = doValidation(limitings, limiters, states, false)
+		result = m.doValidation(limitings, limiters, states)
 		return result
 	}
 	result = ValidateResult{Allowed: true, Reason: "No rule match"}
 	return result
 }
 
-func ValidateResourceWithOption(namespace, apiGroup, resource, verb string, isPre bool) (result ValidateResult) {
+// ValidateResource validate a request to api server
+// TODO: consider regex matching
+func (m *manager) ValidateResource(namespace, apiGroup, resource, verb string) (result ValidateResult) {
 	now := time.Now()
 	defer func() {
 		logger.Info("validate resource", "namespace", namespace, "apiGroup", apiGroup, "resource", resource, "verb", verb, "result", result, "cost time", time.Since(now).String())
 	}()
 
-	if !EnableCircuitBreaker {
-		result = ValidateResult{Allowed: true, Reason: "disable CircuitBreaker", Force: true}
-		return result
-	}
-
 	seeds := generateWildcardSeeds(namespace, apiGroup, resource, verb)
 	for _, seed := range seeds {
-		limitings, limiters, states := defaultLimiterStore.byIndex(IndexResource, seed)
+		limitings, limiters, states := m.limiterStore.byIndex(IndexResource, seed)
 		if len(limitings) == 0 {
 			continue
 		}
-		result = doValidation(limitings, limiters, states, isPre)
+		result = m.doValidation(limitings, limiters, states)
 		return result
 	}
 	result = ValidateResult{Allowed: true, Reason: "No rule match"}
@@ -334,62 +363,50 @@ func generateWildcardSeeds(namespace, apiGroup, resource, verb string) []string 
 	return result
 }
 
-func doValidation(limitings []*appsv1alpha1.Limiting, limiters []*rate.Limiter, states []*state, isPre bool) ValidateResult {
+func (m *manager) doValidation(limitings []*ctrlmeshproto.RateLimiting, limiters []*rate.Limiter, states []*state) ValidateResult {
 	result := ValidateResult{
 		Allowed: true,
 		Reason:  "Default allow",
-		Force:   true,
 	}
 	for idx := range limitings {
 		// check current circuit breaker status first
 		status, _, _ := states[idx].read()
 		switch status {
-		case appsv1alpha1.BreakerStatusOpened: // cb already opened, just refuse
+		case ctrlmeshproto.BreakerState_OPENED: // cb already opened, just refuse
 			result.Allowed = false
 			result.Reason = "CircuitBreakerTriggered"
 			result.Message = fmt.Sprintf("the circuit breaker is triggered. Limiting rule name: %s", limitings[idx].Name)
 		}
-		// check limiter and policy
-		if limitings[idx].ValidatePolicy == appsv1alpha1.AfterHttpSuccess && isPre {
-			switch limitings[idx].TriggerPolicy {
-			case appsv1alpha1.TriggerPolicyNormal: // normal policy, determine by limiter, and trigger cb open when refuse
-				if states[idx].status == appsv1alpha1.BreakerStatusClosed {
-					result.Reason = result.Reason + "-PreAllow"
-					// should acquire token after
-					result.Force = false
-				} else {
-					result.Reason = result.Reason + "-PreReject"
-				}
-				continue
-			}
-		}
 		switch limitings[idx].TriggerPolicy {
-		case appsv1alpha1.TriggerPolicyForceOpened: // force open policy, just refuse
+		case ctrlmeshproto.RateLimiting_TRIGGER_POLICY_FORCE_OPENED: // force open policy, just refuse
 			states[idx].triggerBreaker()
 			result.Allowed = false
 			result.Reason = "CircuitBreakerForceOpened"
 			result.Message = fmt.Sprintf("the circuit breaker is force opened. Limiting rule name: %s", limitings[idx].Name) // force
-		case appsv1alpha1.TriggerPolicyForceClosed: // force close policy, just allow
+		case ctrlmeshproto.RateLimiting_TRIGGER_POLICY_FORCE_CLOSED: // force close policy, just allow
 			states[idx].recoverBreaker()
 			result.Allowed = true
 			result.Reason = "CircuitBreakerForceClosed"
 			result.Message = fmt.Sprintf("the circuit breaker is force closed. Limiting rule name: %s", limitings[idx].Name)
-		case appsv1alpha1.TriggerPolicyLimiterOnly: // limiter only policy, determine by limiter
+		case ctrlmeshproto.RateLimiting_TRIGGER_POLICY_LIMITER_ONLY: // limiter only policy, determine by limiter
 			states[idx].recoverBreaker()
 			if !limiters[idx].Allow() {
 				result.Allowed = false
 				result.Reason = "OverLimit"
 				result.Message = fmt.Sprintf("the request is over limit by limiting rule: %s", limitings[idx].Name)
+			} else {
+
 			}
-		case appsv1alpha1.TriggerPolicyNormal: // normal policy, determine by limiter, and trigger cb open when refuse
-			if states[idx].status == appsv1alpha1.BreakerStatusClosed {
+		case ctrlmeshproto.RateLimiting_TRIGGER_POLICY_NORMAL: // normal policy, determine by limiter, and trigger cb open when refuse
+			if states[idx].state == ctrlmeshproto.BreakerState_CLOSED {
 				if !limiters[idx].Allow() {
 					result.Allowed = false
 					result.Reason = "OverLimit"
 					result.Message = fmt.Sprintf("the request is over limit by limiting rule: %s", limitings[idx].Name)
-					if limitings[idx].RecoverPolicy == appsv1alpha1.RecoverPolicySleepingWindow {
+					if limitings[idx].RecoverPolicy.Type == ctrlmeshproto.RateLimiting_RECOVER_POLICY_SLEEPING_WINDOW {
 						d, _ := time.ParseDuration(limitings[idx].Properties["sleepingWindowSize"])
 						states[idx].triggerBreakerWithTimeWindow(d)
+						m.limiterStore.registerState(states[idx])
 					} else {
 						states[idx].triggerBreaker()
 					}
@@ -402,93 +419,28 @@ func doValidation(limitings []*appsv1alpha1.Limiting, limiters []*rate.Limiter, 
 	return result
 }
 
-func StartSync(ctx context.Context, client client.Client, stop <-chan struct{}) {
-	// sync status every 5 seconds
-	wait.Until(func() {
-		defaultLimiterStore.iterate(func(key string) {
-			limiting := defaultLimiterStore.rules[key]
-			limiter := defaultLimiterStore.limiters[key]
-			s := defaultLimiterStore.states[key]
-			status, _, _ := s.read()
-			nowTime := metav1.Now()
-			arr := strings.Split(key, ":")
-			namespace, name, ruleName := arr[0], arr[1], arr[2]
-
-			// To get the latest tokens， should do AllowN function
-			//limiter.AllowN(time.Now(), 0)
-			tokens, last := parseLimiter(limiter)
-
-			// register breaker lease if necessary
-			if limiting.TriggerPolicy == appsv1alpha1.TriggerPolicyNormal &&
-				limiting.RecoverPolicy == appsv1alpha1.RecoverPolicySleepingWindow {
-				defaultBreakerLease.registerState(s)
-			}
-
-			err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-				var cb appsv1alpha1.CircuitBreaker
-				err := client.Get(context.TODO(), types.NamespacedName{
-					Namespace: namespace,
-					Name:      name,
-				}, &cb)
-				if err != nil {
-					return err
-				}
-				cleared := false
-				cb.Status.LastUpdatedTime = metav1.Now()
-				limit := make([]appsv1alpha1.LimitingSnapshot, 0, len(cb.Status.LimitingSnapshots))
-				for _, snapshot := range cb.Status.LimitingSnapshots {
-					if snapshot.Name == ruleName && utils.EnvPodIpVal == snapshot.Endpoint && snapshot.PodName == utils.EnvPodNameVal {
-						limit = append(limit, appsv1alpha1.LimitingSnapshot{
-							Name:               snapshot.Name,
-							LastTransitionTime: &nowTime,
-							Status:             status,
-							Endpoint:           utils.EnvPodIpVal,
-							PodName:            utils.EnvPodNameVal,
-							Bucket: appsv1alpha1.BucketSnapshot{
-								// TODO: last acquire fix
-								LastAcquireTimestamp: uint64(last.Unix()),
-								AvailableTokens:      uint64(math.Floor(tokens + 0.5)),
-							},
-						})
-					} else if utils.EnvPodIpVal != snapshot.Endpoint && snapshot.LastTransitionTime != nil && nowTime.Sub(snapshot.LastTransitionTime.Time) > statusTTL {
-						cleared = true
-						logger.Info("clear ttl limiting snapshot", "endpoint", snapshot.Endpoint, "name", snapshot.Name)
-						continue
-					} else if utils.EnvPodIpVal != snapshot.Endpoint && snapshot.LastTransitionTime == nil {
-						cleared = true
-						logger.Info("clear null lastTransitionTime limiting snapshot", "endpoint", snapshot.Endpoint, "name", snapshot.Name)
-						continue
-					} else {
-						limit = append(limit, *snapshot.DeepCopy())
-					}
-				}
-				if cleared {
-					oldSnapByte, _ := json.Marshal(cb.Status.LimitingSnapshots)
-					newSnapByte, _ := json.Marshal(limit)
-					logger.Info("clear ttl status", "old", string(oldSnapByte), "new", string(newSnapByte))
-				}
-				cb.Status.LimitingSnapshots = limit
-
-				return client.Status().Update(ctx, &cb)
-			})
-
-			if err != nil {
-				logger.Error(err, "failed to sync circuit breaker status", "namespace", namespace, "name", name)
-			}
-		})
-	}, syncPeriod, stop)
+func (m *manager) HandlerWrapper() func(http.Handler) http.Handler {
+	return func(handler http.Handler) http.Handler {
+		return withBreaker(m, handler)
+	}
 }
 
-// parseLimiter parse tokens and last acquire time from rate.Limiter
-// TODO: may cause data racing, since the mutex in the rate.limiter is not considered here
-func parseLimiter(limiter *rate.Limiter) (float64, time.Time) {
-	p := unsafe.Pointer(limiter)
-	sfTokens, _ := reflect.TypeOf(limiter).Elem().FieldByName("tokens")
-	tokensPtr := unsafe.Pointer(uintptr(p) + sfTokens.Offset)
-	sfLast, _ := reflect.TypeOf(limiter).Elem().FieldByName("last")
-	lastPtr := unsafe.Pointer(uintptr(p) + sfLast.Offset)
+func withBreaker(validator Validator, handler http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		ctx := req.Context()
+		requestInfo, ok := apirequest.RequestInfoFrom(ctx)
+		if !ok {
+			// if this happens, the handler chain isn't setup correctly because there is no request info
+			responsewriters.InternalError(w, req, errors.New("no RequestInfo found in the context"))
+			return
+		}
 
-	tokens := (*float64)(tokensPtr)
-	last := (*time.Time)(lastPtr)
-	return *tokens, *last
+		result := validator.ValidateResource(requestInfo.Namespace, requestInfo.APIGroup, requestInfo.Resource, requestInfo.Verb)
+		if !result.Allowed {
+			http.Error(w, fmt.Sprintf("Circuit breaking by TrafficPolicy, %s, %s", result.Reason, result.Message), http.StatusExpectationFailed)
+			return
+		}
+
+		handler.ServeHTTP(w, req)
+	})
 }

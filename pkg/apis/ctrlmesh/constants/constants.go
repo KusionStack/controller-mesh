@@ -25,6 +25,7 @@ const (
 	ProxyGRPCPort          = 5447
 	ProxyMetricsPort       = 5449
 	ProxyManagerHealthPort = 5451
+	ProxyGRPCServerPort    = 5453
 
 	ProxyIptablesPort = 15002
 	PprofListenPort   = 5050
@@ -61,9 +62,11 @@ const (
 
 	EnvEnableSim = "ENABLE_SIM"
 
-	EnvEnableCircuitBreaker          = "ENABLE_CIRCUIT_BREAKER"
+	EnvDisableCircuitBreaker         = "DISABLE_CIRCUIT_BREAKER"
 	EnvEnableApiServerCircuitBreaker = "ENABLE_API_SERVER_BREAKER"
 	EnvEnableRestCircuitBreaker      = "ENABLE_REST_BREAKER"
+
+	EnvProxyGRPCServerPort = "PROXY_GRPC_SERVER_PORT"
 )
 
 func AllProxySyncEnvKey() []string {
@@ -71,7 +74,7 @@ func AllProxySyncEnvKey() []string {
 		EnvEnableSim,
 		EnvIPTable,
 		EnvEnableWebHookProxy,
-		EnvEnableCircuitBreaker,
+		EnvDisableCircuitBreaker,
 		EnvEnableApiServerCircuitBreaker,
 		EnvEnableRestCircuitBreaker,
 	}

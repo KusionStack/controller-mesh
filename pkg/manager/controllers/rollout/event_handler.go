@@ -28,7 +28,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh"
+	"github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh"
 )
 
 type podEventHandler struct {
@@ -104,7 +104,7 @@ func (h *stsEventHandler) Generic(evt event.GenericEvent, q workqueue.RateLimiti
 }
 
 func onMeshStsControl(po *v1.Pod) bool {
-	_, ok := po.Labels[ctrlmesh.KdEnableProxyLabel]
+	_, ok := po.Labels[ctrlmesh.CtrlmeshEnableProxyLabel]
 	if !ok {
 		return false
 	}
@@ -123,6 +123,6 @@ func inRolling(namespace, name string, c client.Client) bool {
 	if sts.Labels == nil {
 		return false
 	}
-	_, ok := sts.Labels[ctrlmesh.KdInRollingLabel]
+	_, ok := sts.Labels[ctrlmesh.CtrlmeshInRollingLabel]
 	return ok
 }
