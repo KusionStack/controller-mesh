@@ -24,9 +24,9 @@ import (
 	"strconv"
 
 	"connectrpc.com/connect"
-	"github.com/golang/protobuf/jsonpb"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
+	"google.golang.org/protobuf/encoding/protojson"
 	"k8s.io/klog/v2"
 
 	"github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/constants"
@@ -73,8 +73,9 @@ type grpcThrottlingServer struct {
 }
 
 func (g *grpcThrottlingServer) SendConfig(ctx context.Context, req *connect.Request[ctrlmeshproto.CircuitBreaker]) (*connect.Response[ctrlmeshproto.ConfigResp], error) {
-	mar := &jsonpb.Marshaler{EmitDefaults: true}
-	msg, _ := mar.MarshalToString(req.Msg)
+
+	//mar := &jsonpb.Marshaler{EmitDefaults: true}
+	msg := protojson.MarshalOptions{Multiline: true, EmitUnpopulated: true}.Format(req.Msg)
 	klog.Infof("handle CircuitBreaker gRPC request %s", msg)
 	if req.Msg == nil {
 		return connect.NewResponse(&ctrlmeshproto.ConfigResp{Success: false}), fmt.Errorf("nil CircuitBreaker recieived from client")

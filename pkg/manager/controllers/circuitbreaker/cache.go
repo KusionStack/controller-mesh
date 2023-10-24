@@ -41,8 +41,7 @@ func cacheKey(namespace, podName, cbName string) string {
 func (c *podCache) Get(key string) string {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	hash, _ := c.currentHash[key]
-	return hash
+	return c.currentHash[key]
 }
 
 func (c *podCache) Update(key string, hash string) {
@@ -55,7 +54,6 @@ func (c *podCache) Delete(key string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	delete(c.currentHash, key)
-	return
 }
 
 //

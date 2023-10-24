@@ -395,7 +395,7 @@ func (m *manager) doValidation(limitings []*ctrlmeshproto.RateLimiting, limiters
 				result.Reason = "OverLimit"
 				result.Message = fmt.Sprintf("the request is over limit by limiting rule: %s", limitings[idx].Name)
 			} else {
-
+				result.Reason = "Limiter Allowed"
 			}
 		case ctrlmeshproto.RateLimiting_TRIGGER_POLICY_NORMAL: // normal policy, determine by limiter, and trigger cb open when refuse
 			if states[idx].state == ctrlmeshproto.BreakerState_CLOSED {

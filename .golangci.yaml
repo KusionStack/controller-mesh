@@ -1,6 +1,7 @@
 run:
   skip-files:
   - ".*_test.go"
+  - ".*.gen.go"
   - pkg/utils/http/reverse_proxy.go
   - pkg/proxy/apiserver/options.go
   skip-dirs:
