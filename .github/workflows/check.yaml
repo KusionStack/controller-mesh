@@ -33,6 +33,11 @@ jobs:
       run: |
         wget https://github.com/protocolbuffers/protobuf/releases/download/v3.19.5/protoc-3.19.5-linux-x86_64.zip
         unzip protoc-3.19.5-linux-x86_64.zip -d protoc3
+        rm -rf protoc-3.19.5-linux-x86_64.zip
+    - name: Setup Buf
+      run: |
+        GO111MODULE=on GOBIN=/usr/local/bin go install github.com/bufbuild/buf/cmd/buf@v1.26.1
+        GO111MODULE=on GOBIN=/usr/local/bin go install ./tools/protoc-gen-golang-deepcopy
     - name: Cache Go Dependencies
       uses: actions/cache@v2
       with:
@@ -42,9 +47,9 @@ jobs:
     - name: Run Unit Tests
       run: |
         export PATH="$PATH:$(pwd)/protoc3/bin"
+        ls $(pwd)
         echo $PATH
         make test
-        rm -rf protoc-3.19.5-linux-x86_64.zip
         rm -rf protoc3
         git status
 # TODO: enable after public

@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/onsi/gomega"
@@ -39,7 +40,7 @@ func TestServer(t *testing.T) {
 	breakerMgr := circuitbreaker.NewManager(ctx)
 	proxyServer := &GrpcServer{BreakerMgr: breakerMgr}
 	go proxyServer.Start(ctx)
-
+	<-time.After(2 * time.Second)
 	fmt.Println(proto.TrafficInterceptRule_NORMAL.String())
 	grpcClient := protoconnect.NewThrottlingClient(proto.DefaultHttpClient, "http://127.0.0.1:8889")
 

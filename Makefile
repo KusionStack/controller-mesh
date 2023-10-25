@@ -45,7 +45,8 @@ generate-client: controller-gen ## Generate code containing DeepCopy, DeepCopyIn
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
 generate-protobuf: controller-gen ## Generate protobuf code.
-	@artifacts/scripts/generate_protobuf.sh
+	#@artifacts/scripts/generate_protobuf.sh
+	buf generate --path pkg
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
 generate: generate-client generate-protobuf
