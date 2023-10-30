@@ -142,11 +142,12 @@ dockers:
 - id: manager
   ids:
   - ctrlmesh-manager
+  #skip_push: true
   goos: linux
   goarch: amd64
   image_templates:
-  - 'kusionstack/ctrlmesh-manager:{{ .Tag }}'
-  - 'kusionstack/ctrlmesh-manager:latest'
+  - 'kusionstack/ctrlmesh-manager:{{ .Tag }}-amd64'
+  #- 'kusionstack/ctrlmesh-manager:latest'
   dockerfile: ./artifacts/goreleaser/manager.Dockerfile
   use: docker
   build_flag_templates:
@@ -157,14 +158,35 @@ dockers:
   - "--label=org.opencontainers.image.version={{.Version}}"
   - "--label=org.opencontainers.image.source={{.GitURL}}"
   - "--platform=linux/amd64"
+- id: manager-arm
+  ids:
+  - ctrlmesh-manager
+  #skip_push: true
+  goos: linux
+  goarch: arm64
+  image_templates:
+  - 'kusionstack/ctrlmesh-manager:{{ .Tag }}-arm64'
+  #- 'kusionstack/ctrlmesh-manager:latest'
+  dockerfile: ./artifacts/goreleaser/manager.Dockerfile
+  use: docker
+  build_flag_templates:
+  - "--pull"
+  - "--label=org.opencontainers.image.created={{.Date}}"
+  - "--label=org.opencontainers.image.name=ctrlmesh-manager"
+  - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+  - "--label=org.opencontainers.image.version={{.Version}}"
+  - "--label=org.opencontainers.image.source={{.GitURL}}"
+  - "--platform=linux/arm64"
+
 - id: proxy
   ids:
   - ctrlmesh-proxy
+  #skip_push: true
   goos: linux
   goarch: amd64
   image_templates:
-  - 'kusionstack/ctrlmesh-proxy:{{ .Tag }}'
-  - 'kusionstack/ctrlmesh-proxy:latest'
+  - 'kusionstack/ctrlmesh-proxy:{{ .Tag }}-amd64'
+  #- 'kusionstack/ctrlmesh-proxy:latest'
   dockerfile: ./artifacts/goreleaser/proxy.Dockerfile
   extra_files:
   - artifacts/scripts/
@@ -177,14 +199,37 @@ dockers:
   - "--label=org.opencontainers.image.version={{.Version}}"
   - "--label=org.opencontainers.image.source={{.GitURL}}"
   - "--platform=linux/amd64"
+- id: proxy-arm
+  ids:
+  - ctrlmesh-proxy
+  #skip_push: true
+  goos: linux
+  goarch: arm64
+  image_templates:
+  - 'kusionstack/ctrlmesh-proxy:{{ .Tag }}-arm64'
+  #- 'kusionstack/ctrlmesh-proxy:latest'
+  dockerfile: ./artifacts/goreleaser/proxy.Dockerfile
+  extra_files:
+  - artifacts/scripts/
+  use: docker
+  build_flag_templates:
+  - "--pull"
+  - "--label=org.opencontainers.image.created={{.Date}}"
+  - "--label=org.opencontainers.image.name=ctrlmesh-proxy"
+  - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+  - "--label=org.opencontainers.image.version={{.Version}}"
+  - "--label=org.opencontainers.image.source={{.GitURL}}"
+  - "--platform=linux/arm64"
+
 - id: init
   ids:
   - cert-generator
+  #skip_push: true
   goos: linux
   goarch: amd64
   image_templates:
-  - 'kusionstack/ctrlmesh-init:{{ .Tag }}'
-  - 'kusionstack/ctrlmesh-init:latest'
+  - 'kusionstack/ctrlmesh-init:{{ .Tag }}-amd64'
+  #- 'kusionstack/ctrlmesh-init:latest'
   dockerfile: ./artifacts/goreleaser/init.Dockerfile
   extra_files:
   - artifacts/scripts/
@@ -197,3 +242,52 @@ dockers:
   - "--label=org.opencontainers.image.version={{.Version}}"
   - "--label=org.opencontainers.image.source={{.GitURL}}"
   - "--platform=linux/amd64"
+- id: init-arm
+  ids:
+  - cert-generator
+  #skip_push: true
+  goos: linux
+  goarch: arm64
+  image_templates:
+  - 'kusionstack/ctrlmesh-init:{{ .Tag }}-arm64'
+  #- 'kusionstack/ctrlmesh-init:latest'
+  dockerfile: ./artifacts/goreleaser/init.Dockerfile
+  extra_files:
+  - artifacts/scripts/
+  use: docker
+  build_flag_templates:
+  - "--pull"
+  - "--label=org.opencontainers.image.created={{.Date}}"
+  - "--label=org.opencontainers.image.name=ctrlmesh-init"
+  - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+  - "--label=org.opencontainers.image.version={{.Version}}"
+  - "--label=org.opencontainers.image.source={{.GitURL}}"
+  - "--platform=linux/arm64"
+
+docker_manifests:
+- name_template: 'kusionstack/ctrlmesh-manager:{{ .Tag }}'
+  image_templates:
+  - 'kusionstack/ctrlmesh-manager:{{ .Tag }}-amd64'
+  - 'kusionstack/ctrlmesh-manager:{{ .Tag }}-arm64'
+- name_template: 'kusionstack/ctrlmesh-manager:latest'
+  image_templates:
+  - 'kusionstack/ctrlmesh-manager:{{ .Tag }}-amd64'
+  - 'kusionstack/ctrlmesh-manager:{{ .Tag }}-arm64'
+
+- name_template: 'kusionstack/ctrlmesh-proxy:{{ .Tag }}'
+  image_templates:
+  - 'kusionstack/ctrlmesh-proxy:{{ .Tag }}-amd64'
+  - 'kusionstack/ctrlmesh-proxy:{{ .Tag }}-arm64'
+- name_template: 'kusionstack/ctrlmesh-proxy:latest'
+  image_templates:
+  - 'kusionstack/ctrlmesh-proxy:{{ .Tag }}-amd64'
+  - 'kusionstack/ctrlmesh-proxy:{{ .Tag }}-arm64'
+
+- name_template: 'kusionstack/ctrlmesh-init:{{ .Tag }}'
+  image_templates:
+  - 'kusionstack/ctrlmesh-init:{{ .Tag }}-amd64'
+  - 'kusionstack/ctrlmesh-init:{{ .Tag }}-arm64'
+- name_template: 'kusionstack/ctrlmesh-init:latest'
+  image_templates:
+  - 'kusionstack/ctrlmesh-init:{{ .Tag }}-amd64'
+  - 'kusionstack/ctrlmesh-init:{{ .Tag }}-arm64'
