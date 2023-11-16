@@ -26,8 +26,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/proto"
 )
 
 var (
@@ -96,7 +94,7 @@ func newDeleteProcessor(c client.Client, ctx context.Context) *deleteProcessor {
 			if po.DeletionTimestamp != nil {
 				return nil
 			}
-			return deletePodConfig(ctx, &proto.CircuitBreaker{Name: item.ConfigName}, po.Status.PodIP)
+			return disableConfig(ctx, po.Status.PodIP, item.ConfigName)
 		},
 	}
 	go processor.processLoop()

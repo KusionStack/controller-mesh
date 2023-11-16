@@ -144,7 +144,7 @@ func (r *CircuitBreakerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 			defaultPodConfigCache.Delete(po.Namespace, po.Name)
 			continue
 		}
-		if err := deletePodConfig(ctx, &proto.CircuitBreaker{Name: cb.Name}, st.PodIP); err != nil {
+		if err := disableConfig(ctx, st.PodIP, cb.Name); err != nil {
 			reconcileErr = errors.Join(reconcileErr, err)
 			klog.Errorf("failed to delete config in pod %s, %v", st.PodName, err)
 			failedStatus = append(failedStatus, cb.Status.TargetStatus[i])
@@ -185,21 +185,6 @@ func (r *CircuitBreakerReconciler) syncPodConfig(ctx context.Context, cb *proto.
 		return nil, fmt.Errorf("fail to update pod [%s, %s] circuit breaker config, %s", podIp, cb.Name, resp.Msg.Message)
 	}
 	return resp.Msg.LimitingSnapshot, nil
-}
-
-func deletePodConfig(ctx context.Context, cb *proto.CircuitBreaker, podIp string) error {
-	cb.Option = proto.CircuitBreaker_DELETE
-	resp, err := protoClient(podIp).SendConfig(ctx, connect.NewRequest(cb))
-	if err != nil {
-		return err
-	}
-	if resp.Msg == nil {
-		return fmt.Errorf("fail to update pod [%s, %s] circuit breaker config, server return nil response", podIp, cb.Name)
-	}
-	if resp != nil && !resp.Msg.Success {
-		return fmt.Errorf("fail to update pod [%s, %s] circuit breaker config, %s", podIp, cb.Name, resp.Msg.Message)
-	}
-	return nil
 }
 
 func (r *CircuitBreakerReconciler) currentPodStatus(cb *ctrlmeshv1alpha1.CircuitBreaker, podName string) *ctrlmeshv1alpha1.TargetStatus {
@@ -269,7 +254,7 @@ func (r *CircuitBreakerReconciler) clear(ctx context.Context, cb *ctrlmeshv1alph
 			continue
 		}
 
-		if localErr := r.disableConfig(ctx, state.PodIP, cb.Name); localErr != nil {
+		if localErr := disableConfig(ctx, state.PodIP, cb.Name); localErr != nil {
 			err = errors.Join(err, localErr)
 		} else {
 			defaultPodConfigCache.Delete(cb.Namespace, state.PodName, cb.Name)
@@ -278,7 +263,7 @@ func (r *CircuitBreakerReconciler) clear(ctx context.Context, cb *ctrlmeshv1alph
 	return err
 }
 
-func (r *CircuitBreakerReconciler) disableConfig(ctx context.Context, podIp string, name string) error {
+func disableConfig(ctx context.Context, podIp string, name string) error {
 	req := &proto.CircuitBreaker{
 		Option: proto.CircuitBreaker_DELETE,
 		Name:   name,
