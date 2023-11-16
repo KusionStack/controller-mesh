@@ -114,7 +114,7 @@ func (c *grpcClient) connect(ctx context.Context, initChan chan struct{}) {
 						// If you're also using this client for non-h2c traffic, you may want
 						// to delegate to tls.Dial if the network isn't TCP or the addr isn't
 						// in an allowlist.
-						d := net.Dialer{Timeout: 5 * time.Second}
+						d := net.Dialer{Timeout: 20 * time.Second}
 						return d.DialContext(ctx, network, addr)
 					},
 				},
