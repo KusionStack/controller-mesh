@@ -63,11 +63,6 @@ type CircuitBreakerReconciler struct {
 }
 
 func (r *CircuitBreakerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.Result, reconcileErr error) {
-	defer func() {
-		if res.RequeueAfter == 0 {
-			res.RequeueAfter = defaultRequeueTime
-		}
-	}()
 	cb := &ctrlmeshv1alpha1.CircuitBreaker{}
 	if err := r.Get(ctx, req.NamespacedName, cb); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
@@ -76,6 +71,12 @@ func (r *CircuitBreakerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	if shouldClear, err := r.tryClearOrAddFinalizer(ctx, cb); err != nil || shouldClear {
 		return ctrl.Result{}, err
 	}
+
+	defer func() {
+		if res.RequeueAfter == 0 {
+			res.RequeueAfter = defaultRequeueTime
+		}
+	}()
 
 	selector, _ := metav1.LabelSelectorAsSelector(cb.Spec.Selector)
 	podList := &v1.PodList{}
