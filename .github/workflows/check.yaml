@@ -52,12 +52,11 @@ jobs:
         make test
         rm -rf protoc3
         git status
-# TODO: enable after public
-#    - name: Publish Unit Test Coverage
-#      uses: codecov/codecov-action@v3
-#      with:
-#        flags: unittests
-#        file: cover.out
+    - name: Publish Unit Test Coverage
+      uses: codecov/codecov-action@v3
+      with:
+        flags: unittests
+        file: cover.out
     - name: Check diff
       run: '[[ -z $(git status -s) ]] || (printf "Existing modified/untracked files.\nPlease run \"make generate manifests fmt vet\" and push again.\n"; exit 1)'
 
