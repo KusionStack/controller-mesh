@@ -123,6 +123,7 @@ spec:
                             type: array
                         required:
                         - apiGroups
+                        - namespaces
                         - resources
                         - verbs
                         type: object

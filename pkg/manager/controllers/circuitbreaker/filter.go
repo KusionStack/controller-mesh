@@ -19,6 +19,7 @@ package circuitbreaker
 import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 
+	"github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh"
 	"github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/utils/conv"
 	ctrlmeshv1alpha1 "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/v1alpha1"
 )
@@ -42,6 +43,12 @@ func (b *BreakerPredicate) Update(e event.UpdateEvent) bool {
 	newCB := e.ObjectNew.(*ctrlmeshv1alpha1.CircuitBreaker)
 	if newCB.DeletionTimestamp != nil || len(oldCB.Finalizers) != len(newCB.Finalizers) {
 		return true
+	}
+	if newCB.Labels != nil {
+		_, ok := newCB.Labels[ctrlmesh.CtrlmeshCircuitBreakerDisableKey]
+		if ok {
+			return true
+		}
 	}
 	oldProtoCB := conv.ConvertCircuitBreaker(oldCB)
 	newProtoCB := conv.ConvertCircuitBreaker(newCB)

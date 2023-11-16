@@ -29,6 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 
+	"github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh"
 	"github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/constants"
 	ctrlmeshproto "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/proto"
 	ctrlmeshv1alpha1 "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/v1alpha1"
@@ -88,6 +89,9 @@ var circuitBreaker = &ctrlmeshv1alpha1.CircuitBreaker{
 						Verbs: []string{
 							"delete",
 						},
+						Namespaces: []string{
+							"*",
+						},
 					},
 				},
 				Bucket: ctrlmeshv1alpha1.Bucket{
@@ -142,6 +146,15 @@ func TestCircuitBreaker(t *testing.T) {
 	waitProcess()
 	g.Expect(c.Get(ctx, types.NamespacedName{Name: "testcb", Namespace: "default"}, cb)).Should(gomega.BeNil())
 	g.Expect(breakerManager.ValidateTrafficIntercept("aaa.aaa.aaa", "GET").Allowed).Should(gomega.BeFalse())
+	if cb.Labels == nil {
+		cb.Labels = map[string]string{}
+	}
+	cb.Labels[ctrlmesh.CtrlmeshCircuitBreakerDisableKey] = "true"
+	g.Expect(c.Update(ctx, cb)).Should(gomega.BeNil())
+	waitProcess()
+	g.Expect(c.Get(ctx, types.NamespacedName{Name: "testcb", Namespace: "default"}, cb)).Should(gomega.BeNil())
+	g.Expect(len(cb.Status.TargetStatus) == 0).Should(gomega.BeTrue())
+	g.Expect(len(cb.Finalizers) == 0).Should(gomega.BeTrue())
 	g.Expect(c.Delete(ctx, testBreaker)).Should(gomega.BeNil())
 	waitProcess()
 	g.Expect(c.Get(ctx, types.NamespacedName{Name: "testcb", Namespace: "default"}, cb)).Should(gomega.HaveOccurred())

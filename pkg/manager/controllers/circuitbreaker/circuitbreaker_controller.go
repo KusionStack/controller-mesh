@@ -110,8 +110,9 @@ func (r *CircuitBreakerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 			klog.Errorf(msg)
 			reconcileErr = errors.Join(reconcileErr, stateErr)
 		} else {
+			klog.Infof("sync circuitbreaker %s to pod %s success, configHash=%s", cb.Name, utils.KeyFunc(&po), protoCb.ConfigHash)
 			currentHash = protoCb.ConfigHash
-			defaultPodConfigCache.Add(po.Namespace, state.PodName, cb.Name)
+			defaultPodConfigCache.Add(po.Namespace, po.Name, cb.Name)
 		}
 		status := &ctrlmeshv1alpha1.TargetStatus{
 			PodName:           po.Name,
@@ -289,6 +290,7 @@ func (r *CircuitBreakerReconciler) disableConfig(ctx context.Context, podIp stri
 	if resp != nil && resp.Msg != nil && !resp.Msg.Success {
 		return fmt.Errorf("fail to disable pod [%s, %s] circuit breaker config, %s", podIp, name, resp.Msg.Message)
 	}
+	klog.Infof("pod[ip=%s] circuitbreaker %s was disabled", podIp, name)
 	return nil
 }
 

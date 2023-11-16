@@ -31,7 +31,7 @@ type ResourceRule struct {
 	// Verb is a list of kubernetes resource API verbs, like: get, list, watch, create, update, delete, proxy.  "*" means all.
 	Verbs []string `json:"verbs"`
 	// Namespaces is a list of namespaces the rule applies to. "*" means all.
-	Namespaces []string `json:"namespaces,omitempty"`
+	Namespaces []string `json:"namespaces"`
 }
 
 // RestRule defines the target rest resource of the limiting policy

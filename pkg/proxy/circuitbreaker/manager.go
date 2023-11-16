@@ -406,7 +406,7 @@ func (m *manager) doValidation(limitings []*ctrlmeshproto.RateLimiting, limiters
 					result.Reason = "OverLimit"
 					result.Message = fmt.Sprintf("the request is over limit by limiting rule: %s", limitings[idx].Name)
 					if limitings[idx].RecoverPolicy.Type == ctrlmeshproto.RateLimiting_RECOVER_POLICY_SLEEPING_WINDOW {
-						d, _ := time.ParseDuration(limitings[idx].Properties["sleepingWindowSize"])
+						d, _ := time.ParseDuration(limitings[idx].RecoverPolicy.SleepingWindowSize)
 						states[idx].triggerBreakerWithTimeWindow(d)
 						m.limiterStore.registerState(states[idx])
 					} else {
