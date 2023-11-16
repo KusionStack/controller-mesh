@@ -45,11 +45,7 @@ func (b *BreakerPredicate) Update(e event.UpdateEvent) bool {
 	}
 	oldProtoCB := conv.ConvertCircuitBreaker(oldCB)
 	newProtoCB := conv.ConvertCircuitBreaker(newCB)
-	if oldProtoCB.ConfigHash != newProtoCB.ConfigHash {
-		return true
-	}
-
-	return false
+	return oldProtoCB.ConfigHash != newProtoCB.ConfigHash
 }
 
 // Generic returns true if the Generic event should be processed
