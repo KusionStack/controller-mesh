@@ -79,6 +79,7 @@ func (m *manager) Sync(config *ctrlmeshproto.CircuitBreaker) (*ctrlmeshproto.Con
 				LimitingSnapshot: m.snapshot(config.Name),
 			}, nil
 		} else {
+			m.breakerMap[config.Name] = config
 			m.registerRules(config)
 			var msg string
 			if cb == nil {
@@ -95,6 +96,7 @@ func (m *manager) Sync(config *ctrlmeshproto.CircuitBreaker) (*ctrlmeshproto.Con
 	case ctrlmeshproto.CircuitBreaker_DELETE:
 		if cb, ok := m.breakerMap[config.Name]; ok {
 			m.unregisterRules(cb.Name)
+			delete(m.breakerMap, config.Name)
 			return &ctrlmeshproto.ConfigResp{
 				Success: true,
 				Message: fmt.Sprintf("circuitBreaker config %s success deleted", cb.Name),
@@ -102,7 +104,7 @@ func (m *manager) Sync(config *ctrlmeshproto.CircuitBreaker) (*ctrlmeshproto.Con
 		} else {
 			return &ctrlmeshproto.ConfigResp{
 				Success: true,
-				Message: fmt.Sprintf("circuitBreaker config %s already deleted", cb.Name),
+				Message: fmt.Sprintf("circuitBreaker config %s already deleted", config.Name),
 			}, nil
 		}
 	case ctrlmeshproto.CircuitBreaker_CHECK:

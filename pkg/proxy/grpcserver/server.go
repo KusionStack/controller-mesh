@@ -74,7 +74,6 @@ type grpcThrottlingServer struct {
 
 func (g *grpcThrottlingServer) SendConfig(ctx context.Context, req *connect.Request[ctrlmeshproto.CircuitBreaker]) (*connect.Response[ctrlmeshproto.ConfigResp], error) {
 
-	//mar := &jsonpb.Marshaler{EmitDefaults: true}
 	msg := protojson.MarshalOptions{Multiline: true, EmitUnpopulated: true}.Format(req.Msg)
 	klog.Infof("handle CircuitBreaker gRPC request %s", msg)
 	if req.Msg == nil {

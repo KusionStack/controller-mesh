@@ -91,6 +91,9 @@ func (r *CircuitBreakerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	newTargetMap := make(map[string]*ctrlmeshv1alpha1.TargetStatus)
 
 	for _, po := range podList.Items {
+		if !hasProxyContainer(&po) {
+			continue
+		}
 		var msg, currentHash string
 		var snapshots []*proto.LimitingSnapshot
 		var stateErr error
@@ -99,14 +102,16 @@ func (r *CircuitBreakerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 			currentHash = state.ConfigHash
 		}
 		if !isProxyAvailable(&po) {
+			defaultPodConfigCache.Delete(po.Namespace, po.Name)
 			msg = fmt.Sprintf("pod %s is not available to sync circuit breaker proto", utils.KeyFunc(&po))
 			klog.Infof(msg)
-		} else if snapshots, stateErr = r.syncPodConfig(ctx, protoCb, state.PodIP); stateErr != nil {
+		} else if snapshots, stateErr = r.syncPodConfig(ctx, protoCb, po.Status.PodIP); stateErr != nil {
 			msg = stateErr.Error()
 			klog.Errorf(msg)
 			reconcileErr = errors.Join(reconcileErr, stateErr)
 		} else {
 			currentHash = protoCb.ConfigHash
+			defaultPodConfigCache.Add(po.Namespace, state.PodName, cb.Name)
 		}
 		status := &ctrlmeshv1alpha1.TargetStatus{
 			PodName:           po.Name,
@@ -116,7 +121,7 @@ func (r *CircuitBreakerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 			LimitingSnapshots: conv.ConvertSnapshots(snapshots),
 		}
 		targetStatus = append(targetStatus, status)
-		newTargetMap[PodName] = status
+		newTargetMap[po.Name] = status
 	}
 
 	var failedStatus []*ctrlmeshv1alpha1.TargetStatus
@@ -134,10 +139,16 @@ func (r *CircuitBreakerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 			}
 			continue
 		}
-		if err := r.deletePodConfig(ctx, &proto.CircuitBreaker{Name: cb.Name}, st.PodIP); err != nil {
+		if !isProxyAvailable(po) {
+			defaultPodConfigCache.Delete(po.Namespace, po.Name)
+			continue
+		}
+		if err := deletePodConfig(ctx, &proto.CircuitBreaker{Name: cb.Name}, st.PodIP); err != nil {
 			reconcileErr = errors.Join(reconcileErr, err)
 			klog.Errorf("failed to delete config in pod %s, %v", st.PodName, err)
 			failedStatus = append(failedStatus, cb.Status.TargetStatus[i])
+		} else {
+			defaultPodConfigCache.Delete(cb.Namespace, po.Name, cb.Name)
 		}
 	}
 	status := &ctrlmeshv1alpha1.CircuitBreakerStatus{
@@ -175,7 +186,7 @@ func (r *CircuitBreakerReconciler) syncPodConfig(ctx context.Context, cb *proto.
 	return resp.Msg.LimitingSnapshot, nil
 }
 
-func (r *CircuitBreakerReconciler) deletePodConfig(ctx context.Context, cb *proto.CircuitBreaker, podIp string) error {
+func deletePodConfig(ctx context.Context, cb *proto.CircuitBreaker, podIp string) error {
 	cb.Option = proto.CircuitBreaker_DELETE
 	resp, err := protoClient(podIp).SendConfig(ctx, connect.NewRequest(cb))
 	if err != nil {
@@ -214,7 +225,7 @@ func (r *CircuitBreakerReconciler) tryClearOrAddFinalizer(ctx context.Context, c
 		return
 	}
 	hasFinalizer := controllerutil.ContainsFinalizer(cb, ctrlmesh.ProtectFinalizer)
-	if !hasFinalizer {
+	if !hasFinalizer || !shouldClear {
 		return
 	}
 	err = r.clear(ctx, cb)
@@ -222,9 +233,10 @@ func (r *CircuitBreakerReconciler) tryClearOrAddFinalizer(ctx context.Context, c
 		return
 	}
 	if cb.Status.TargetStatus != nil {
+		tm := metav1.Now()
 		cb.Status = ctrlmeshv1alpha1.CircuitBreakerStatus{
 			ObservedGeneration: cb.Generation,
-			LastUpdatedTime:    metav1.Now(),
+			LastUpdatedTime:    &tm,
 		}
 		if err = r.Status().Update(ctx, cb); err != nil {
 			return
@@ -238,8 +250,7 @@ func (r *CircuitBreakerReconciler) tryClearOrAddFinalizer(ctx context.Context, c
 func (r *CircuitBreakerReconciler) clear(ctx context.Context, cb *ctrlmeshv1alpha1.CircuitBreaker) error {
 	var err error
 	for _, state := range cb.Status.TargetStatus {
-		key := cacheKey(cb.Namespace, state.PodName, cb.Name)
-		if defaultPodCache.Get(key) == "" {
+		if !defaultPodConfigCache.Has(cb.Namespace, state.PodName, cb.Name) {
 			continue
 		}
 
@@ -247,6 +258,8 @@ func (r *CircuitBreakerReconciler) clear(ctx context.Context, cb *ctrlmeshv1alph
 		if getErr := r.Get(ctx, types.NamespacedName{Namespace: cb.Namespace, Name: state.PodName}, po); getErr != nil {
 			if !k8sErr.IsNotFound(getErr) {
 				err = errors.Join(err, getErr)
+			} else {
+				defaultPodConfigCache.Delete(cb.Namespace, state.PodName, cb.Name)
 			}
 			continue
 		}
@@ -258,7 +271,7 @@ func (r *CircuitBreakerReconciler) clear(ctx context.Context, cb *ctrlmeshv1alph
 		if localErr := r.disableConfig(ctx, state.PodIP, cb.Name); localErr != nil {
 			err = errors.Join(err, localErr)
 		} else {
-			defaultPodCache.Delete(key)
+			defaultPodConfigCache.Delete(cb.Namespace, state.PodName, cb.Name)
 		}
 	}
 	return err
@@ -297,6 +310,15 @@ func isProxyAvailable(po *v1.Pod) bool {
 	for _, c := range po.Status.ContainerStatuses {
 		if c.Name == constants.ProxyContainerName {
 			return c.Ready
+		}
+	}
+	return false
+}
+
+func hasProxyContainer(po *v1.Pod) bool {
+	for _, c := range po.Spec.Containers {
+		if c.Name == constants.ProxyContainerName {
+			return true
 		}
 	}
 	return false

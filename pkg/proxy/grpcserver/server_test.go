@@ -71,7 +71,7 @@ func TestServer(t *testing.T) {
 						},
 					},
 					TriggerPolicy: ctrlmeshv1alpha1.TriggerPolicyNormal,
-					RecoverPolicy: ctrlmeshv1alpha1.RecoverPolicy{
+					RecoverPolicy: &ctrlmeshv1alpha1.RecoverPolicy{
 						RecoverType: ctrlmeshv1alpha1.RecoverPolicyManual,
 					},
 				},

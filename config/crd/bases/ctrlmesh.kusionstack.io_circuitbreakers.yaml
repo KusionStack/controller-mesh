@@ -123,7 +123,6 @@ spec:
                             type: array
                         required:
                         - apiGroups
-                        - namespaces
                         - resources
                         - verbs
                         type: object
@@ -155,7 +154,6 @@ spec:
                   required:
                   - bucket
                   - name
-                  - recoverPolicy
                   - triggerPolicy
                   type: object
                 type: array

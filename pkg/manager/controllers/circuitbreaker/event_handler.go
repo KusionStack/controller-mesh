@@ -71,6 +71,7 @@ func (h *podEventHandler) Update(e event.UpdateEvent, q workqueue.RateLimitingIn
 }
 
 func (h *podEventHandler) Delete(e event.DeleteEvent, q workqueue.RateLimitingInterface) {
+	defaultPodConfigCache.Delete(e.Object.GetNamespace(), e.Object.GetName())
 }
 
 func (h *podEventHandler) Generic(e event.GenericEvent, q workqueue.RateLimitingInterface) {
@@ -85,12 +86,11 @@ func sidecarInjected(po *v1.Pod) bool {
 	return false
 }
 
-func add(q workqueue.RateLimitingInterface, items ...interface{}) {
+func add(q workqueue.RateLimitingInterface, items []*ctrlmeshv1alpha1.CircuitBreaker) {
 	for _, item := range items {
-		obj := item.(metav1.Object)
 		q.Add(reconcile.Request{NamespacedName: types.NamespacedName{
-			Namespace: obj.GetNamespace(),
-			Name:      obj.GetName(),
+			Namespace: item.GetNamespace(),
+			Name:      item.GetName(),
 		}})
 	}
 }

@@ -40,14 +40,15 @@ func (b *BreakerPredicate) Delete(e event.DeleteEvent) bool {
 func (b *BreakerPredicate) Update(e event.UpdateEvent) bool {
 	oldCB := e.ObjectOld.(*ctrlmeshv1alpha1.CircuitBreaker)
 	newCB := e.ObjectNew.(*ctrlmeshv1alpha1.CircuitBreaker)
+	if newCB.DeletionTimestamp != nil || len(oldCB.Finalizers) != len(newCB.Finalizers) {
+		return true
+	}
 	oldProtoCB := conv.ConvertCircuitBreaker(oldCB)
 	newProtoCB := conv.ConvertCircuitBreaker(newCB)
 	if oldProtoCB.ConfigHash != newProtoCB.ConfigHash {
 		return true
 	}
-	if newCB.DeletionTimestamp != nil {
-		return true
-	}
+
 	return false
 }
 

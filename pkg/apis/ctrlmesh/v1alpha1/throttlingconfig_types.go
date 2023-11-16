@@ -31,7 +31,7 @@ type ResourceRule struct {
 	// Verb is a list of kubernetes resource API verbs, like: get, list, watch, create, update, delete, proxy.  "*" means all.
 	Verbs []string `json:"verbs"`
 	// Namespaces is a list of namespaces the rule applies to. "*" means all.
-	Namespaces []string `json:"namespaces"`
+	Namespaces []string `json:"namespaces,omitempty"`
 }
 
 // RestRule defines the target rest resource of the limiting policy
@@ -45,7 +45,7 @@ type RestRule struct {
 // TriggerPolicy defines how the circuit-breaking policy triggered from 'Closed' to 'Opened'
 type TriggerPolicy string
 
-var (
+const (
 	TriggerPolicyNormal      TriggerPolicy = "Normal"
 	TriggerPolicyLimiterOnly TriggerPolicy = "LimiterOnly"
 	TriggerPolicyForceOpened TriggerPolicy = "ForceOpened"
@@ -60,7 +60,7 @@ type RecoverPolicy struct {
 
 type RecoverType string
 
-var (
+const (
 	RecoverPolicyManual         RecoverType = "Manual"
 	RecoverPolicySleepingWindow RecoverType = "SleepingWindow"
 )
@@ -68,7 +68,7 @@ var (
 // InterceptType defines how the circuit-breaking traffic intercept from 'White' to 'Black'
 type InterceptType string
 
-var (
+const (
 	InterceptTypeWhitelist InterceptType = "Whitelist"
 	InterceptTypeBlacklist InterceptType = "Blacklist"
 )
@@ -76,15 +76,9 @@ var (
 // ContentType defines how the circuit-breaking traffic intercept content type from 'Normal' to 'Regexp'
 type ContentType string
 
-var (
+const (
 	ContentTypeNormal ContentType = "Normal"
 	ContentTypeRegexp ContentType = "Regexp"
-)
-
-type ValidatePolicy string
-
-var (
-	AfterHttpSuccess ValidatePolicy = "AfterHttpSuccess"
 )
 
 // Bucket defines the whole token bucket of the policy
@@ -110,7 +104,7 @@ type Limiting struct {
 	// TriggerPolicy defines how the circuit-breaking policy triggered from 'Closed' to 'Opened'
 	TriggerPolicy TriggerPolicy `json:"triggerPolicy"`
 	// RecoverPolicy defines how the circuit-breaking policy recovered from 'Opened' to 'Closed'
-	RecoverPolicy RecoverPolicy `json:"recoverPolicy"`
+	RecoverPolicy *RecoverPolicy `json:"recoverPolicy,omitempty"`
 	// ValidatePolicy determine the opportunity to validate req
 	//ValidatePolicy ValidatePolicy `json:"validatePolicy,omitempty"`
 	// Properties defines the additional properties of the policy, like: SleepingWindowSize
@@ -162,7 +156,7 @@ type LimitingSnapshot struct {
 // CircuitBreakerStatus defines the observed state of CircuitBreaker
 type CircuitBreakerStatus struct {
 	ObservedGeneration int64           `json:"observedGeneration,omitempty"`
-	LastUpdatedTime    metav1.Time     `json:"lastUpdatedTime,omitempty"`
+	LastUpdatedTime    *metav1.Time    `json:"lastUpdatedTime,omitempty"`
 	CurrentSpecHash    string          `json:"currentSpecHash,omitempty"`
 	TargetStatus       []*TargetStatus `json:"targetStatus,omitempty"`
 }
@@ -202,16 +196,3 @@ type CircuitBreakerList struct {
 func init() {
 	SchemeBuilder.Register(&CircuitBreaker{}, &CircuitBreakerList{})
 }
-
-//func (in *CircuitBreakerStatus) UpdateSnapshots(podIp string, snapshot []*LimitingSnapshot) {
-//	var newSnapshot []*LimitingSnapshot
-//	for _, sp := range snapshot {
-//		newSnapshot = append(newSnapshot, sp.DeepCopy())
-//	}
-//	for _, sp := range in.LimitingSnapshots {
-//		if sp.Endpoint != podIp {
-//			newSnapshot = append(newSnapshot, sp.DeepCopy())
-//		}
-//	}
-//	in.LimitingSnapshots = newSnapshot
-//}

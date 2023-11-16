@@ -103,15 +103,17 @@ func ConvertLimiting(limit *ctrlmeshv1alpha1.Limiting) *ctrlmeshproto.RateLimiti
 	case ctrlmeshv1alpha1.TriggerPolicyForceOpened:
 		protoLimit.TriggerPolicy = ctrlmeshproto.RateLimiting_TRIGGER_POLICY_FORCE_OPENED
 	}
-	protoLimit.RecoverPolicy = &ctrlmeshproto.RateLimiting_RecoverPolicy{}
-	switch limit.RecoverPolicy.RecoverType {
-	case ctrlmeshv1alpha1.RecoverPolicyManual:
-		protoLimit.RecoverPolicy.Type = ctrlmeshproto.RateLimiting_RECOVER_POLICY_MANUAL
-	case ctrlmeshv1alpha1.RecoverPolicySleepingWindow:
-		protoLimit.RecoverPolicy.Type = ctrlmeshproto.RateLimiting_RECOVER_POLICY_SLEEPING_WINDOW
-	}
-	if limit.RecoverPolicy.SleepingWindowSize != nil {
-		protoLimit.RecoverPolicy.SleepingWindowSize = *limit.RecoverPolicy.SleepingWindowSize
+	if limit.RecoverPolicy != nil {
+		protoLimit.RecoverPolicy = &ctrlmeshproto.RateLimiting_RecoverPolicy{}
+		switch limit.RecoverPolicy.RecoverType {
+		case ctrlmeshv1alpha1.RecoverPolicyManual:
+			protoLimit.RecoverPolicy.Type = ctrlmeshproto.RateLimiting_RECOVER_POLICY_MANUAL
+		case ctrlmeshv1alpha1.RecoverPolicySleepingWindow:
+			protoLimit.RecoverPolicy.Type = ctrlmeshproto.RateLimiting_RECOVER_POLICY_SLEEPING_WINDOW
+		}
+		if limit.RecoverPolicy.SleepingWindowSize != nil {
+			protoLimit.RecoverPolicy.SleepingWindowSize = *limit.RecoverPolicy.SleepingWindowSize
+		}
 	}
 	if limit.Properties != nil {
 		protoLimit.Properties = make(map[string]string, len(limit.Properties))
