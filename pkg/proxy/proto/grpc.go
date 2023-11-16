@@ -19,14 +19,16 @@ package proto
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"math/rand"
+	"net"
 	"net/http"
 	"time"
 
 	"connectrpc.com/connect"
-	"github.com/gogo/protobuf/proto"
 	"golang.org/x/net/http2"
+	"google.golang.org/protobuf/proto"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/klog/v2"
 
@@ -98,7 +100,7 @@ func (c *grpcClient) connect(ctx context.Context, initChan chan struct{}) {
 			continue
 		}
 
-		addr := fmt.Sprintf("%s:%d", leader.PodIP, managerState.Status.Ports.GrpcLeaderElectionPort)
+		addr := fmt.Sprintf("https://%s:%d", leader.PodIP, managerState.Status.Ports.GrpcLeaderElectionPort)
 		klog.Infof("Preparing to connect ctrlmesh-manager %v", addr)
 		func() {
 			ctxWithCancel, cancel := context.WithCancel(ctx)
@@ -107,6 +109,14 @@ func (c *grpcClient) connect(ctx context.Context, initChan chan struct{}) {
 			client := &http.Client{
 				Transport: &http2.Transport{
 					AllowHTTP: true,
+					DialTLSContext: func(ctx context.Context, network, addr string, _ *tls.Config) (net.Conn, error) {
+						// TODO:
+						// If you're also using this client for non-h2c traffic, you may want
+						// to delegate to tls.Dial if the network isn't TCP or the addr isn't
+						// in an allowlist.
+						d := net.Dialer{Timeout: 5 * time.Second}
+						return d.DialContext(ctx, network, addr)
+					},
 				},
 			}
 			grpcCtrlMeshClient := protoconnect.NewControllerMeshClient(client, addr, connect.WithGRPC())

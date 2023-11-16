@@ -53,7 +53,7 @@ var (
 	PodNamespace = os.Getenv(constants.EnvPodNamespace)
 
 	defaultRequeueTime   = 60 * time.Second
-	concurrentReconciles = flag.Int("ctrlmesh-server-workers", 3, "Max concurrent workers for CtrlMesh Server controller.")
+	concurrentReconciles = flag.Int("ctrlmesh-breaker-workers", 3, "Max concurrent workers for CtrlMesh Server controller.")
 )
 
 // CircuitBreakerReconciler reconciles a CircuitBreaker object
