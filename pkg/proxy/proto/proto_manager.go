@@ -23,12 +23,12 @@ import (
 	"os"
 	"sync"
 
-	"github.com/gogo/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 	"k8s.io/klog/v2"
 
-	"github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh/constants"
-	ctrlmeshproto "github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh/proto"
-	"github.com/KusionStack/ctrlmesh/pkg/utils"
+	"github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/constants"
+	ctrlmeshproto "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/proto"
+	"github.com/KusionStack/controller-mesh/pkg/utils"
 )
 
 var (

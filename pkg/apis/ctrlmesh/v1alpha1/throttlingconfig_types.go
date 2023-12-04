@@ -45,7 +45,7 @@ type RestRule struct {
 // TriggerPolicy defines how the circuit-breaking policy triggered from 'Closed' to 'Opened'
 type TriggerPolicy string
 
-var (
+const (
 	TriggerPolicyNormal      TriggerPolicy = "Normal"
 	TriggerPolicyLimiterOnly TriggerPolicy = "LimiterOnly"
 	TriggerPolicyForceOpened TriggerPolicy = "ForceOpened"
@@ -53,33 +53,32 @@ var (
 )
 
 // RecoverPolicy defines how the circuit-breaking policy recovered from 'Opened' to 'Closed'
-type RecoverPolicy string
+type RecoverPolicy struct {
+	RecoverType        RecoverType `json:"type"`
+	SleepingWindowSize *string     `json:"sleepingWindowSize,omitempty"`
+}
 
-var (
-	RecoverPolicyManual         RecoverPolicy = "Manual"
-	RecoverPolicySleepingWindow RecoverPolicy = "SleepingWindow"
+type RecoverType string
+
+const (
+	RecoverPolicyManual         RecoverType = "Manual"
+	RecoverPolicySleepingWindow RecoverType = "SleepingWindow"
 )
 
 // InterceptType defines how the circuit-breaking traffic intercept from 'White' to 'Black'
 type InterceptType string
 
-var (
-	InterceptTypeWhite InterceptType = "White"
-	InterceptTypeBlack InterceptType = "Black"
+const (
+	InterceptTypeWhitelist InterceptType = "Whitelist"
+	InterceptTypeBlacklist InterceptType = "Blacklist"
 )
 
 // ContentType defines how the circuit-breaking traffic intercept content type from 'Normal' to 'Regexp'
 type ContentType string
 
-var (
+const (
 	ContentTypeNormal ContentType = "Normal"
 	ContentTypeRegexp ContentType = "Regexp"
-)
-
-type ValidatePolicy string
-
-var (
-	AfterHttpSuccess ValidatePolicy = "AfterHttpSuccess"
 )
 
 // Bucket defines the whole token bucket of the policy
@@ -105,9 +104,9 @@ type Limiting struct {
 	// TriggerPolicy defines how the circuit-breaking policy triggered from 'Closed' to 'Opened'
 	TriggerPolicy TriggerPolicy `json:"triggerPolicy"`
 	// RecoverPolicy defines how the circuit-breaking policy recovered from 'Opened' to 'Closed'
-	RecoverPolicy RecoverPolicy `json:"recoverPolicy"`
+	RecoverPolicy *RecoverPolicy `json:"recoverPolicy,omitempty"`
 	// ValidatePolicy determine the opportunity to validate req
-	ValidatePolicy ValidatePolicy `json:"validatePolicy,omitempty"`
+	//ValidatePolicy ValidatePolicy `json:"validatePolicy,omitempty"`
 	// Properties defines the additional properties of the policy, like: SleepingWindowSize
 	Properties map[string]string `json:"properties,omitempty"`
 }
@@ -129,55 +128,45 @@ type TrafficInterceptRule struct {
 // CircuitBreakerSpec defines the desired state of CircuitBreaker
 type CircuitBreakerSpec struct {
 	// Selector is a label query over pods of this application.
-	Selector TargetSelector `json:"selector,omitempty"`
+	Selector *metav1.LabelSelector `json:"selector"`
 	// RateLimitings defines the limit policies
-	RateLimitings []Limiting `json:"rateLimitings"`
+	RateLimitings []*Limiting `json:"rateLimitings,omitempty"`
 	// TrafficInterceptRules defines the traffic rules
-	TrafficInterceptRules []TrafficInterceptRule `json:"trafficInterceptRules,omitempty"`
+	TrafficInterceptRules []*TrafficInterceptRule `json:"trafficInterceptRules,omitempty"`
 }
 
-type TargetSelector struct {
-	Targets       []string              `json:"targets,omitempty"`
-	LabelSelector *metav1.LabelSelector `json:"labelSelector,omitempty"`
-}
-
-// BreakerStatus is the status of the circuit breaker, which may be 'Opened' or 'Closed'.
-type BreakerStatus string
+// BreakerState is the status of the circuit breaker, which may be 'Opened' or 'Closed'.
+type BreakerState string
 
 var (
-	BreakerStatusOpened BreakerStatus = "Opened"
-	BreakerStatusClosed BreakerStatus = "Closed"
+	BreakerStatusOpened BreakerState = "Opened"
+	BreakerStatusClosed BreakerState = "Closed"
 )
-
-// BucketSnapshot defines the whole snapshot of the token bucket
-type BucketSnapshot struct {
-	// AvailableTokens defines the rest tokens of the bucket.
-	AvailableTokens uint64 `json:"availableTokens"`
-	// LastAcquireTimestamp is the unix timestamp that the last token(s) were acquired.
-	LastAcquireTimestamp uint64 `json:"lastAcquireTimestamp"`
-}
 
 // LimitingSnapshot defines the snapshot of the whole limiting policy
 type LimitingSnapshot struct {
 	// Name specifies the name of the policy
 	Name string `json:"name"`
-	// Endpoint specifies the users who use this rule
-	Endpoint string `json:"endpoint,omitempty"`
-	// PodName specifies the users pod name
-	PodName string `json:"podName,omitempty"`
-	// Bucket defines the whole snapshot of the token bucket
-	Bucket BucketSnapshot `json:"bucket"`
 	// Status is the status of the circuit breaker, which may be 'Opened' or 'Closed'.
-	Status BreakerStatus `json:"status"`
+	State BreakerState `json:"state"`
 	// LastTransitionTime is the last time that the status changed
 	LastTransitionTime *metav1.Time `json:"lastTransitionTime,omitempty"`
 }
 
 // CircuitBreakerStatus defines the observed state of CircuitBreaker
 type CircuitBreakerStatus struct {
-	ObservedGeneration int64              `json:"observedGeneration,omitempty"`
-	LastUpdatedTime    metav1.Time        `json:"lastUpdatedTime,omitempty"`
-	LimitingSnapshots  []LimitingSnapshot `json:"limitingSnapshots"`
+	ObservedGeneration int64           `json:"observedGeneration,omitempty"`
+	LastUpdatedTime    *metav1.Time    `json:"lastUpdatedTime,omitempty"`
+	CurrentSpecHash    string          `json:"currentSpecHash,omitempty"`
+	TargetStatus       []*TargetStatus `json:"targetStatus,omitempty"`
+}
+
+type TargetStatus struct {
+	PodName           string              `json:"podName,omitempty"`
+	PodIP             string              `json:"podIP,omitempty"`
+	ConfigHash        string              `json:"configHash,omitempty"`
+	Message           string              `json:"message,omitempty"`
+	LimitingSnapshots []*LimitingSnapshot `json:"limitingSnapshots,omitempty"`
 }
 
 // +genclient
@@ -206,17 +195,4 @@ type CircuitBreakerList struct {
 
 func init() {
 	SchemeBuilder.Register(&CircuitBreaker{}, &CircuitBreakerList{})
-}
-
-func (in *CircuitBreakerStatus) UpdateSnapshots(podIp string, snapshot []LimitingSnapshot) {
-	var newSnapshot []LimitingSnapshot
-	for _, sp := range snapshot {
-		newSnapshot = append(newSnapshot, *sp.DeepCopy())
-	}
-	for _, sp := range in.LimitingSnapshots {
-		if sp.Endpoint != podIp {
-			newSnapshot = append(newSnapshot, *sp.DeepCopy())
-		}
-	}
-	in.LimitingSnapshots = newSnapshot
 }

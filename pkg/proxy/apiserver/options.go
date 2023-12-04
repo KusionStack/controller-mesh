@@ -19,6 +19,7 @@ package apiserver
 
 import (
 	"fmt"
+	"net/http"
 	"strings"
 
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -29,7 +30,7 @@ import (
 	"k8s.io/apiserver/pkg/server/options"
 	"k8s.io/client-go/rest"
 
-	protomanager "github.com/KusionStack/ctrlmesh/pkg/proxy/proto"
+	protomanager "github.com/KusionStack/controller-mesh/pkg/proxy/proto"
 )
 
 const (
@@ -51,8 +52,9 @@ type Options struct {
 	HandlerChainWaitGroup  *utilwaitgroup.SafeWaitGroup
 
 	LeaderElectionName string
+	SpecManager        *protomanager.SpecManager
 
-	SpecManager *protomanager.SpecManager
+	BreakerWrapperFunc func(http.Handler) http.Handler
 }
 
 func NewOptions() *Options {
@@ -82,7 +84,7 @@ func (o *Options) ApplyTo(apiserver **server.SecureServingInfo) error {
 }
 
 func (o *Options) Validate() []error {
-	errors := []error{}
+	var errors []error
 	errors = append(errors, o.SecureServingOptions.Validate()...)
 	return errors
 }

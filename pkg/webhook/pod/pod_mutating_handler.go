@@ -30,7 +30,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
-	"github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh"
+	"github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh"
 )
 
 type MutatingHandler struct {
@@ -56,11 +56,11 @@ func (h *MutatingHandler) Handle(ctx context.Context, req admission.Request) adm
 	if obj.Namespace == "" {
 		obj.Namespace = req.Namespace
 	}
-	if obj.Labels == nil || obj.Labels[ctrlmesh.KdEnableProxyLabel] != "true" {
+	if obj.Labels == nil || obj.Labels[ctrlmesh.CtrlmeshEnableProxyLabel] != "true" {
 		return admission.Allowed("")
 	}
 
-	obj.Labels[ctrlmesh.KdWatchOnLimitLabel] = "true"
+	obj.Labels[ctrlmesh.CtrlmeshWatchOnLimitLabel] = "true"
 	if err = h.injectByShardingConfig(ctx, obj); err != nil {
 		return admission.Errored(http.StatusBadRequest, err)
 	}

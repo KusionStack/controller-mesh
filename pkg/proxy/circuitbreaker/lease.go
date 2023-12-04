@@ -17,37 +17,41 @@ limitations under the License.
 package circuitbreaker
 
 import (
+	"context"
 	"sync"
 	"time"
 
 	"k8s.io/client-go/util/workqueue"
 
-	appsv1alpha1 "github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh/v1alpha1"
+	ctrlmeshproto "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/proto"
 )
 
 type lease struct {
 	mu         sync.RWMutex
 	stateQueue workqueue.DelayingInterface
-	stateSet   map[*state]struct{}
+	stateSet   map[string]*state
+
+	ctx context.Context
 }
 
-func NewBreakerLease() *lease {
+func newBreakerLease(ctx context.Context) *lease {
 	result := &lease{
 		stateQueue: workqueue.NewDelayingQueue(),
-		stateSet:   make(map[*state]struct{}),
+		stateSet:   map[string]*state{},
+		ctx:        ctx,
 	}
 	go result.processingLoop()
 	return result
 }
 
 func (l *lease) registerState(st *state) {
-	if st.status == appsv1alpha1.BreakerStatusOpened {
+	if st.state == ctrlmeshproto.BreakerState_OPENED {
 		logger.Info("register state", "state", st.key)
 		l.mu.Lock()
 		defer l.mu.Unlock()
-		if _, ok := l.stateSet[st]; !ok {
+		if _, ok := l.stateSet[st.key]; !ok {
 			if st.recoverAt != nil {
-				l.stateSet[st] = struct{}{}
+				l.stateSet[st.key] = st
 				d := time.Until(st.recoverAt.Time)
 				l.stateQueue.AddAfter(st, d)
 			}
@@ -56,8 +60,15 @@ func (l *lease) registerState(st *state) {
 }
 
 func (l *lease) processingLoop() {
+	go func() {
+		<-l.ctx.Done()
+		l.stateQueue.ShutDown()
+	}()
 	for {
-		obj, _ := l.stateQueue.Get()
+		obj, shutdown := l.stateQueue.Get()
+		if shutdown {
+			return
+		}
 		st := obj.(*state)
 		_, _, recoverAt := st.read()
 		if recoverAt != nil && time.Now().Before(recoverAt.Time) {
@@ -65,7 +76,7 @@ func (l *lease) processingLoop() {
 			l.stateQueue.AddAfter(st, time.Until(recoverAt.Time))
 		} else {
 			l.mu.Lock()
-			delete(l.stateSet, st)
+			delete(l.stateSet, st.key)
 			l.mu.Unlock()
 			st.recoverBreaker()
 		}

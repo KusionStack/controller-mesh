@@ -18,8 +18,8 @@ limitations under the License.
 package ctrlmesh
 
 import (
-	v1alpha1 "github.com/KusionStack/ctrlmesh/pkg/client/informers/externalversions/ctrlmesh/v1alpha1"
-	internalinterfaces "github.com/KusionStack/ctrlmesh/pkg/client/informers/externalversions/internalinterfaces"
+	v1alpha1 "github.com/KusionStack/controller-mesh/pkg/client/informers/externalversions/ctrlmesh/v1alpha1"
+	internalinterfaces "github.com/KusionStack/controller-mesh/pkg/client/informers/externalversions/internalinterfaces"
 )
 
 // Interface provides access to each of this group's versions.

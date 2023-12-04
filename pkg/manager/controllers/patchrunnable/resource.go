@@ -31,8 +31,8 @@ import (
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh"
-	"github.com/KusionStack/ctrlmesh/pkg/utils"
+	"github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh"
+	"github.com/KusionStack/controller-mesh/pkg/utils"
 )
 
 const (
@@ -105,7 +105,7 @@ func getShardingLabel(obj client.Object) map[string]string {
 		return shardingLabels
 	}
 	for k, v := range obj.GetLabels() {
-		if strings.HasPrefix(k, ctrlmesh.KdControlPrefix) {
+		if strings.HasPrefix(k, ctrlmesh.CtrlmeshControlPrefix) {
 			shardingLabels[k] = v
 		}
 	}

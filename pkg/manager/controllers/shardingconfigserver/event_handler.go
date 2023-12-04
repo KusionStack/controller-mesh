@@ -27,8 +27,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	ctrlmeshv1alpha1 "github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh/v1alpha1"
-	"github.com/KusionStack/ctrlmesh/pkg/utils"
+	ctrlmeshv1alpha1 "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/v1alpha1"
+	"github.com/KusionStack/controller-mesh/pkg/utils"
 )
 
 type podEventHandler struct {

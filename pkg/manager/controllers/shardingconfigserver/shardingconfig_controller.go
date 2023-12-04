@@ -35,9 +35,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	ctrlmeshproto "github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh/proto"
-	ctrlmeshv1alpha1 "github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh/v1alpha1"
-	"github.com/KusionStack/ctrlmesh/pkg/utils"
+	ctrlmeshproto "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/proto"
+	ctrlmeshv1alpha1 "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/v1alpha1"
+	"github.com/KusionStack/controller-mesh/pkg/utils"
 )
 
 var (
@@ -179,8 +179,6 @@ func (r *ShardingConfigReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	for i := range syncPods {
 		syncingPod := &syncPods[i]
 		metaState := syncingPod.currentStatus.MetaState
-
-		// TODO: new spec
 		syncingPod.newSpec = newSpec
 
 		// Should be the first time start and connect
@@ -192,8 +190,6 @@ func (r *ShardingConfigReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		if syncingPod.currentStatus.LeaderElectionState != nil {
 			isLeader = syncingPod.currentStatus.LeaderElectionState.IsLeader
 		}
-
-		// TODO:
 
 		if metaState.ExpectedHash != metaState.CurrentHash {
 			klog.Infof("shardingConfig %s find Pod %s should delete, expectedHash(%s) != currentHash(%s), because %s",

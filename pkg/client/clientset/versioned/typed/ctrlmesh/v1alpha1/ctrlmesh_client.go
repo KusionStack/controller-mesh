@@ -20,8 +20,8 @@ package v1alpha1
 import (
 	"net/http"
 
-	v1alpha1 "github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh/v1alpha1"
-	"github.com/KusionStack/ctrlmesh/pkg/client/clientset/versioned/scheme"
+	v1alpha1 "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/v1alpha1"
+	"github.com/KusionStack/controller-mesh/pkg/client/clientset/versioned/scheme"
 	rest "k8s.io/client-go/rest"
 )
 

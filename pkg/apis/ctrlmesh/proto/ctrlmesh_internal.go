@@ -23,7 +23,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/klog/v2"
 
-	"github.com/KusionStack/ctrlmesh/pkg/utils"
+	ctrlmeshv1alpha1 "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/v1alpha1"
+	"github.com/KusionStack/controller-mesh/pkg/utils"
 )
 
 const (
@@ -94,6 +95,13 @@ func (is *InternalSpec) GetMatchedSubsetEndpoint(ns string, gr schema.GroupResou
 type internalRoute struct {
 	currentLimits []*internalMatchLimitRule
 	subsetLimits  map[string][]*internalMatchLimitRule
+
+	currentCircuitBreaker []*internalCircuitBreaker
+}
+
+type internalCircuitBreaker struct {
+	RateLimitings         []*ctrlmeshv1alpha1.Limiting
+	TrafficInterceptRules []*ctrlmeshv1alpha1.TrafficInterceptRule
 }
 
 type internalMatchLimitRule struct {

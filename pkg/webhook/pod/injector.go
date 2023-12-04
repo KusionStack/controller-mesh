@@ -34,10 +34,10 @@ import (
 	utilpointer "k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh"
-	"github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh/constants"
-	ctrlmeshv1alpha1 "github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh/v1alpha1"
-	util "github.com/KusionStack/ctrlmesh/pkg/utils"
+	"github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh"
+	"github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/constants"
+	ctrlmeshv1alpha1 "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/v1alpha1"
+	util "github.com/KusionStack/controller-mesh/pkg/utils"
 )
 
 var (
@@ -58,7 +58,7 @@ var (
 			Name:      *fakeKubeconfig,
 			Namespace: "default",
 			Labels: map[string]string{
-				ctrlmesh.KdWatchOnLimitLabel: "true",
+				ctrlmesh.CtrlmeshWatchOnLimitLabel: "true",
 			},
 		},
 		Data: map[string]string{"fake-kubeconfig.yaml": "apiVersion: v1\n" +
@@ -177,7 +177,7 @@ func (h *MutatingHandler) injectByShardingConfig(ctx context.Context, pod *v1.Po
 		},
 	}
 
-	if val, ok := pod.Annotations[ctrlmesh.KdProxyContainerResourceAnno]; ok {
+	if val, ok := pod.Annotations[ctrlmesh.CtrlmeshProxyContainerResourceAnno]; ok {
 		req := &v1.ResourceRequirements{}
 		if err := json.Unmarshal([]byte(val), req); err != nil {
 			klog.Errorf("fail to unmarshal resource requirements %v", err)
@@ -278,7 +278,7 @@ func (h *MutatingHandler) injectByShardingConfig(ctx context.Context, pod *v1.Po
 		pod.Labels = map[string]string{}
 	}
 
-	if volumeName, ok := pod.Labels[ctrlmesh.KdProxyKubeConfigVolumeLabel]; ok {
+	if volumeName, ok := pod.Labels[ctrlmesh.CtrlmeshProxyKubeConfigVolumeLabel]; ok {
 		pickVolume(pod, volumeName)
 		var cmName string
 		for _, vol := range pod.Spec.Volumes {
@@ -315,7 +315,7 @@ func (h *MutatingHandler) injectByShardingConfig(ctx context.Context, pod *v1.Po
 	pod.Spec.Containers = append([]v1.Container{*proxyContainer}, pod.Spec.Containers...)
 	injectEnv(pod)
 	pod.Labels[ctrlmeshv1alpha1.ShardingConfigInjectedKey] = matchedCfg.Name
-	if logPath, find := pod.Annotations[ctrlmesh.KdSharedLogPathAnno]; find {
+	if logPath, find := pod.Annotations[ctrlmesh.CtrlmeshSharedLogPathAnno]; find {
 		return mountLogVolume(pod, logPath, "app-shared-logs")
 	}
 	return nil
@@ -365,7 +365,7 @@ func getEnvFromAnno(pod *v1.Pod) (vars []v1.EnvVar) {
 	if pod.Annotations == nil {
 		return
 	}
-	envStr, ok := pod.Annotations[ctrlmesh.KdWebhookEnvConfigAnno]
+	envStr, ok := pod.Annotations[ctrlmesh.CtrlmeshWebhookEnvConfigAnno]
 	if !ok {
 		return
 	}
@@ -396,7 +396,7 @@ func injectEnv(pod *v1.Pod) {
 	if pod.Annotations == nil {
 		return
 	}
-	envStr, ok := pod.Annotations[ctrlmesh.KdEnvInjectAnno]
+	envStr, ok := pod.Annotations[ctrlmesh.CtrlmeshEnvInjectAnno]
 	if !ok {
 		return
 	}
@@ -543,8 +543,8 @@ func mountFakeKubeConfig(pod *v1.Pod, name string) error {
 	if !findCm {
 		pod.Spec.Volumes = append(pod.Spec.Volumes, *fakeVol)
 	}
-	disableArg := pod.Labels[ctrlmesh.KdDisableFakeKubeconfigArgLabel]
-	disableEnv := pod.Labels[ctrlmesh.KdDisableFakeKubeconfigEnvLabel]
+	disableArg := pod.Labels[ctrlmesh.CtrlmeshDisableFakeKubeconfigArgLabel]
+	disableEnv := pod.Labels[ctrlmesh.CtrlmeshDisableFakeKubeconfigEnvLabel]
 	for i := range pod.Spec.Containers {
 		findVol := false
 		for _, mo := range pod.Spec.Containers[i].VolumeMounts {

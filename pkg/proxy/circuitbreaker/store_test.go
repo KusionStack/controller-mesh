@@ -17,6 +17,7 @@ limitations under the License.
 package circuitbreaker
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"testing"
@@ -25,7 +26,9 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	appsv1alpha1 "github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh/v1alpha1"
+	ctrlmeshproto "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/proto"
+	"github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/utils/conv"
+	ctrlmeshv1alpha1 "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/v1alpha1"
 )
 
 func init() {
@@ -34,14 +37,14 @@ func init() {
 
 func TestLimiterStore(t *testing.T) {
 	fmt.Println("Test_Limiter_Store")
-	limitingA := appsv1alpha1.Limiting{
+	limitingA := &ctrlmeshv1alpha1.Limiting{
 		Name: "deletePod",
-		Bucket: appsv1alpha1.Bucket{
+		Bucket: ctrlmeshv1alpha1.Bucket{
 			Interval: "1m",
 			Burst:    100,
 			Limit:    20,
 		},
-		ResourceRules: []appsv1alpha1.ResourceRule{
+		ResourceRules: []ctrlmeshv1alpha1.ResourceRule{
 			{
 				Namespaces: []string{"*"},
 				ApiGroups:  []string{""},
@@ -50,31 +53,24 @@ func TestLimiterStore(t *testing.T) {
 			},
 		},
 	}
-	snapshotA := appsv1alpha1.LimitingSnapshot{
-		Name:   "deletePod",
-		Status: appsv1alpha1.BreakerStatusClosed,
-	}
-	limitingB := appsv1alpha1.Limiting{
+
+	limitingB := &ctrlmeshv1alpha1.Limiting{
 		Name: "createDomain",
-		Bucket: appsv1alpha1.Bucket{
+		Bucket: ctrlmeshv1alpha1.Bucket{
 			Interval: "1m",
 			Burst:    100,
 			Limit:    20,
 		},
-		RestRules: []appsv1alpha1.RestRule{
+		RestRules: []ctrlmeshv1alpha1.RestRule{
 			{
 				URL:    "https://localhost:80/createDomain",
 				Method: "POST",
 			},
 		},
 	}
-	snapshotB := appsv1alpha1.LimitingSnapshot{
-		Name:   "createDomain",
-		Status: appsv1alpha1.BreakerStatusOpened,
-	}
-	store := newLimiterStore()
-	store.createOrUpdateRule("default:global:deletePod", &limitingA, &snapshotA)
-	store.createOrUpdateRule("default:global:createDomain", &limitingB, &snapshotB)
+	store := newLimiterStore(context.TODO())
+	store.createOrUpdateRule("global:deletePod", conv.ConvertLimiting(limitingA), &ctrlmeshproto.LimitingSnapshot{State: ctrlmeshproto.BreakerState_CLOSED})
+	store.createOrUpdateRule("global:createDomain", conv.ConvertLimiting(limitingB), &ctrlmeshproto.LimitingSnapshot{State: ctrlmeshproto.BreakerState_OPENED})
 
 	rules, limiters, states := store.byIndex(IndexResource, "*::pod:delete")
 	g := gomega.NewGomegaWithT(t)
@@ -88,24 +84,17 @@ func TestLimiterStore(t *testing.T) {
 	g.Expect(len(states)).To(gomega.BeEquivalentTo(1))
 }
 
-func TestRegisterRules(t *testing.T) {
-	fmt.Println("TestRegisterRules")
-	var x float64
-	x = 2.1
-	y := uint64(x)
-	fmt.Println(y)
-}
-
-func Test_Limiter_Priority(t *testing.T) {
-	fmt.Println("Test_Limiter_Priority")
-	limitingA := appsv1alpha1.Limiting{
+func TestLimiterPriority(t *testing.T) {
+	fmt.Println("TestLimiterPriority")
+	g := gomega.NewGomegaWithT(t)
+	limitingA := &ctrlmeshv1alpha1.Limiting{
 		Name: "deletePod-priority",
-		Bucket: appsv1alpha1.Bucket{
+		Bucket: ctrlmeshv1alpha1.Bucket{
 			Interval: "1m",
 			Burst:    100,
 			Limit:    20,
 		},
-		ResourceRules: []appsv1alpha1.ResourceRule{
+		ResourceRules: []ctrlmeshv1alpha1.ResourceRule{
 			{
 				Namespaces: []string{"*"},
 				ApiGroups:  []string{"*"},
@@ -114,25 +103,25 @@ func Test_Limiter_Priority(t *testing.T) {
 			},
 		},
 	}
-	snapshotA := appsv1alpha1.LimitingSnapshot{
-		Name:   "deletePod-priority",
-		Status: appsv1alpha1.BreakerStatusClosed,
+	ctx := context.TODO()
+	mgr := &manager{
+		breakerMap:            map[string]*ctrlmeshproto.CircuitBreaker{},
+		limiterStore:          newLimiterStore(ctx),
+		trafficInterceptStore: newTrafficInterceptStore(),
 	}
+	mgr.limiterStore.createOrUpdateRule("global:deletePod-priority", conv.ConvertLimiting(limitingA), &ctrlmeshproto.LimitingSnapshot{State: ctrlmeshproto.BreakerState_CLOSED})
 
-	defaultLimiterStore.createOrUpdateRule("default:global:deletePod-priority", &limitingA, &snapshotA)
-
-	g := gomega.NewGomegaWithT(t)
-	result := ValidateResource("default", "", "pod", "delete")
+	result := mgr.ValidateResource("default", "", "pod", "delete")
 	g.Expect(result.Allowed).Should(gomega.BeTrue())
 
-	limitingB := appsv1alpha1.Limiting{
+	limitingB := &ctrlmeshv1alpha1.Limiting{
 		Name: "deletePod1-priority",
-		Bucket: appsv1alpha1.Bucket{
+		Bucket: ctrlmeshv1alpha1.Bucket{
 			Interval: "1m",
 			Burst:    100,
 			Limit:    20,
 		},
-		ResourceRules: []appsv1alpha1.ResourceRule{
+		ResourceRules: []ctrlmeshv1alpha1.ResourceRule{
 			{
 				Namespaces: []string{"*"},
 				ApiGroups:  []string{"*"},
@@ -141,23 +130,21 @@ func Test_Limiter_Priority(t *testing.T) {
 			},
 		},
 	}
-	snapshotB := appsv1alpha1.LimitingSnapshot{
-		Name:   "deletePod1-priority",
-		Status: appsv1alpha1.BreakerStatusOpened,
-	}
-	defaultLimiterStore.createOrUpdateRule("default:global:deletePod1-priority", &limitingB, &snapshotB)
-	result = ValidateResource("default", "", "pod", "delete")
+
+	mgr.limiterStore.createOrUpdateRule("global:deletePod1-priority", conv.ConvertLimiting(limitingB), &ctrlmeshproto.LimitingSnapshot{State: ctrlmeshproto.BreakerState_OPENED})
+
+	result = mgr.ValidateResource("default", "", "pod", "delete")
 	g.Expect(result.Allowed).Should(gomega.BeFalse())
 	g.Expect(result.Message).Should(gomega.ContainSubstring("deletePod1-priority"))
 
-	limitingC := appsv1alpha1.Limiting{
+	limitingC := &ctrlmeshv1alpha1.Limiting{
 		Name: "deletePod2-priority",
-		Bucket: appsv1alpha1.Bucket{
+		Bucket: ctrlmeshv1alpha1.Bucket{
 			Interval: "1m",
 			Burst:    100,
 			Limit:    20,
 		},
-		ResourceRules: []appsv1alpha1.ResourceRule{
+		ResourceRules: []ctrlmeshv1alpha1.ResourceRule{
 			{
 				Namespaces: []string{"*"},
 				ApiGroups:  []string{""},
@@ -166,23 +153,19 @@ func Test_Limiter_Priority(t *testing.T) {
 			},
 		},
 	}
-	snapshotC := appsv1alpha1.LimitingSnapshot{
-		Name:   "deletePod2-priority",
-		Status: appsv1alpha1.BreakerStatusOpened,
-	}
-	defaultLimiterStore.createOrUpdateRule("default:global:deletePod2-priority", &limitingC, &snapshotC)
-	result = ValidateResource("default", "", "pod", "delete")
+	mgr.limiterStore.createOrUpdateRule("global:deletePod2-priority", conv.ConvertLimiting(limitingC), &ctrlmeshproto.LimitingSnapshot{State: ctrlmeshproto.BreakerState_OPENED})
+	result = mgr.ValidateResource("default", "", "pod", "delete")
 	g.Expect(result.Allowed).Should(gomega.BeFalse())
 	g.Expect(result.Message).Should(gomega.ContainSubstring("deletePod2-priority"))
 
-	limitingD := appsv1alpha1.Limiting{
+	limitingD := &ctrlmeshv1alpha1.Limiting{
 		Name: "deletePod3-priority",
-		Bucket: appsv1alpha1.Bucket{
+		Bucket: ctrlmeshv1alpha1.Bucket{
 			Interval: "1m",
 			Burst:    100,
 			Limit:    20,
 		},
-		ResourceRules: []appsv1alpha1.ResourceRule{
+		ResourceRules: []ctrlmeshv1alpha1.ResourceRule{
 			{
 				Namespaces: []string{"default"},
 				ApiGroups:  []string{""},
@@ -191,12 +174,8 @@ func Test_Limiter_Priority(t *testing.T) {
 			},
 		},
 	}
-	snapshotD := appsv1alpha1.LimitingSnapshot{
-		Name:   "deletePod3-priority",
-		Status: appsv1alpha1.BreakerStatusOpened,
-	}
-	defaultLimiterStore.createOrUpdateRule("default:global:deletePod3-priority", &limitingD, &snapshotD)
-	result = ValidateResource("default", "", "pod", "delete")
+	mgr.limiterStore.createOrUpdateRule("global:deletePod3-priority", conv.ConvertLimiting(limitingD), &ctrlmeshproto.LimitingSnapshot{State: ctrlmeshproto.BreakerState_OPENED})
+	result = mgr.ValidateResource("default", "", "pod", "delete")
 	g.Expect(result.Allowed).Should(gomega.BeFalse())
 	g.Expect(result.Message).Should(gomega.ContainSubstring("deletePod3-priority"))
 }
@@ -237,97 +216,87 @@ func TestGenerateWildcardSeeds(t *testing.T) {
 	g.Expect(urls[3]).Should(gomega.BeEquivalentTo("https://www.cnblogs.com/*:GET"))
 }
 
-func Test_Rest_Limiter_Priority(t *testing.T) {
-	fmt.Println("Test_Rest_Limiter_Priority")
-	limitingA := appsv1alpha1.Limiting{
+func TestRestLimiterPriority(t *testing.T) {
+	fmt.Println("TestRestLimiterPriority")
+	limitingA := &ctrlmeshv1alpha1.Limiting{
 		Name: "rest-priority",
-		Bucket: appsv1alpha1.Bucket{
+		Bucket: ctrlmeshv1alpha1.Bucket{
 			Interval: "1m",
 			Burst:    100,
 			Limit:    20,
 		},
-		RestRules: []appsv1alpha1.RestRule{
+		RestRules: []ctrlmeshv1alpha1.RestRule{
 			{
 				URL:    "https://www.cnblogs.com/*",
 				Method: "GET",
 			},
 		},
 	}
-	snapshotA := appsv1alpha1.LimitingSnapshot{
-		Name:   "rest-priority",
-		Status: appsv1alpha1.BreakerStatusClosed,
+	ctx := context.TODO()
+	mgr := &manager{
+		breakerMap:            map[string]*ctrlmeshproto.CircuitBreaker{},
+		limiterStore:          newLimiterStore(ctx),
+		trafficInterceptStore: newTrafficInterceptStore(),
 	}
-	defaultLimiterStore.createOrUpdateRule("default:global:rest-priority", &limitingA, &snapshotA)
+	mgr.limiterStore.createOrUpdateRule("global:rest-priority", conv.ConvertLimiting(limitingA), &ctrlmeshproto.LimitingSnapshot{State: ctrlmeshproto.BreakerState_CLOSED})
 	g := gomega.NewGomegaWithT(t)
-	result := ValidateRest("https://www.cnblogs.com/f-ck-need-u/p/9854932.html", "GET")
+	result := mgr.ValidateRest("https://www.cnblogs.com/f-ck-need-u/p/9854932.html", "GET")
 	g.Expect(result.Allowed).Should(gomega.BeTrue())
 
-	limitingB := appsv1alpha1.Limiting{
+	limitingB := &ctrlmeshv1alpha1.Limiting{
 		Name: "rest1-priority",
-		Bucket: appsv1alpha1.Bucket{
+		Bucket: ctrlmeshv1alpha1.Bucket{
 			Interval: "1m",
 			Burst:    100,
 			Limit:    20,
 		},
-		RestRules: []appsv1alpha1.RestRule{
+		RestRules: []ctrlmeshv1alpha1.RestRule{
 			{
 				URL:    "https://www.cnblogs.com/f-ck-need-u/*",
 				Method: "GET",
 			},
 		},
 	}
-	snapshotB := appsv1alpha1.LimitingSnapshot{
-		Name:   "rest1-priority",
-		Status: appsv1alpha1.BreakerStatusOpened,
-	}
-	defaultLimiterStore.createOrUpdateRule("default:global:rest1-priority", &limitingB, &snapshotB)
-	result = ValidateRest("https://www.cnblogs.com/f-ck-need-u/p/9854932.html", "GET")
+	mgr.limiterStore.createOrUpdateRule("global:rest1-priority", conv.ConvertLimiting(limitingB), &ctrlmeshproto.LimitingSnapshot{State: ctrlmeshproto.BreakerState_OPENED})
+	result = mgr.ValidateRest("https://www.cnblogs.com/f-ck-need-u/p/9854932.html", "GET")
 	g.Expect(result.Allowed).Should(gomega.BeFalse())
 	g.Expect(result.Message).Should(gomega.ContainSubstring("rest1-priority"))
 
-	limitingC := appsv1alpha1.Limiting{
+	limitingC := &ctrlmeshv1alpha1.Limiting{
 		Name: "rest2-priority",
-		Bucket: appsv1alpha1.Bucket{
+		Bucket: ctrlmeshv1alpha1.Bucket{
 			Interval: "1m",
 			Burst:    100,
 			Limit:    20,
 		},
-		RestRules: []appsv1alpha1.RestRule{
+		RestRules: []ctrlmeshv1alpha1.RestRule{
 			{
 				URL:    "https://www.cnblogs.com/f-ck-need-u/p/*",
 				Method: "GET",
 			},
 		},
 	}
-	snapshotC := appsv1alpha1.LimitingSnapshot{
-		Name:   "rest2-priority",
-		Status: appsv1alpha1.BreakerStatusOpened,
-	}
-	defaultLimiterStore.createOrUpdateRule("default:global:rest2-priority", &limitingC, &snapshotC)
-	result = ValidateRest("https://www.cnblogs.com/f-ck-need-u/p/9854932.html", "GET")
+	mgr.limiterStore.createOrUpdateRule("global:rest2-priority", conv.ConvertLimiting(limitingC), &ctrlmeshproto.LimitingSnapshot{State: ctrlmeshproto.BreakerState_OPENED})
+	result = mgr.ValidateRest("https://www.cnblogs.com/f-ck-need-u/p/9854932.html", "GET")
 	g.Expect(result.Allowed).Should(gomega.BeFalse())
 	g.Expect(result.Message).Should(gomega.ContainSubstring("rest2-priority"))
 
-	limitingD := appsv1alpha1.Limiting{
+	limitingD := &ctrlmeshv1alpha1.Limiting{
 		Name: "rest3-priority",
-		Bucket: appsv1alpha1.Bucket{
+		Bucket: ctrlmeshv1alpha1.Bucket{
 			Interval: "1m",
 			Burst:    100,
 			Limit:    20,
 		},
-		RestRules: []appsv1alpha1.RestRule{
+		RestRules: []ctrlmeshv1alpha1.RestRule{
 			{
 				URL:    "https://www.cnblogs.com/f-ck-need-u/p/9854932.html",
 				Method: "GET",
 			},
 		},
 	}
-	snapshotD := appsv1alpha1.LimitingSnapshot{
-		Name:   "rest3-priority",
-		Status: appsv1alpha1.BreakerStatusOpened,
-	}
-	defaultLimiterStore.createOrUpdateRule("default:global:rest3-priority", &limitingD, &snapshotD)
-	result = ValidateRest("https://www.cnblogs.com/f-ck-need-u/p/9854932.html", "GET")
+	mgr.limiterStore.createOrUpdateRule("global:rest3-priority", conv.ConvertLimiting(limitingD), &ctrlmeshproto.LimitingSnapshot{State: ctrlmeshproto.BreakerState_OPENED})
+	result = mgr.ValidateRest("https://www.cnblogs.com/f-ck-need-u/p/9854932.html", "GET")
 	g.Expect(result.Allowed).Should(gomega.BeFalse())
 	g.Expect(result.Message).Should(gomega.ContainSubstring("rest3-priority"))
 }

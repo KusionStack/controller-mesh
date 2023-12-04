@@ -10,9 +10,9 @@ spec:
       interval: 1s
       limit: 20
     name: deletePod
-    properties:
-      sleepingWindowSize: 15m
-    recoverPolicy: SleepingWindow
+    recoverPolicy:
+      sleepingWindowSize: 10m
+      type: SleepingWindow
     resourceRules:
     - apiGroups:
       - ""
@@ -22,7 +22,7 @@ spec:
       - pods
       verbs:
       - delete
-    triggerPolicy: Normal
+    triggerPolicy: LimiterOnly
   - bucket:
       burst: 200
       interval: 1s
@@ -30,12 +30,16 @@ spec:
     name: trafficOffLimit
     restRules:
     - method: POST
-      url: https://*.com/*/trafficOff
+      url: https://xxx.com/xxx/trafficOff
     triggerPolicy: LimiterOnly
+  selector:
+    matchLabels:
+      control-plane: kusionstack-operating
   trafficInterceptRules:
-  - contents:
+  - contentType: Regexp
+    contents:
     - .*(127.0.0.1).*
-    interceptType: White
+    interceptType: Whitelist
     methods:
     - POST
     - GET

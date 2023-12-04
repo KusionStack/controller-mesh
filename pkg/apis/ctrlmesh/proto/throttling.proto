@@ -1,0 +1,105 @@
+syntax = "proto3";
+option go_package = "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/proto";
+package proto;
+
+import "k8s.io/apimachinery/pkg/apis/meta/v1/generated.proto";
+
+service Throttling {
+  rpc SendConfig(CircuitBreaker) returns (ConfigResp);
+}
+
+message CircuitBreaker {
+  Option option = 1;
+  repeated TrafficInterceptRule trafficInterceptRules = 2;
+  repeated RateLimiting rateLimitings = 3;
+  string configHash = 4;
+  string name = 5;
+
+  enum Option {
+    CREATE = 0;
+    DELETE = 1;
+    UPDATE = 2;
+    CHECK = 3;
+    RECOVER = 4;
+  }
+}
+
+message ConfigResp {
+  bool success = 1;
+  string message = 2;
+  repeated LimitingSnapshot limitingSnapshot = 3;
+}
+
+message LimitingSnapshot {
+  string limitingName = 1;
+  BreakerState state = 2;
+  k8s.io.apimachinery.pkg.apis.meta.v1.Time recoverTime = 3;
+  k8s.io.apimachinery.pkg.apis.meta.v1.Time lastTransitionTime = 4;
+}
+
+enum BreakerState {
+  OPENED = 0;
+  CLOSED = 1;
+}
+
+message TrafficInterceptRule {
+  string name = 1;
+  InterceptType interceptType = 2;
+  ContentType contentType = 3;
+  repeated string contents = 4;
+  repeated string methods = 5;
+
+  enum ContentType {
+    NORMAL = 0;
+    REGEXP = 1;
+  }
+  enum InterceptType {
+    INTERCEPT_WHITELIST = 0;
+    INTERCEPT_BLACKLIST = 1;
+  }
+}
+
+message RateLimiting {
+  string name = 1;
+  repeated ResourceRule resourceRules = 2;
+  repeated RestRules restRules = 3;
+  Bucket bucket = 4;
+  TriggerPolicy triggerPolicy = 5;
+  RecoverPolicy recoverPolicy = 6;
+  string validatePolicy = 7;
+  map<string, string> properties = 8;
+
+  enum TriggerPolicy {
+    TRIGGER_POLICY_NORMAL = 0;
+    TRIGGER_POLICY_LIMITER_ONLY = 1;
+    TRIGGER_POLICY_FORCE_OPENED = 2;
+    TRIGGER_POLICY_FORCE_CLOSED = 3;
+  }
+  message RecoverPolicy {
+      RecoverType type = 1;
+      string sleepingWindowSize = 2;
+  }
+
+  enum RecoverType {
+    RECOVER_POLICY_MANUAL = 0;
+    RECOVER_POLICY_SLEEPING_WINDOW = 1;
+  }
+}
+
+message ResourceRule {
+  repeated string apiGroups = 1;
+  repeated string resources = 2;
+  repeated string verbs = 3;
+  repeated string namespaces = 4;
+}
+
+message RestRules {
+  string url = 1;
+  string method = 2;
+}
+
+message Bucket {
+  uint32 burst  = 1;
+  string interval = 2;
+  uint32 Limit = 3;
+}

@@ -57,7 +57,9 @@ header:
     - '.gitignore'
     - '.licenserc'
     - '**/zz_generated.deepcopy.go'
+    - '**/*.connect.go'
     - '**/*.pb.go'
     - '**/*.proto'
+    - '**/*.gen.go'
   comment: never
   license-location-threshold: 80

@@ -26,7 +26,7 @@ import (
 	"path"
 	"sync"
 
-	"github.com/KusionStack/ctrlmesh/pkg/utils"
+	"github.com/KusionStack/controller-mesh/pkg/utils"
 )
 
 var (

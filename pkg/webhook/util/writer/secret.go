@@ -28,7 +28,7 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
 
-	"github.com/KusionStack/ctrlmesh/pkg/webhook/util/generator"
+	"github.com/KusionStack/controller-mesh/pkg/webhook/util/generator"
 )
 
 const (

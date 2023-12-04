@@ -40,11 +40,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	"github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh"
-	ctrlmeshutils "github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh/utils"
-	ctrlmeshv1alpha1 "github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh/v1alpha1"
-	"github.com/KusionStack/ctrlmesh/pkg/utils"
-	"github.com/KusionStack/ctrlmesh/pkg/utils/expectation"
+	"github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh"
+	ctrlmeshutils "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/utils"
+	ctrlmeshv1alpha1 "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/v1alpha1"
+	"github.com/KusionStack/controller-mesh/pkg/utils"
+	"github.com/KusionStack/controller-mesh/pkg/utils/expectation"
 )
 
 var (
@@ -61,16 +61,16 @@ func (r *RolloutReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		WithOptions(controller.Options{MaxConcurrentReconciles: 2}).
 		For(&appsv1.StatefulSet{}, builder.WithPredicates(predicate.Funcs{
 			CreateFunc: func(e event.CreateEvent) bool {
-				return constantsLabelKey(e.Object, ctrlmesh.KdInRollingLabel)
+				return constantsLabelKey(e.Object, ctrlmesh.CtrlmeshInRollingLabel)
 			},
 			UpdateFunc: func(e event.UpdateEvent) bool {
-				return constantsLabelKey(e.ObjectNew, ctrlmesh.KdInRollingLabel)
+				return constantsLabelKey(e.ObjectNew, ctrlmesh.CtrlmeshInRollingLabel)
 			},
 			DeleteFunc: func(e event.DeleteEvent) bool {
 				return false
 			},
 			GenericFunc: func(e event.GenericEvent) bool {
-				return constantsLabelKey(e.Object, ctrlmesh.KdInRollingLabel)
+				return constantsLabelKey(e.Object, ctrlmesh.CtrlmeshInRollingLabel)
 			},
 		})).
 		Watches(&source.Kind{Type: &corev1.Pod{}}, &podEventHandler{client: mgr.GetClient()}).
@@ -96,13 +96,13 @@ func (r *RolloutReconciler) Reconcile(ctx context.Context, req reconcile.Request
 		return reconcile.Result{RequeueAfter: time.Second * 3}, fmt.Errorf("wait sts create pods, expected replicas %d, current replicas %d", *sts.Spec.Replicas, sts.Status.Replicas)
 	}
 
-	rollType, ok := sts.Labels[ctrlmesh.KdInRollingLabel]
+	rollType, ok := sts.Labels[ctrlmesh.CtrlmeshInRollingLabel]
 	if !ok {
 		return reconcile.Result{}, nil
 	}
 
 	if !isOnDeleteStrategy(sts) {
-		deleteLabel(sts, ctrlmesh.KdInRollingLabel)
+		deleteLabel(sts, ctrlmesh.CtrlmeshInRollingLabel)
 		return reconcile.Result{}, r.Update(ctx, sts)
 	}
 
@@ -160,7 +160,7 @@ func (r *RolloutReconciler) Reconcile(ctx context.Context, req reconcile.Request
 	finishRollout := false
 	defer func() {
 		updateAnno := updateRolloutAnno(sts, upgradedPods)
-		deleted := finishRollout && deleteLabel(sts, ctrlmesh.KdInRollingLabel)
+		deleted := finishRollout && deleteLabel(sts, ctrlmesh.CtrlmeshInRollingLabel)
 		if updateAnno || deleted {
 			updateErr := r.Update(ctx, sts)
 			if updateErr != nil {
@@ -302,11 +302,11 @@ func updateRolloutAnno(sts *appsv1.StatefulSet, upgradedPods []string) (updated 
 		val = ""
 	}
 	if sts.Annotations == nil {
-		sts.Annotations = map[string]string{ctrlmesh.KdRollingStatusAnno: val}
+		sts.Annotations = map[string]string{ctrlmesh.CtrlmeshRollingStatusAnno: val}
 		return true
 	}
-	if sts.Annotations[ctrlmesh.KdRollingStatusAnno] != val {
-		sts.Annotations[ctrlmesh.KdRollingStatusAnno] = val
+	if sts.Annotations[ctrlmesh.CtrlmeshRollingStatusAnno] != val {
+		sts.Annotations[ctrlmesh.CtrlmeshRollingStatusAnno] = val
 		return true
 	}
 	return false

@@ -17,6 +17,7 @@ limitations under the License.
 package circuitbreaker
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"regexp"
@@ -28,17 +29,16 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog/v2"
 
-	appsv1alpha1 "github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh/v1alpha1"
+	ctrlmeshproto "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/proto"
 )
 
 const (
-	// two default index for store
 	IndexResource = "resource"
 	IndexRest     = "rest"
 )
 
 var (
-	indexFunctions = map[string]func(limiting *appsv1alpha1.Limiting) []string{
+	indexFunctions = map[string]func(limiting *ctrlmeshproto.RateLimiting) []string{
 		IndexResource: indexFuncForResource,
 		IndexRest:     indexFuncForRest,
 	}
@@ -51,21 +51,29 @@ type indices map[string]index
 type state struct {
 	mu                 sync.RWMutex
 	key                string
-	status             appsv1alpha1.BreakerStatus
+	state              ctrlmeshproto.BreakerState
 	lastTransitionTime *metav1.Time
 	recoverAt          *metav1.Time
 }
 
-func (s *state) read() (appsv1alpha1.BreakerStatus, *metav1.Time, *metav1.Time) {
+func (s *state) read() (state ctrlmeshproto.BreakerState, lastTime *metav1.Time, recoverTime *metav1.Time) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return s.status, s.lastTransitionTime, s.recoverAt
+	if s.lastTransitionTime != nil {
+		lastTime = s.lastTransitionTime.DeepCopy()
+	}
+	if s.recoverAt != nil {
+		recoverTime = s.recoverAt.DeepCopy()
+	}
+	state = s.state
+	return
 }
 
 func (s *state) triggerBreaker() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.transitionTo(appsv1alpha1.BreakerStatusOpened) {
+	tm := metav1.Now()
+	if s.transitionTo(ctrlmeshproto.BreakerState_OPENED, &tm) {
 		s.recoverAt = nil
 	}
 }
@@ -73,7 +81,8 @@ func (s *state) triggerBreaker() {
 func (s *state) triggerBreakerWithTimeWindow(windowSize time.Duration) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.transitionTo(appsv1alpha1.BreakerStatusOpened) {
+	tm := metav1.Now()
+	if s.transitionTo(ctrlmeshproto.BreakerState_OPENED, &tm) {
 		t := metav1.Now().Add(windowSize)
 		s.recoverAt = &metav1.Time{Time: t}
 	}
@@ -82,16 +91,16 @@ func (s *state) triggerBreakerWithTimeWindow(windowSize time.Duration) {
 func (s *state) recoverBreaker() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.transitionTo(appsv1alpha1.BreakerStatusClosed) {
+	tm := metav1.Now()
+	if s.transitionTo(ctrlmeshproto.BreakerState_CLOSED, &tm) {
 		s.recoverAt = nil
 	}
 }
 
-func (s *state) transitionTo(newStatus appsv1alpha1.BreakerStatus) bool {
-	if s.status != newStatus {
-		s.status = newStatus
-		t := metav1.Now()
-		s.lastTransitionTime = &t
+func (s *state) transitionTo(newStatus ctrlmeshproto.BreakerState, t *metav1.Time) bool {
+	if s.state != newStatus {
+		s.state = newStatus
+		s.lastTransitionTime = t
 		return true
 	}
 	return false
@@ -103,24 +112,35 @@ type store struct {
 	// limiter cache, key is {cb.namespace}:{cb.name}:{rule.name}
 	limiters map[string]*rate.Limiter
 	// rule cache, key is {cb.namespace}:{cb.name}:{rule.name}
-	rules map[string]*appsv1alpha1.Limiting
+	rules map[string]*ctrlmeshproto.RateLimiting
 	// circuit breaker states
 	states map[string]*state
 	// limiter indices: resource indices and rest indices
 	indices indices
+
+	breakerLease *lease
+
+	ctx context.Context
 }
 
-func newLimiterStore() *store {
-	return &store{
-		limiters: make(map[string]*rate.Limiter),
-		rules:    make(map[string]*appsv1alpha1.Limiting),
-		states:   make(map[string]*state),
-		indices:  indices{},
+func newLimiterStore(ctx context.Context) *store {
+	s := &store{
+		limiters:     make(map[string]*rate.Limiter),
+		rules:        make(map[string]*ctrlmeshproto.RateLimiting),
+		states:       make(map[string]*state),
+		indices:      indices{},
+		breakerLease: newBreakerLease(ctx),
+		ctx:          ctx,
 	}
+	return s
+}
+
+func (s *store) registerState(st *state) {
+	s.breakerLease.registerState(st)
 }
 
 // createOrUpdateRule stores new rules (or updates existing rules) in local store
-func (s *store) createOrUpdateRule(key string, limiting *appsv1alpha1.Limiting, snapshot *appsv1alpha1.LimitingSnapshot) {
+func (s *store) createOrUpdateRule(key string, limiting *ctrlmeshproto.RateLimiting, snapshot *ctrlmeshproto.LimitingSnapshot) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -131,7 +151,7 @@ func (s *store) createOrUpdateRule(key string, limiting *appsv1alpha1.Limiting, 
 		s.limiters[key] = rateLimiter(limiting.Bucket)
 		s.states[key] = &state{
 			key:                key,
-			status:             snapshot.Status,
+			state:              snapshot.State,
 			lastTransitionTime: snapshot.LastTransitionTime,
 		}
 		s.updateIndices(nil, limiting, key)
@@ -160,14 +180,14 @@ func (s *store) deleteRule(key string) {
 }
 
 // byKey get the rule by a specific key
-func (s *store) byKey(key string) (*appsv1alpha1.Limiting, *rate.Limiter, *state) {
+func (s *store) byKey(key string) (*ctrlmeshproto.RateLimiting, *rate.Limiter, *state) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.rules[key], s.limiters[key], s.states[key]
 }
 
 // byIndex lists rules by a specific index
-func (s *store) byIndex(indexName, indexedValue string) ([]*appsv1alpha1.Limiting, []*rate.Limiter, []*state) {
+func (s *store) byIndex(indexName, indexedValue string) ([]*ctrlmeshproto.RateLimiting, []*rate.Limiter, []*state) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -178,7 +198,7 @@ func (s *store) byIndex(indexName, indexedValue string) ([]*appsv1alpha1.Limitin
 	idx := s.indices[indexName]
 	set := idx[indexedValue]
 
-	limitings := make([]*appsv1alpha1.Limiting, 0, set.Len())
+	limitings := make([]*ctrlmeshproto.RateLimiting, 0, set.Len())
 	limiters := make([]*rate.Limiter, 0, set.Len())
 	states := make([]*state, 0, set.Len())
 	for key := range set {
@@ -190,7 +210,7 @@ func (s *store) byIndex(indexName, indexedValue string) ([]*appsv1alpha1.Limitin
 }
 
 // updateIndices updates current indices of the rules
-func (s *store) updateIndices(oldOne, newOne *appsv1alpha1.Limiting, key string) {
+func (s *store) updateIndices(oldOne, newOne *ctrlmeshproto.RateLimiting, key string) {
 	if oldOne != nil {
 		s.deleteFromIndices(oldOne, key)
 	}
@@ -214,7 +234,7 @@ func (s *store) updateIndices(oldOne, newOne *appsv1alpha1.Limiting, key string)
 }
 
 // deleteFromIndices deletes indices of specified keys
-func (s *store) deleteFromIndices(oldOne *appsv1alpha1.Limiting, key string) {
+func (s *store) deleteFromIndices(oldOne *ctrlmeshproto.RateLimiting, key string) {
 	for name, indexFunc := range indexFunctions {
 		indexValues := indexFunc(oldOne)
 		idx := s.indices[name]
@@ -241,11 +261,11 @@ func (s *store) iterate(f func(key string)) {
 	}
 }
 
-func bucketEquals(oldOne, newOne appsv1alpha1.Bucket) bool {
+func bucketEquals(oldOne, newOne *ctrlmeshproto.Bucket) bool {
 	return oldOne.Interval == newOne.Interval && oldOne.Limit == newOne.Limit && oldOne.Burst == newOne.Burst
 }
 
-func rateLimiter(bucket appsv1alpha1.Bucket) *rate.Limiter {
+func rateLimiter(bucket *ctrlmeshproto.Bucket) *rate.Limiter {
 	// ensure no failure with webhook
 	interval, _ := time.ParseDuration(bucket.Interval)
 
@@ -268,7 +288,7 @@ func indexForRest(URL, method string) string {
 	return fmt.Sprintf("%s:%s", URL, method)
 }
 
-func indexFuncForResource(limiting *appsv1alpha1.Limiting) []string {
+func indexFuncForResource(limiting *ctrlmeshproto.RateLimiting) []string {
 	var result []string
 	for _, rule := range limiting.ResourceRules {
 		for _, namespace := range rule.Namespaces {
@@ -284,10 +304,10 @@ func indexFuncForResource(limiting *appsv1alpha1.Limiting) []string {
 	return result
 }
 
-func indexFuncForRest(limiting *appsv1alpha1.Limiting) []string {
+func indexFuncForRest(limiting *ctrlmeshproto.RateLimiting) []string {
 	var result []string
 	for _, rest := range limiting.RestRules {
-		result = append(result, indexForRest(rest.URL, rest.Method))
+		result = append(result, indexForRest(rest.Url, rest.Method))
 	}
 	return result
 }
@@ -306,7 +326,7 @@ type regexpInfo struct {
 	// reg is after regexp compiled result
 	reg *regexp.Regexp
 	// regType is represent intercept type
-	regType appsv1alpha1.InterceptType
+	regType ctrlmeshproto.TrafficInterceptRule_InterceptType
 	// method is represent url request method
 	method string
 }
@@ -315,7 +335,7 @@ type regexpInfo struct {
 type trafficInterceptStore struct {
 	mu sync.RWMutex
 	// rules cache, key is {cb.namespace}:{cb.name}:{rule.name}
-	rules map[string]*appsv1alpha1.TrafficInterceptRule
+	rules map[string]*ctrlmeshproto.TrafficInterceptRule
 	// normalIndex cache, key is {trafficInterceptStore.Content}:{trafficInterceptStore.Method}, value is {cb.namespace}:{cb.name}:{rule.name}
 	normalIndexes map[string]sets.Set[string]
 	// regexpIndex cache, key is {cb.namespace}:{cb.name}:{rule.name}, value is regexpInfo
@@ -324,14 +344,14 @@ type trafficInterceptStore struct {
 
 func newTrafficInterceptStore() *trafficInterceptStore {
 	return &trafficInterceptStore{
-		rules:         make(map[string]*appsv1alpha1.TrafficInterceptRule),
+		rules:         make(map[string]*ctrlmeshproto.TrafficInterceptRule),
 		normalIndexes: make(map[string]sets.Set[string]),
 		regexpIndexes: make(map[string][]*regexpInfo),
 	}
 }
 
 // createOrUpdateRule stores new rules (or updates existing rules) in local trafficInterceptStore
-func (s *trafficInterceptStore) createOrUpdateRule(key string, trafficInterceptRule *appsv1alpha1.TrafficInterceptRule) {
+func (s *trafficInterceptStore) createOrUpdateRule(key string, trafficInterceptRule *ctrlmeshproto.TrafficInterceptRule) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -357,11 +377,11 @@ func (s *trafficInterceptStore) deleteRule(key string) {
 }
 
 // updateIndices updates current indices of the rules
-func (s *trafficInterceptStore) updateIndex(oldOne, newOne *appsv1alpha1.TrafficInterceptRule, key string) {
+func (s *trafficInterceptStore) updateIndex(oldOne, newOne *ctrlmeshproto.TrafficInterceptRule, key string) {
 	if oldOne != nil {
 		s.deleteFromIndex(oldOne, key)
 	}
-	if newOne.ContentType == appsv1alpha1.ContentTypeNormal {
+	if newOne.ContentType == ctrlmeshproto.TrafficInterceptRule_NORMAL {
 		for _, content := range newOne.Contents {
 			for _, method := range newOne.Methods {
 				urlMethod := indexForRest(content, method)
@@ -373,7 +393,7 @@ func (s *trafficInterceptStore) updateIndex(oldOne, newOne *appsv1alpha1.Traffic
 				set.Insert(key)
 			}
 		}
-	} else if newOne.ContentType == appsv1alpha1.ContentTypeRegexp {
+	} else if newOne.ContentType == ctrlmeshproto.TrafficInterceptRule_REGEXP {
 		for _, content := range newOne.Contents {
 			if reg, err := regexp.Compile(content); err != nil {
 				klog.Error("Regexp compile with error %v", err)
@@ -387,8 +407,8 @@ func (s *trafficInterceptStore) updateIndex(oldOne, newOne *appsv1alpha1.Traffic
 }
 
 // deleteFromIndex delete index of specified key
-func (s *trafficInterceptStore) deleteFromIndex(oldOne *appsv1alpha1.TrafficInterceptRule, key string) {
-	if oldOne.ContentType == appsv1alpha1.ContentTypeNormal {
+func (s *trafficInterceptStore) deleteFromIndex(oldOne *ctrlmeshproto.TrafficInterceptRule, key string) {
+	if oldOne.ContentType == ctrlmeshproto.TrafficInterceptRule_NORMAL {
 		for _, content := range oldOne.Contents {
 			for _, method := range oldOne.Methods {
 				urlMethod := indexForRest(content, method)
@@ -400,7 +420,7 @@ func (s *trafficInterceptStore) deleteFromIndex(oldOne *appsv1alpha1.TrafficInte
 				}
 			}
 		}
-	} else if oldOne.ContentType == appsv1alpha1.ContentTypeRegexp {
+	} else if oldOne.ContentType == ctrlmeshproto.TrafficInterceptRule_REGEXP {
 		for regKey := range s.regexpIndexes {
 			if regKey == key {
 				delete(s.regexpIndexes, key)

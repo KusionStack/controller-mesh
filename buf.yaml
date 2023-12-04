@@ -1,0 +1,18 @@
+version: v1
+breaking:
+  use:
+  - FILE
+deps:
+- buf.build/googleapis/googleapis
+- buf.build/k8s/api
+build:
+  excludes:
+  - vendor
+  - common-protos
+lint:
+  use:
+  - BASIC
+  except:
+  - FIELD_LOWER_SNAKE_CASE
+  - PACKAGE_DIRECTORY_MATCH
+  allow_comment_ignores: true

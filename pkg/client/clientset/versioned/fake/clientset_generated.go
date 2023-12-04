@@ -18,9 +18,9 @@ limitations under the License.
 package fake
 
 import (
-	clientset "github.com/KusionStack/ctrlmesh/pkg/client/clientset/versioned"
-	ctrlmeshv1alpha1 "github.com/KusionStack/ctrlmesh/pkg/client/clientset/versioned/typed/ctrlmesh/v1alpha1"
-	fakectrlmeshv1alpha1 "github.com/KusionStack/ctrlmesh/pkg/client/clientset/versioned/typed/ctrlmesh/v1alpha1/fake"
+	clientset "github.com/KusionStack/controller-mesh/pkg/client/clientset/versioned"
+	ctrlmeshv1alpha1 "github.com/KusionStack/controller-mesh/pkg/client/clientset/versioned/typed/ctrlmesh/v1alpha1"
+	fakectrlmeshv1alpha1 "github.com/KusionStack/controller-mesh/pkg/client/clientset/versioned/typed/ctrlmesh/v1alpha1/fake"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"

@@ -19,38 +19,39 @@ package proto
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"math/rand"
+	"net"
+	"net/http"
 	"time"
 
-	"github.com/gogo/protobuf/proto"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
+	"connectrpc.com/connect"
+	"golang.org/x/net/http2"
+	"google.golang.org/protobuf/proto"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
 
-	ctrlmeshproto "github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh/proto"
-	ctrlmeshv1alpha1 "github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh/v1alpha1"
-	ctrlmeshclient "github.com/KusionStack/ctrlmesh/pkg/client"
-	ctrlmeshinformers "github.com/KusionStack/ctrlmesh/pkg/client/informers/externalversions/ctrlmesh/v1alpha1"
-	ctrlmeshv1alpha1listers "github.com/KusionStack/ctrlmesh/pkg/client/listers/ctrlmesh/v1alpha1"
-	"github.com/KusionStack/ctrlmesh/pkg/utils"
+	ctrlmeshproto "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/proto"
+	"github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/proto/protoconnect"
+	ctrlmeshv1alpha1 "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/v1alpha1"
+	proxycache "github.com/KusionStack/controller-mesh/pkg/proxy/cache"
+	"github.com/KusionStack/controller-mesh/pkg/utils"
 )
 
 type grpcClient struct {
-	informer cache.SharedIndexInformer
-	lister   ctrlmeshv1alpha1listers.ManagerStateLister
-
+	proxycache.ManagerStateInterface
 	reportTriggerChan chan struct{}
 	specManager       *SpecManager
 
 	prevSpec *ctrlmeshproto.ProxySpec
 }
 
-func NewGrpcClient() Client {
-	return &grpcClient{reportTriggerChan: make(chan struct{}, 1000)}
+func NewGrpcClient(managerStateCache proxycache.ManagerStateInterface) Client {
+	return &grpcClient{
+		ManagerStateInterface: managerStateCache,
+		reportTriggerChan:     make(chan struct{}, 1000),
+	}
 }
 
 func (c *grpcClient) Start(ctx context.Context) (err error) {
@@ -58,20 +59,6 @@ func (c *grpcClient) Start(ctx context.Context) (err error) {
 	if err != nil {
 		return fmt.Errorf("error new spec manager: %v", err)
 	}
-
-	clientset := ctrlmeshclient.GetGenericClient().MeshClient
-	c.informer = ctrlmeshinformers.NewFilteredManagerStateInformer(clientset, 0, cache.Indexers{}, func(opts *metav1.ListOptions) {
-		opts.FieldSelector = "metadata.name=" + ctrlmeshv1alpha1.NameOfManager
-	})
-	c.lister = ctrlmeshv1alpha1listers.NewManagerStateLister(c.informer.GetIndexer())
-
-	go func() {
-		c.informer.Run(ctx.Done())
-	}()
-	if ok := cache.WaitForCacheSync(ctx.Done(), c.informer.HasSynced); !ok {
-		return fmt.Errorf("error waiting ManagerState informer synced")
-	}
-
 	initChan := make(chan struct{})
 	go c.connect(ctx, initChan)
 	<-initChan
@@ -85,7 +72,7 @@ func (c *grpcClient) connect(ctx context.Context, initChan chan struct{}) {
 		}
 		klog.Infof("Starting grpc connecting...")
 
-		managerState, err := c.lister.Get(ctrlmeshv1alpha1.NameOfManager)
+		managerState, err := c.Get()
 		if err != nil {
 			if errors.IsNotFound(err) {
 				klog.Warningf("Not found ManagerState %s, waiting...", ctrlmeshv1alpha1.NameOfManager)
@@ -113,24 +100,28 @@ func (c *grpcClient) connect(ctx context.Context, initChan chan struct{}) {
 			continue
 		}
 
-		addr := fmt.Sprintf("%s:%d", leader.PodIP, managerState.Status.Ports.GrpcLeaderElectionPort)
+		addr := fmt.Sprintf("https://%s:%d", leader.PodIP, managerState.Status.Ports.GrpcLeaderElectionPort)
 		klog.Infof("Preparing to connect ctrlmesh-manager %v", addr)
 		func() {
-			var opts []grpc.DialOption
-			opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
-			grpcConn, err := grpc.Dial(addr, opts...)
-			if err != nil {
-				klog.Errorf("Failed to grpc connect to ctrlmesh-manager %s addr %s: %v", leader.Name, addr, err)
-				return
-			}
-			ctx, cancel := context.WithCancel(ctx)
-			defer func() {
-				cancel()
-				_ = grpcConn.Close()
-			}()
+			ctxWithCancel, cancel := context.WithCancel(ctx)
+			defer cancel()
 
-			grpcCtrlMeshClient := ctrlmeshproto.NewControllerMeshClient(grpcConn)
-			connStream, err := grpcCtrlMeshClient.Register(ctx)
+			client := &http.Client{
+				Transport: &http2.Transport{
+					AllowHTTP: true,
+					DialTLSContext: func(ctx context.Context, network, addr string, _ *tls.Config) (net.Conn, error) {
+						// TODO:
+						// If you're also using this client for non-h2c traffic, you may want
+						// to delegate to tls.Dial if the network isn't TCP or the addr isn't
+						// in an allowlist.
+						d := net.Dialer{Timeout: 20 * time.Second}
+						return d.DialContext(ctx, network, addr)
+					},
+				},
+			}
+			grpcCtrlMeshClient := protoconnect.NewControllerMeshClient(client, addr, connect.WithGRPC())
+			connStream := grpcCtrlMeshClient.Register(ctxWithCancel)
+			_, err = connStream.Conn()
 			if err != nil {
 				klog.Errorf("Failed to register to ctrlmesh-manager %s addr %s: %v", leader.Name, addr, err)
 				return
@@ -143,7 +134,7 @@ func (c *grpcClient) connect(ctx context.Context, initChan chan struct{}) {
 	}
 }
 
-func (c *grpcClient) syncing(connStream ctrlmeshproto.ControllerMesh_RegisterClient, initChan chan struct{}) error {
+func (c *grpcClient) syncing(connStream *connect.BidiStreamForClient[ctrlmeshproto.ProxyStatus, ctrlmeshproto.ProxySpec], initChan chan struct{}) error {
 	// Do the first send for self info
 	firstStatus := c.specManager.GetStatus()
 	if firstStatus == nil {
@@ -200,7 +191,7 @@ func (c *grpcClient) syncing(connStream ctrlmeshproto.ControllerMesh_RegisterCli
 	}
 }
 
-func (c *grpcClient) send(connStream ctrlmeshproto.ControllerMesh_RegisterClient, prevStatus *ctrlmeshproto.ProxyStatus) (*ctrlmeshproto.ProxyStatus, error) {
+func (c *grpcClient) send(connStream *connect.BidiStreamForClient[ctrlmeshproto.ProxyStatus, ctrlmeshproto.ProxySpec], prevStatus *ctrlmeshproto.ProxyStatus) (*ctrlmeshproto.ProxyStatus, error) {
 	newStatus := c.specManager.GetStatus()
 	if newStatus == nil {
 		klog.Infof("Skip to send gRPC status for it is nil.")
@@ -217,8 +208,8 @@ func (c *grpcClient) send(connStream ctrlmeshproto.ControllerMesh_RegisterClient
 	return newStatus, nil
 }
 
-func (c *grpcClient) recv(connStream ctrlmeshproto.ControllerMesh_RegisterClient) error {
-	spec, err := connStream.Recv()
+func (c *grpcClient) recv(connStream *connect.BidiStreamForClient[ctrlmeshproto.ProxyStatus, ctrlmeshproto.ProxySpec]) error {
+	spec, err := connStream.Receive()
 	if err != nil {
 		return fmt.Errorf("receive spec error: %v", err)
 	}

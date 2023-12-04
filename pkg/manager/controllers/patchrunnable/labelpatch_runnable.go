@@ -38,10 +38,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	"github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh"
-	"github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh/constants"
-	util "github.com/KusionStack/ctrlmesh/pkg/utils"
-	"github.com/KusionStack/ctrlmesh/pkg/utils/rand"
+	"github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh"
+	"github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/constants"
+	util "github.com/KusionStack/controller-mesh/pkg/utils"
+	"github.com/KusionStack/controller-mesh/pkg/utils/rand"
 )
 
 var (
@@ -295,25 +295,25 @@ func updateLabel(ns *v1.Namespace) (bool, error) {
 
 	nsHash := strconv.Itoa(rand.Hash(ns.Name, constants.DefaultShardingSize))
 
-	if _, ok := ns.Labels[ctrlmesh.KdControlKey]; !ok {
-		if _, exist := ns.Labels[ctrlmesh.KdShardHashKey]; exist {
-			return false, fmt.Errorf("label %s already exist but can not find %s", ctrlmesh.KdShardHashKey, ctrlmesh.KdControlKey)
+	if _, ok := ns.Labels[ctrlmesh.CtrlmeshControlKey]; !ok {
+		if _, exist := ns.Labels[ctrlmesh.CtrlmeshShardHashKey]; exist {
+			return false, fmt.Errorf("label %s already exist but can not find %s", ctrlmesh.CtrlmeshShardHashKey, ctrlmesh.CtrlmeshControlKey)
 		}
-		if _, exist := ns.Labels[ctrlmesh.KdNamespaceKey]; exist {
-			return false, fmt.Errorf("label %s already exist but can not find %s", ctrlmesh.KdNamespaceKey, ctrlmesh.KdControlKey)
+		if _, exist := ns.Labels[ctrlmesh.CtrlmeshNamespaceKey]; exist {
+			return false, fmt.Errorf("label %s already exist but can not find %s", ctrlmesh.CtrlmeshNamespaceKey, ctrlmesh.CtrlmeshControlKey)
 		}
-		ns.Labels[ctrlmesh.KdControlKey] = "true"
-		ns.Labels[ctrlmesh.KdNamespaceKey] = ns.Name
-		ns.Labels[ctrlmesh.KdShardHashKey] = nsHash
+		ns.Labels[ctrlmesh.CtrlmeshControlKey] = "true"
+		ns.Labels[ctrlmesh.CtrlmeshNamespaceKey] = ns.Name
+		ns.Labels[ctrlmesh.CtrlmeshShardHashKey] = nsHash
 		return true, nil
 	} else {
-		if val, exist := ns.Labels[ctrlmesh.KdShardHashKey]; !exist || nsHash != val {
-			ns.Labels[ctrlmesh.KdNamespaceKey] = ns.Name
-			ns.Labels[ctrlmesh.KdShardHashKey] = nsHash
+		if val, exist := ns.Labels[ctrlmesh.CtrlmeshShardHashKey]; !exist || nsHash != val {
+			ns.Labels[ctrlmesh.CtrlmeshNamespaceKey] = ns.Name
+			ns.Labels[ctrlmesh.CtrlmeshShardHashKey] = nsHash
 			return true, nil
 		}
-		if val, exist := ns.Labels[ctrlmesh.KdNamespaceKey]; !exist || val != ns.Name {
-			ns.Labels[ctrlmesh.KdNamespaceKey] = ns.Name
+		if val, exist := ns.Labels[ctrlmesh.CtrlmeshNamespaceKey]; !exist || val != ns.Name {
+			ns.Labels[ctrlmesh.CtrlmeshNamespaceKey] = ns.Name
 			return true, nil
 		}
 	}

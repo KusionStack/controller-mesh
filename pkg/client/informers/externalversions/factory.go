@@ -22,9 +22,9 @@ import (
 	sync "sync"
 	time "time"
 
-	versioned "github.com/KusionStack/ctrlmesh/pkg/client/clientset/versioned"
-	ctrlmesh "github.com/KusionStack/ctrlmesh/pkg/client/informers/externalversions/ctrlmesh"
-	internalinterfaces "github.com/KusionStack/ctrlmesh/pkg/client/informers/externalversions/internalinterfaces"
+	versioned "github.com/KusionStack/controller-mesh/pkg/client/clientset/versioned"
+	ctrlmesh "github.com/KusionStack/controller-mesh/pkg/client/informers/externalversions/ctrlmesh"
+	internalinterfaces "github.com/KusionStack/controller-mesh/pkg/client/informers/externalversions/internalinterfaces"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"

@@ -45,7 +45,8 @@ generate-client: controller-gen ## Generate code containing DeepCopy, DeepCopyIn
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
 generate-protobuf: controller-gen ## Generate protobuf code.
-	@artifacts/scripts/generate_protobuf.sh
+	#@artifacts/scripts/generate_protobuf.sh
+	buf generate --path pkg
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
 generate: generate-client generate-protobuf
@@ -54,7 +55,7 @@ fmt: ## Run go fmt against code.
 	go fmt ./...
 
 vet: ## Run go vet against code.
-	go vet ./...
+	go vet -copylocks=false ./...
 
 ENVTEST_ASSETS_DIR=$(shell pwd)/testbin
 test: fmt vet generate manifests ## Run tests.

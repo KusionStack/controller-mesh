@@ -23,9 +23,10 @@ import (
 	"io"
 	"sync"
 
-	"github.com/gogo/protobuf/proto"
+	"connectrpc.com/connect"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -34,10 +35,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 
-	ctrlmeshproto "github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh/proto"
-	ctrlmeshv1alpha1 "github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh/v1alpha1"
-	"github.com/KusionStack/ctrlmesh/pkg/grpcregistry"
-	"github.com/KusionStack/ctrlmesh/pkg/utils"
+	ctrlmeshproto "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/proto"
+	"github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/proto/protoconnect"
+	ctrlmeshv1alpha1 "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/v1alpha1"
+	"github.com/KusionStack/controller-mesh/pkg/grpcregistry"
+	"github.com/KusionStack/controller-mesh/pkg/utils"
 )
 
 var (
@@ -53,13 +55,13 @@ func init() {
 	_ = grpcregistry.Register("ctrlmesh-server", true, func(opts grpcregistry.RegisterOptions) {
 		grpcServer.reader = opts.Mgr.GetCache()
 		grpcServer.ctx = opts.Ctx
-		ctrlmeshproto.RegisterControllerMeshServer(opts.GrpcServer, grpcServer)
+		opts.ServeMux.Handle(protoconnect.NewControllerMeshHandler(grpcServer, connect.WithSendMaxBytes(1024*1024*64)))
 	})
 }
 
 type grpcSrvConnection struct {
 	mu     sync.Mutex
-	srv    ctrlmeshproto.ControllerMesh_RegisterServer
+	stream *connect.BidiStream[ctrlmeshproto.ProxyStatus, ctrlmeshproto.ProxySpec]
 	status *ctrlmeshproto.ProxyStatus
 
 	sendTimes    int
@@ -70,7 +72,7 @@ func (conn *grpcSrvConnection) send(spec *ctrlmeshproto.ProxySpec) error {
 	conn.mu.Lock()
 	conn.sendTimes++
 	conn.mu.Unlock()
-	return conn.srv.Send(spec)
+	return conn.stream.Send(spec)
 }
 
 type GrpcServer struct {
@@ -78,19 +80,17 @@ type GrpcServer struct {
 	ctx    context.Context
 }
 
-var _ ctrlmeshproto.ControllerMeshServer = &GrpcServer{}
+var _ protoconnect.ControllerMeshHandler = &GrpcServer{}
 
-func (s *GrpcServer) Register(srv ctrlmeshproto.ControllerMesh_RegisterServer) error {
+func (s *GrpcServer) Register(ctx context.Context, stream *connect.BidiStream[ctrlmeshproto.ProxyStatus, ctrlmeshproto.ProxySpec]) error {
 	// receive the first register message
-	pStatus, err := srv.Recv()
+	pStatus, err := stream.Receive()
 	if err != nil {
 		return status.Errorf(codes.Aborted, err.Error())
 	}
 	if pStatus.SelfInfo == nil || pStatus.SelfInfo.Namespace == "" || pStatus.SelfInfo.Name == "" {
 		return status.Errorf(codes.InvalidArgument, fmt.Sprintf("invalid selfInfo: %+v", pStatus.SelfInfo))
 	}
-
-	// get pod
 	podNamespacedName := types.NamespacedName{Namespace: pStatus.SelfInfo.Namespace, Name: pStatus.SelfInfo.Name}
 	pod := &v1.Pod{}
 	if err := s.reader.Get(context.TODO(), podNamespacedName, pod); err != nil {
@@ -112,7 +112,7 @@ func (s *GrpcServer) Register(srv ctrlmeshproto.ControllerMesh_RegisterServer) e
 		klog.Infof("Start re-connection from Pod %s in ShardingConfig %s", podNamespacedName, shardName)
 	}
 
-	conn := &grpcSrvConnection{srv: srv, status: pStatus}
+	conn := &grpcSrvConnection{stream: stream, status: pStatus}
 	cachedGrpcSrvConnection.Store(pod.UID, conn)
 	podHashExpectation.Delete(pod.UID)
 
@@ -120,13 +120,13 @@ func (s *GrpcServer) Register(srv ctrlmeshproto.ControllerMesh_RegisterServer) e
 	grpcRecvTriggerChannel <- genericEvent
 	go func() {
 		for {
-			pStatus, err = srv.Recv()
+			pStatus, err = stream.Receive()
 			if err != nil {
 				if err == io.EOF {
 					return
 				}
 				select {
-				case <-srv.Context().Done():
+				case <-ctx.Done():
 				default:
 					klog.Errorf("Receive error from Pod %s in ShardingConfig %s: %v", podNamespacedName, shardName, err)
 				}
@@ -149,7 +149,7 @@ func (s *GrpcServer) Register(srv ctrlmeshproto.ControllerMesh_RegisterServer) e
 	select {
 	case <-s.ctx.Done():
 		return nil
-	case <-srv.Context().Done():
+	case <-ctx.Done():
 	}
 	klog.Infof("Stop connection from Pod %s in ShardingConfig %s", podNamespacedName, shardName)
 	podHashExpectation.Delete(pod.UID)

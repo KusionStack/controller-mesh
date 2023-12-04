@@ -27,35 +27,37 @@ const (
 
 // Labels
 const (
-	KdControlPrefix                 = "ctrlmesh.kusionstack.io/"
-	KdShardHashKey                  = "ctrlmesh.kusionstack.io/shard-hash"
-	KdControlKey                    = "ctrlmesh.kusionstack.io/control"
-	KdNamespaceKey                  = "ctrlmesh.kusionstack.io/namespace"
-	KdIgnoreWebhookLabel            = "ctrlmesh.kusionstack.io/ignore-webhook"
-	KdIgnoreValidateLabel           = "ctrlmesh.kusionstack.io/ignore-validate"
-	KdDefaultReplicasLabel          = "ctrlmesh.kusionstack.io/default-replicas"
-	KdEnableProxyLabel              = "ctrlmesh.kusionstack.io/enable-proxy"
-	KdAutoShardingRootLabel         = "ctrlmesh.kusionstack.io/auto-sharding-root"
-	KdInRollingLabel                = "ctrlmesh.kusionstack.io/rolling"
-	KdDisableFakeKubeconfigArgLabel = "ctrlmesh.kusionstack.io/disable-fake-kubeconfig-arg"
-	KdDisableFakeKubeconfigEnvLabel = "ctrlmesh.kusionstack.io/disable-fake-kubeconfig-env"
-	KdSharedLogVolumeLabel          = "ctrlmesh.kusionstack.io/log-volume"
-	KdWatchOnLimitLabel             = "ctrlmesh.kusionstack.io/watching"
-	KdProxyKubeConfigVolumeLabel    = "ctrlmesh.kusionstack.io/kubeconfig-volume"
+	CtrlmeshControlPrefix                 = "ctrlmesh.kusionstack.io/"
+	CtrlmeshShardHashKey                  = "ctrlmesh.kusionstack.io/shard-hash"
+	CtrlmeshControlKey                    = "ctrlmesh.kusionstack.io/control"
+	CtrlmeshNamespaceKey                  = "ctrlmesh.kusionstack.io/namespace"
+	CtrlmeshIgnoreWebhookLabel            = "ctrlmesh.kusionstack.io/ignore-webhook"
+	CtrlmeshIgnoreValidateLabel           = "ctrlmesh.kusionstack.io/ignore-validate"
+	CtrlmeshDefaultReplicasLabel          = "ctrlmesh.kusionstack.io/default-replicas"
+	CtrlmeshEnableProxyLabel              = "ctrlmesh.kusionstack.io/enable-proxy"
+	CtrlmeshAutoShardingRootLabel         = "ctrlmesh.kusionstack.io/auto-sharding-root"
+	CtrlmeshInRollingLabel                = "ctrlmesh.kusionstack.io/rolling"
+	CtrlmeshDisableFakeKubeconfigArgLabel = "ctrlmesh.kusionstack.io/disable-fake-kubeconfig-arg"
+	CtrlmeshDisableFakeKubeconfigEnvLabel = "ctrlmesh.kusionstack.io/disable-fake-kubeconfig-env"
+	CtrlmeshSharedLogVolumeLabel          = "ctrlmesh.kusionstack.io/log-volume"
+	CtrlmeshWatchOnLimitLabel             = "ctrlmesh.kusionstack.io/watching"
+	CtrlmeshProxyKubeConfigVolumeLabel    = "ctrlmesh.kusionstack.io/kubeconfig-volume"
+
+	CtrlmeshCircuitBreakerDisableKey = "circuitbreaker.ctrlmesh.kusionstack.io/disable"
 )
 
 // Annotations
 const (
-	KdAutoShardingHashAnno       = "ctrlmesh.kusionstack.io/auto-sharding-hash"
-	KdRollingStatusAnno          = "ctrlmesh.kusionstack.io/roll-status"
-	KdRollingExpectedAnno        = "ctrlmesh.kusionstack.io/roll-expected"
-	KdSharedLogPathAnno          = "ctrlmesh.kusionstack.io/log-path"
-	KdWebhookEnvConfigAnno       = "ctrlmesh.kusionstack.io/env-sync"
-	KdEnvInjectAnno              = "ctrlmesh.kusionstack.io/env-inject"
-	KdProxyContainerResourceAnno = "ctrlmesh.kusionstack.io/proxy-resource"
+	CtrlmeshAutoShardingHashAnno       = "ctrlmesh.kusionstack.io/auto-sharding-hash"
+	CtrlmeshRollingStatusAnno          = "ctrlmesh.kusionstack.io/roll-status"
+	CtrlmeshRollingExpectedAnno        = "ctrlmesh.kusionstack.io/roll-expected"
+	CtrlmeshSharedLogPathAnno          = "ctrlmesh.kusionstack.io/log-path"
+	CtrlmeshWebhookEnvConfigAnno       = "ctrlmesh.kusionstack.io/env-sync"
+	CtrlmeshEnvInjectAnno              = "ctrlmesh.kusionstack.io/env-inject"
+	CtrlmeshProxyContainerResourceAnno = "ctrlmesh.kusionstack.io/proxy-resource"
 )
 
-// Finalizer
+// Finalizers
 const (
 	ProtectFinalizer = "finalizer.ctrlmesh.kusionstack.io/protected"
 )

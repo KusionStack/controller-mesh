@@ -35,16 +35,17 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	ctrlmeshv1alpha1 "github.com/KusionStack/ctrlmesh/pkg/apis/ctrlmesh/v1alpha1"
-	"github.com/KusionStack/ctrlmesh/pkg/cachelimiter"
-	"github.com/KusionStack/ctrlmesh/pkg/client"
-	"github.com/KusionStack/ctrlmesh/pkg/grpcregistry"
-	"github.com/KusionStack/ctrlmesh/pkg/manager/controllers/managerstate"
-	"github.com/KusionStack/ctrlmesh/pkg/manager/controllers/patchrunnable"
-	"github.com/KusionStack/ctrlmesh/pkg/manager/controllers/shardingconfigserver"
-	pkgcache "github.com/KusionStack/ctrlmesh/pkg/utils/cache"
-	"github.com/KusionStack/ctrlmesh/pkg/utils/probe"
-	"github.com/KusionStack/ctrlmesh/pkg/webhook"
+	ctrlmeshv1alpha1 "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/v1alpha1"
+	"github.com/KusionStack/controller-mesh/pkg/cachelimiter"
+	"github.com/KusionStack/controller-mesh/pkg/client"
+	"github.com/KusionStack/controller-mesh/pkg/grpcregistry"
+	"github.com/KusionStack/controller-mesh/pkg/manager/controllers/circuitbreaker"
+	"github.com/KusionStack/controller-mesh/pkg/manager/controllers/managerstate"
+	"github.com/KusionStack/controller-mesh/pkg/manager/controllers/patchrunnable"
+	"github.com/KusionStack/controller-mesh/pkg/manager/controllers/shardingconfigserver"
+	pkgcache "github.com/KusionStack/controller-mesh/pkg/utils/cache"
+	"github.com/KusionStack/controller-mesh/pkg/utils/probe"
+	"github.com/KusionStack/controller-mesh/pkg/webhook"
 )
 
 var (
@@ -152,6 +153,12 @@ func main() {
 			Client: mgr.GetClient(),
 		}).SetupWithManager(mgr); err != nil {
 			setupLog.Error(err, "unable to create controller", "controller", "ManagerState")
+			os.Exit(1)
+		}
+		if err = (&circuitbreaker.CircuitBreakerReconciler{
+			Client: mgr.GetClient(),
+		}).SetupWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create controller", "controller", "CircuitBreaker")
 			os.Exit(1)
 		}
 

@@ -39,10 +39,10 @@ import (
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
-	"github.com/KusionStack/ctrlmesh/pkg/client"
-	"github.com/KusionStack/ctrlmesh/pkg/utils"
-	"github.com/KusionStack/ctrlmesh/pkg/webhook/util/generator"
-	"github.com/KusionStack/ctrlmesh/pkg/webhook/util/writer"
+	"github.com/KusionStack/controller-mesh/pkg/client"
+	"github.com/KusionStack/controller-mesh/pkg/utils"
+	"github.com/KusionStack/controller-mesh/pkg/webhook/util/generator"
+	"github.com/KusionStack/controller-mesh/pkg/webhook/util/writer"
 )
 
 var (

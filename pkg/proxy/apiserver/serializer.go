@@ -39,8 +39,8 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/klog/v2"
 
-	"github.com/KusionStack/ctrlmesh/pkg/utils"
-	"github.com/KusionStack/ctrlmesh/pkg/utils/pool"
+	"github.com/KusionStack/controller-mesh/pkg/utils"
+	"github.com/KusionStack/controller-mesh/pkg/utils/pool"
 )
 
 var (
