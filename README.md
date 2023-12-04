@@ -6,6 +6,8 @@ KusionStack Controller Mesh is a solution that helps developers managing their c
 
 The design architecture of this project is based on [openkruise/controllermesh](https://github.com/openkruise/controllermesh).
 
+More info about KusionStack ControllerMesh  👉 [Doc.](https://kusionstack.io/docs/ctrlmesh/intro/)
+
 ## Key Features
 
 1. **Sharding**: Through relevant configurations, Kubernetes single-point deployed operator applications can be flexibly shard deployed.

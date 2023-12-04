@@ -8,7 +8,7 @@ Controller Mesh requires **Kubernetes version >= 1.18**
 **Install with helm**
 ```bash
 # Firstly add KusionStack charts repository if you haven't do this.
-$ helm repo add kusionstack https://kusionstack.io/charts
+$ helm repo add kusionstack https://kusionstack.github.io/charts
 
 # To update the kusionstack repo.
 $ helm repo update kusionstack
