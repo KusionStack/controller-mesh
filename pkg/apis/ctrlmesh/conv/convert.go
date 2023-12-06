@@ -1,20 +1,4 @@
-/*
-Copyright 2023 The KusionStack Authors.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
-package proto
+package conv
 
 import (
 	"encoding/json"
@@ -23,6 +7,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/klog/v2"
 
+	"github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/proto"
 	ctrlmeshv1alpha1 "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/v1alpha1"
 	"github.com/KusionStack/controller-mesh/pkg/utils"
 )
@@ -37,7 +22,7 @@ type ResourceRequest struct {
 	ObjectSelector *metav1.LabelSelector `json:"objectSelector,omitempty"`
 }
 
-func ConvertProtoSpecToInternal(protoSpec *ProxySpec) *InternalSpec {
+func ConvertProtoSpecToInternal(protoSpec *proto.ProxySpec) *InternalSpec {
 	is := &InternalSpec{ProxySpec: protoSpec, routeInternal: &internalRoute{subsetLimits: map[string][]*internalMatchLimitRule{}}}
 	if r := protoSpec.Limits; r != nil {
 		is.routeInternal.currentLimits = convertProtoMatchLimitRuleToInternal(r)
@@ -54,7 +39,7 @@ func ConvertProtoSpecToInternal(protoSpec *ProxySpec) *InternalSpec {
 	return is
 }
 
-func convertProtoMatchLimitRuleToInternal(limits []*Limit) []*internalMatchLimitRule {
+func convertProtoMatchLimitRuleToInternal(limits []*proto.Limit) []*internalMatchLimitRule {
 	var internalLimits []*internalMatchLimitRule
 	for _, limit := range limits {
 
@@ -77,7 +62,7 @@ func convertProtoMatchLimitRuleToInternal(limits []*Limit) []*internalMatchLimit
 }
 
 type InternalSpec struct {
-	*ProxySpec
+	*proto.ProxySpec
 	routeInternal *internalRoute
 }
 
@@ -106,7 +91,7 @@ type internalCircuitBreaker struct {
 
 type internalMatchLimitRule struct {
 	objectSelector *metav1.LabelSelector
-	resources      []*APIGroupResource
+	resources      []*proto.APIGroupResource
 }
 
 func (ir *internalRoute) getObjectSelector(gr schema.GroupResource) (sel *metav1.LabelSelector) {
@@ -123,7 +108,7 @@ func (ir *internalRoute) getObjectSelector(gr schema.GroupResource) (sel *metav1
 	return
 }
 
-func isGRMatchedAPIResources(gr schema.GroupResource, resources []*APIGroupResource) bool {
+func isGRMatchedAPIResources(gr schema.GroupResource, resources []*proto.APIGroupResource) bool {
 	for _, r := range resources {
 		if containsString(gr.Group, r.ApiGroups, ResourceAll) && containsString(gr.Resource, r.Resources, ResourceAll) {
 			return true

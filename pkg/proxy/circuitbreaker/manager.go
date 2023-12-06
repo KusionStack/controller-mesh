@@ -70,7 +70,7 @@ func (m *manager) Sync(config *ctrlmeshproto.CircuitBreaker) (*ctrlmeshproto.Con
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	switch config.Option {
-	case ctrlmeshproto.CircuitBreaker_CREATE, ctrlmeshproto.CircuitBreaker_UPDATE:
+	case ctrlmeshproto.CircuitBreaker_UPDATE:
 		cb, ok := m.breakerMap[config.Name]
 		if ok && config.ConfigHash == cb.ConfigHash {
 			return &ctrlmeshproto.ConfigResp{

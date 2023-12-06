@@ -26,11 +26,9 @@ import (
 	"connectrpc.com/connect"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
-	"google.golang.org/protobuf/encoding/protojson"
 	"k8s.io/klog/v2"
 
 	"github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/constants"
-	ctrlmeshproto "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/proto"
 	"github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/proto/protoconnect"
 	"github.com/KusionStack/controller-mesh/pkg/proxy/circuitbreaker"
 )
@@ -57,7 +55,7 @@ type GrpcServer struct {
 
 func (s *GrpcServer) Start(ctx context.Context) {
 	s.mux = http.NewServeMux()
-	s.mux.Handle(protoconnect.NewThrottlingHandler(&grpcThrottlingServer{mgr: s.BreakerMgr}, connect.WithSendMaxBytes(1024*1024*64)))
+	s.mux.Handle(protoconnect.NewThrottlingHandler(&grpcThrottlingHandler{mgr: s.BreakerMgr}, connect.WithSendMaxBytes(1024*1024*64)))
 	addr := fmt.Sprintf(":%d", grpcServerPort)
 	go func() {
 		// Use h2c so we can serve HTTP/2 without TLS.
@@ -66,19 +64,4 @@ func (s *GrpcServer) Start(ctx context.Context) {
 		}
 	}()
 	<-ctx.Done()
-}
-
-type grpcThrottlingServer struct {
-	mgr circuitbreaker.ManagerInterface
-}
-
-func (g *grpcThrottlingServer) SendConfig(ctx context.Context, req *connect.Request[ctrlmeshproto.CircuitBreaker]) (*connect.Response[ctrlmeshproto.ConfigResp], error) {
-
-	msg := protojson.MarshalOptions{Multiline: true, EmitUnpopulated: true}.Format(req.Msg)
-	klog.Infof("handle CircuitBreaker gRPC request %s", msg)
-	if req.Msg == nil {
-		return connect.NewResponse(&ctrlmeshproto.ConfigResp{Success: false}), fmt.Errorf("nil CircuitBreaker recieived from client")
-	}
-	resp, err := g.mgr.Sync(req.Msg)
-	return connect.NewResponse(resp), err
 }

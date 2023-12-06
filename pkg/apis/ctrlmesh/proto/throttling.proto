@@ -16,11 +16,10 @@ message CircuitBreaker {
   string name = 5;
 
   enum Option {
-    CREATE = 0;
-    DELETE = 1;
-    UPDATE = 2;
-    CHECK = 3;
-    RECOVER = 4;
+    DELETE = 0;
+    UPDATE = 1;
+    CHECK = 2;
+    RECOVER = 3;
   }
 }
 
