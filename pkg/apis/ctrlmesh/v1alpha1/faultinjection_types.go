@@ -20,18 +20,75 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type FaultInjectionSpec struct {
-	// Selector is a label query over pods of this configuration.
-	Selector *metav1.LabelSelector `json:"selector,omitempty"`
+type StringMatch struct {
+	MatchType StringMatchType `json:"matchType,omitempty"`
+	Value     string          `json:"value,omitempty"`
+}
 
-	Disabled bool `json:"disabled,omitempty"`
+type StringMatchType string
 
-	HTTPFault []HTTPFaultInjection `json:"httpFault,omitempty"`
+type HTTPSTATUS int32
+
+const (
+	StatusOK                   HTTPSTATUS = 200
+	StatusBadRequest           HTTPSTATUS = 400
+	StatusUnauthorized         HTTPSTATUS = 401
+	StatusForbidden            HTTPSTATUS = 403
+	StatusNotFound             HTTPSTATUS = 404
+	StatusMethodNotAllowed     HTTPSTATUS = 405
+	StatusNotAcceptable        HTTPSTATUS = 406
+	StatusConflict             HTTPSTATUS = 409
+	StatusUnsupportedMediaType HTTPSTATUS = 415
+	StatusUnprocessableEntity  HTTPSTATUS = 422
+	StatusTooManyRequests      HTTPSTATUS = 429
+	StatusInternalServerError  HTTPSTATUS = 500
+	StatusServiceUnavailable   HTTPSTATUS = 503
+	StatusGatewayTimeout       HTTPSTATUS = 504
+)
+
+type HTTPFaultInjectionDelay struct {
+	// FixedDelay is used to indicate the amount of delay in seconds.
+	FixedDelay string `json:"fixedDelay,omitempty"`
+	// Percent of requests on which the delay will be injected.
+	// If left unspecified, no request will be delayed
+	Percent float64 `json:"percent,omitempty"`
+}
+
+type HTTPFaultInjectionAbort struct {
+	// HttpStatus is used to indicate the HTTP status code to
+	// return to the caller.
+	HttpStatus HTTPSTATUS `json:"httpStatus,omitempty"`
+	// Percent of requests to be aborted with the error code provided.
+	// If not specified, no request will be aborted.
+	Percent float64 `json:"percent,omitempty"`
+}
+
+type ResourceMatch struct {
+	ApiGroups  []string `json:"apiGroups,omitempty"`
+	Namespaces []string `json:"namespaces,omitempty"`
+	Resources  []string `json:"resources,omitempty"`
+	Verbs      []string `json:"verbs,omitempty"`
+}
+
+// RestRule defines the target rest resource of the limiting policy
+type MutiRestRule struct {
+	// URL gives the location of the rest request, in standard URL form (`scheme://host:port/path`)
+	URL []string `json:"url"`
+	// Method specifies the http method of the request, like: PUT, POST, GET, DELETE.
+	Method []string `json:"method"`
+}
+
+type HTTPMatchRequest struct {
+	Name             string           `json:"name,omitempty"`
+	RelatedResources []*ResourceMatch `json:"relatedResources,omitempty"`
+
+	RestRules []MutiRestRule `json:"restRules,omitempty"`
 }
 
 // HTTPFaultInjection can be used to specify one or more faults to inject
 // while forwarding HTTP requests to the destination specified in a route.
 type HTTPFaultInjection struct {
+	Name string `json:"name,omitempty"`
 	// Delay requests before forwarding, emulating various failures such as
 	// network issues, overloaded upstream service, etc.
 	Delay *HTTPFaultInjectionDelay `json:"delay,omitempty"`
@@ -44,52 +101,46 @@ type HTTPFaultInjection struct {
 	Match *HTTPMatchRequest `json:"match,omitempty"`
 }
 
-type HTTPFaultInjectionDelay struct {
-	// FixedDelay is used to indicate the amount of delay in seconds.
-	FixedDelay string `json:"fixedDelay,omitempty"`
-	// Percent of requests on which the delay will be injected.
-	// If left unspecified, no request will be delayed
-	Percent string `json:"percent,omitempty"`
+type FaultInjectionSpec struct {
+	// Selector is a label query over pods of this configuration.
+	Selector *metav1.LabelSelector `json:"selector,omitempty"`
+
+	Disabled bool `json:"disabled,omitempty"`
+
+	HTTPFaultInjections []*HTTPFaultInjection `json:"httpFault,omitempty"`
 }
 
-type HTTPFaultInjectionAbort struct {
-	// HttpStatus is used to indicate the HTTP status code to
-	// return to the caller.
-	HttpStatus int32 `json:"httpStatus,omitempty"`
-	// Percent of requests to be aborted with the error code provided.
-	// If not specified, no request will be aborted.
-	Percent string `json:"percent,omitempty"`
-}
+// FaultInjectionState is the status of the fault injection, which may be 'Opened' or 'Closed'.
+type FaultInjectionState string
 
-type HTTPMatchRequest struct {
-	RelatedResources []*ResourceMatch `json:"relatedResources,omitempty"`
-
-	// TODO: http match
-	Url    []*StringMatch `json:"url,omitempty"`
-	Method []string       `json:"method,omitempty"`
-}
-
-type ResourceMatch struct {
-	ApiGroups  []string `json:"apiGroups,omitempty"`
-	Namespaces []string `json:"namespaces,omitempty"`
-	Resources  []string `json:"resources,omitempty"`
-	Verbs      []string `json:"verbs,omitempty"`
-}
-
-type StringMatch struct {
-	MatchType StringMatchType `json:"matchType,omitempty"`
-	Value     string          `json:"value,omitempty"`
-}
-
-type StringMatchType string
-
-const (
-	ExactMatchType  StringMatchType = "Exact"
-	PrefixMatchType StringMatchType = "Prefix"
-	RegexMatchType  StringMatchType = "Regex"
+var (
+	FaultInjectionStatusOpened FaultInjectionState = "Opened"
+	FaultInjectionStatusClosed FaultInjectionState = "Closed"
 )
 
+// LimitingSnapshot defines the snapshot of the whole faultinjection policy
+type FaultInjectionSnapshot struct {
+	// Name specifies the name of the policy
+	Name string `json:"name"`
+	// Status is the status of the fault injection, which may be 'Opened' or 'Closed'.
+	State FaultInjectionState `json:"state"`
+	// LastTransitionTime is the last time that the status changed
+	LastTransitionTime *metav1.Time `json:"lastTransitionTime,omitempty"`
+}
+
 type FaultInjectionStatus struct {
+	ObservedGeneration int64                         `json:"observedGeneration,omitempty"`
+	LastUpdatedTime    *metav1.Time                  `json:"lastUpdatedTime,omitempty"`
+	CurrentSpecHash    string                        `json:"currentSpecHash,omitempty"`
+	TargetStatus       []*FaultInjectionTargetStatus `json:"faultinjectiontargetStatus,omitempty"`
+}
+
+type FaultInjectionTargetStatus struct {
+	PodName                 string                    `json:"podName,omitempty"`
+	PodIP                   string                    `json:"podIP,omitempty"`
+	ConfigHash              string                    `json:"configHash,omitempty"`
+	Message                 string                    `json:"message,omitempty"`
+	FaultInjectionSnapshots []*FaultInjectionSnapshot `json:"faultInjectionSnapshots,omitempty"`
 }
 
 // +genclient

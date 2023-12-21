@@ -1,4 +1,4 @@
-// Copyright 2021-2023 Buf Technologies, Inc.
+// Copyright 2021-2023 The Connect Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -133,7 +133,7 @@ func (w *ErrorWriter) writeConnectStreaming(response http.ResponseWriter, err er
 	response.WriteHeader(http.StatusOK)
 	marshaler := &connectStreamingMarshaler{
 		envelopeWriter: envelopeWriter{
-			writer:     response,
+			sender:     writeSender{writer: response},
 			bufferPool: w.bufferPool,
 		},
 	}

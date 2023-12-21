@@ -49,6 +49,8 @@ spec:
                         upstream service is faulty.
                       properties:
                         httpStatus:
+                          description: HttpStatus is used to indicate the HTTP status
+                            code to return to the caller.
                           format: int32
                           type: integer
                         percent:
@@ -63,6 +65,8 @@ spec:
                         etc.
                       properties:
                         fixedDelay:
+                          description: FixedDelay is used to indicate the amount of
+                            delay in seconds.
                           type: string
                         percent:
                           description: Percent of requests on which the delay will
@@ -72,43 +76,53 @@ spec:
                     match:
                       description: Match specifies a set of criterion to be met in
                         order for the rule to be applied to the HTTP request.
-                      properties:
-                        method:
-                          items:
-                            type: string
-                          type: array
-                        relatedResources:
-                          items:
-                            properties:
-                              apiGroups:
-                                items:
-                                  type: string
-                                type: array
-                              namespaces:
-                                items:
-                                  type: string
-                                type: array
-                              resources:
-                                items:
-                                  type: string
-                                type: array
-                              verbs:
-                                items:
-                                  type: string
-                                type: array
-                            type: object
-                          type: array
-                        url:
-                          description: 'TODO: http match'
-                          items:
-                            properties:
-                              matchType:
-                                type: string
-                              value:
-                                type: string
-                            type: object
-                          type: array
-                      type: object
+                      items:
+                        properties:
+                          relatedResources:
+                            items:
+                              properties:
+                                apiGroups:
+                                  items:
+                                    type: string
+                                  type: array
+                                namespaces:
+                                  items:
+                                    type: string
+                                  type: array
+                                resources:
+                                  items:
+                                    type: string
+                                  type: array
+                                verbs:
+                                  items:
+                                    type: string
+                                  type: array
+                              type: object
+                            type: array
+                          restRules:
+                            items:
+                              description: RestRule defines the target rest resource
+                                of the limiting policy
+                              properties:
+                                method:
+                                  description: 'Method specifies the http method of
+                                    the request, like: PUT, POST, GET, DELETE.'
+                                  items:
+                                    type: string
+                                  type: array
+                                url:
+                                  description: URL gives the location of the rest
+                                    request, in standard URL form (`scheme://host:port/path`)
+                                  items:
+                                    type: string
+                                  type: array
+                              required:
+                              - method
+                              - url
+                              type: object
+                            type: array
+                        type: object
+                      type: array
                   type: object
                 type: array
               selector:

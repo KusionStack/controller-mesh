@@ -44,6 +44,7 @@ const (
 	CtrlmeshProxyKubeConfigVolumeLabel    = "ctrlmesh.kusionstack.io/kubeconfig-volume"
 
 	CtrlmeshCircuitBreakerDisableKey = "circuitbreaker.ctrlmesh.kusionstack.io/disable"
+	CtrlmeshFaultInjectionDisableKey = "faultinjection.ctrlmesh.kusionstack.io/disable"
 )
 
 // Annotations

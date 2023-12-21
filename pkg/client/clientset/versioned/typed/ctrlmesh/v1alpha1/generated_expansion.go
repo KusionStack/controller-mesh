@@ -19,6 +19,8 @@ package v1alpha1
 
 type CircuitBreakerExpansion interface{}
 
+type FaultInjectionExpansion interface{}
+
 type ManagerStateExpansion interface{}
 
 type ShardingConfigExpansion interface{}

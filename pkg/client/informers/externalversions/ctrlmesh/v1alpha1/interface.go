@@ -25,6 +25,8 @@ import (
 type Interface interface {
 	// CircuitBreakers returns a CircuitBreakerInformer.
 	CircuitBreakers() CircuitBreakerInformer
+	// FaultInjections returns a FaultInjectionInformer.
+	FaultInjections() FaultInjectionInformer
 	// ManagerStates returns a ManagerStateInformer.
 	ManagerStates() ManagerStateInformer
 	// ShardingConfigs returns a ShardingConfigInformer.
@@ -45,6 +47,11 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 // CircuitBreakers returns a CircuitBreakerInformer.
 func (v *version) CircuitBreakers() CircuitBreakerInformer {
 	return &circuitBreakerInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// FaultInjections returns a FaultInjectionInformer.
+func (v *version) FaultInjections() FaultInjectionInformer {
+	return &faultInjectionInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // ManagerStates returns a ManagerStateInformer.

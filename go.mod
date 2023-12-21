@@ -3,7 +3,7 @@ module github.com/KusionStack/controller-mesh
 go 1.20
 
 require (
-	connectrpc.com/connect v1.11.1
+	connectrpc.com/connect v1.13.0
 	github.com/go-logr/zapr v1.2.3
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.24.1

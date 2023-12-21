@@ -18,7 +18,7 @@ import (
 // generated with a version of connect newer than the one compiled into your binary. You can fix the
 // problem by either regenerating this code with an older version of connect or updating the connect
 // version compiled into your binary.
-const _ = connect.IsAtLeastVersion0_1_0
+const _ = connect.IsAtLeastVersion1_13_0
 
 const (
 	// FaultInjectName is the fully-qualified name of the FaultInject service.
@@ -37,9 +37,15 @@ const (
 	FaultInjectSendConfigProcedure = "/proto.FaultInject/SendConfig"
 )
 
+// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
+var (
+	faultInjectServiceDescriptor          = proto.File_pkg_apis_ctrlmesh_proto_faultinjection_proto.Services().ByName("FaultInject")
+	faultInjectSendConfigMethodDescriptor = faultInjectServiceDescriptor.Methods().ByName("SendConfig")
+)
+
 // FaultInjectClient is a client for the proto.FaultInject service.
 type FaultInjectClient interface {
-	SendConfig(context.Context, *connect.Request[proto.FaultInjection]) (*connect.Response[proto.InjectResp], error)
+	SendConfig(context.Context, *connect.Request[proto.FaultInjection]) (*connect.Response[proto.FaultInjectConfigResp], error)
 }
 
 // NewFaultInjectClient constructs a client for the proto.FaultInject service. By default, it uses
@@ -52,27 +58,28 @@ type FaultInjectClient interface {
 func NewFaultInjectClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) FaultInjectClient {
 	baseURL = strings.TrimRight(baseURL, "/")
 	return &faultInjectClient{
-		sendConfig: connect.NewClient[proto.FaultInjection, proto.InjectResp](
+		sendConfig: connect.NewClient[proto.FaultInjection, proto.FaultInjectConfigResp](
 			httpClient,
 			baseURL+FaultInjectSendConfigProcedure,
-			opts...,
+			connect.WithSchema(faultInjectSendConfigMethodDescriptor),
+			connect.WithClientOptions(opts...),
 		),
 	}
 }
 
 // faultInjectClient implements FaultInjectClient.
 type faultInjectClient struct {
-	sendConfig *connect.Client[proto.FaultInjection, proto.InjectResp]
+	sendConfig *connect.Client[proto.FaultInjection, proto.FaultInjectConfigResp]
 }
 
 // SendConfig calls proto.FaultInject.SendConfig.
-func (c *faultInjectClient) SendConfig(ctx context.Context, req *connect.Request[proto.FaultInjection]) (*connect.Response[proto.InjectResp], error) {
+func (c *faultInjectClient) SendConfig(ctx context.Context, req *connect.Request[proto.FaultInjection]) (*connect.Response[proto.FaultInjectConfigResp], error) {
 	return c.sendConfig.CallUnary(ctx, req)
 }
 
 // FaultInjectHandler is an implementation of the proto.FaultInject service.
 type FaultInjectHandler interface {
-	SendConfig(context.Context, *connect.Request[proto.FaultInjection]) (*connect.Response[proto.InjectResp], error)
+	SendConfig(context.Context, *connect.Request[proto.FaultInjection]) (*connect.Response[proto.FaultInjectConfigResp], error)
 }
 
 // NewFaultInjectHandler builds an HTTP handler from the service implementation. It returns the path
@@ -84,7 +91,8 @@ func NewFaultInjectHandler(svc FaultInjectHandler, opts ...connect.HandlerOption
 	faultInjectSendConfigHandler := connect.NewUnaryHandler(
 		FaultInjectSendConfigProcedure,
 		svc.SendConfig,
-		opts...,
+		connect.WithSchema(faultInjectSendConfigMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
 	)
 	return "/proto.FaultInject/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
@@ -99,6 +107,6 @@ func NewFaultInjectHandler(svc FaultInjectHandler, opts ...connect.HandlerOption
 // UnimplementedFaultInjectHandler returns CodeUnimplemented from all methods.
 type UnimplementedFaultInjectHandler struct{}
 
-func (UnimplementedFaultInjectHandler) SendConfig(context.Context, *connect.Request[proto.FaultInjection]) (*connect.Response[proto.InjectResp], error) {
+func (UnimplementedFaultInjectHandler) SendConfig(context.Context, *connect.Request[proto.FaultInjection]) (*connect.Response[proto.FaultInjectConfigResp], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("proto.FaultInject.SendConfig is not implemented"))
 }

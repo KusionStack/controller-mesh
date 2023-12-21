@@ -2,13 +2,13 @@ apiVersion: ctrlmesh.kusionstack.io/v1alpha1
 kind: CircuitBreaker
 metadata:
   name: breaker-demo
-  namespace: default
+  namespace: kusionstack-system
 spec:
   rateLimitings:
   - bucket:
-      burst: 500
-      interval: 1s
-      limit: 20
+      burst: 1
+      interval: 10s
+      limit: 1
     name: deletePod
     recoverPolicy:
       sleepingWindowSize: 10m

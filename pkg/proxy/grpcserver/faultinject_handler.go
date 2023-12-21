@@ -18,18 +18,26 @@ package grpcserver
 
 import (
 	"context"
+	"fmt"
 
 	"connectrpc.com/connect"
-
-	"github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/proto"
+	ctrlmeshproto "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/proto"
+	"github.com/KusionStack/controller-mesh/pkg/proxy/faultinjection"
+	"google.golang.org/protobuf/encoding/protojson"
+	"k8s.io/klog/v2"
 )
 
 type grpcFaultInjectHandler struct {
+	mgr faultinjection.ManagerInterface
 }
 
-func (f *grpcFaultInjectHandler) SendConfig(ctx context.Context, req *connect.Request[proto.FaultInjection]) (*connect.Response[proto.InjectResp], error) {
+func (g *grpcFaultInjectHandler) SendConfig(ctx context.Context, req *connect.Request[ctrlmeshproto.FaultInjection]) (*connect.Response[ctrlmeshproto.FaultInjectConfigResp], error) {
 
-	// TODO: update config
-
-	return nil, nil
+	msg := protojson.MarshalOptions{Multiline: true, EmitUnpopulated: true}.Format(req.Msg)
+	klog.Infof("handle CircuitBreaker gRPC request %s", msg)
+	if req.Msg == nil {
+		return connect.NewResponse(&ctrlmeshproto.FaultInjectConfigResp{Success: false}), fmt.Errorf("nil CircuitBreaker recieived from client")
+	}
+	resp, err := g.mgr.Sync(req.Msg)
+	return connect.NewResponse(resp), err
 }

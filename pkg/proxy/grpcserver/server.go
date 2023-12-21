@@ -31,6 +31,7 @@ import (
 	"github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/constants"
 	"github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/proto/protoconnect"
 	"github.com/KusionStack/controller-mesh/pkg/proxy/circuitbreaker"
+	"github.com/KusionStack/controller-mesh/pkg/proxy/faultinjection"
 )
 
 var (
@@ -48,7 +49,8 @@ func init() {
 }
 
 type GrpcServer struct {
-	BreakerMgr circuitbreaker.ManagerInterface
+	BreakerMgr        circuitbreaker.ManagerInterface
+	FaultInjectionMgr faultinjection.ManagerInterface
 
 	mux *http.ServeMux
 }
@@ -56,6 +58,7 @@ type GrpcServer struct {
 func (s *GrpcServer) Start(ctx context.Context) {
 	s.mux = http.NewServeMux()
 	s.mux.Handle(protoconnect.NewThrottlingHandler(&grpcThrottlingHandler{mgr: s.BreakerMgr}, connect.WithSendMaxBytes(1024*1024*64)))
+	s.mux.Handle(protoconnect.NewFaultInjectHandler(&grpcFaultInjectHandler{mgr: s.FaultInjectionMgr}, connect.WithSendMaxBytes(1024*1024*64)))
 	addr := fmt.Sprintf(":%d", grpcServerPort)
 	go func() {
 		// Use h2c so we can serve HTTP/2 without TLS.

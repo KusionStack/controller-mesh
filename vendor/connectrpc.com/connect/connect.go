@@ -1,4 +1,4 @@
-// Copyright 2021-2023 Buf Technologies, Inc.
+// Copyright 2021-2023 The Connect Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -33,14 +33,15 @@ import (
 )
 
 // Version is the semantic version of the connect module.
-const Version = "1.11.1"
+const Version = "1.13.0"
 
 // These constants are used in compile-time handshakes with connect's generated
 // code.
 const (
-	IsAtLeastVersion0_0_1 = true
-	IsAtLeastVersion0_1_0 = true
-	IsAtLeastVersion1_7_0 = true
+	IsAtLeastVersion0_0_1  = true
+	IsAtLeastVersion0_1_0  = true
+	IsAtLeastVersion1_7_0  = true
+	IsAtLeastVersion1_13_0 = true
 )
 
 // StreamType describes whether the client, server, neither, or both is
@@ -314,6 +315,7 @@ type HTTPClient interface {
 // fully-qualified Procedure corresponding to each RPC in your schema.
 type Spec struct {
 	StreamType       StreamType
+	Schema           any    // for protobuf RPCs, a protoreflect.MethodDescriptor
 	Procedure        string // for example, "/acme.foo.v1.FooService/Bar"
 	IsClient         bool   // otherwise we're in a handler
 	IdempotencyLevel IdempotencyLevel
@@ -356,18 +358,26 @@ type handlerConnCloser interface {
 // envelopes the message and attaches headers and trailers. It attempts to
 // consume the response stream and isn't appropriate when receiving multiple
 // messages.
-func receiveUnaryResponse[T any](conn StreamingClientConn) (*Response[T], error) {
+func receiveUnaryResponse[T any](conn StreamingClientConn, initializer maybeInitializer) (*Response[T], error) {
 	var msg T
+	if err := initializer.maybe(conn.Spec(), &msg); err != nil {
+		return nil, err
+	}
 	if err := conn.Receive(&msg); err != nil {
 		return nil, err
 	}
 	// In a well-formed stream, the response message may be followed by a block
 	// of in-stream trailers or HTTP trailers. To ensure that we receive the
 	// trailers, try to read another message from the stream.
-	if err := conn.Receive(new(T)); err == nil {
+	// TODO: optimise unary calls to avoid this extra receive.
+	var msg2 T
+	if err := initializer.maybe(conn.Spec(), &msg2); err != nil {
+		return nil, err
+	}
+	if err := conn.Receive(&msg2); err == nil {
 		return nil, NewError(CodeUnknown, errors.New("unary stream has multiple messages"))
 	} else if err != nil && !errors.Is(err, io.EOF) {
-		return nil, NewError(CodeUnknown, err)
+		return nil, err
 	}
 	return &Response[T]{
 		Msg:     &msg,

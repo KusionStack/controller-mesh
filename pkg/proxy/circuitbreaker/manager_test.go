@@ -58,6 +58,28 @@ func TestRestTrafficIntercept(t *testing.T) {
 					Methods:       []string{"POST", "GET"},
 				},
 			},
+			RateLimitings: []*ctrlmeshv1alpha1.Limiting{
+				{
+					Name: "deletePod",
+					ResourceRules: []ctrlmeshv1alpha1.ResourceRule{
+						{
+							ApiGroups:  []string{"*"},
+							Namespaces: []string{"*"},
+							Verbs:      []string{"delete"},
+							Resources:  []string{"pod"},
+						},
+					},
+					TriggerPolicy: ctrlmeshv1alpha1.TriggerPolicyNormal,
+					RecoverPolicy: &ctrlmeshv1alpha1.RecoverPolicy{
+						RecoverType: ctrlmeshv1alpha1.RecoverPolicyManual,
+					},
+					Bucket: ctrlmeshv1alpha1.Bucket{
+						Burst:    1,
+						Interval: "1s",
+						Limit:    1,
+					},
+				},
+			},
 		},
 	}
 	g := gomega.NewGomegaWithT(t)
@@ -66,6 +88,9 @@ func TestRestTrafficIntercept(t *testing.T) {
 	protoBreaker.Option = ctrlmeshproto.CircuitBreaker_UPDATE
 	_, err := mgr.Sync(protoBreaker)
 	g.Expect(err).Should(gomega.BeNil())
+
+	// test limit delete pod
+
 	result := mgr.ValidateTrafficIntercept("www.hello.com", "POST")
 	g.Expect(result.Allowed).To(gomega.BeTrue())
 	result = mgr.ValidateTrafficIntercept("www.hello.com", "GET")
@@ -102,6 +127,7 @@ func TestRestTrafficIntercept(t *testing.T) {
 	}
 
 	protoBreaker2 := conv.ConvertCircuitBreaker(cb2)
+	protoBreaker2.Option = ctrlmeshproto.CircuitBreaker_UPDATE
 	_, err = mgr.Sync(protoBreaker2)
 	g.Expect(err).Should(gomega.BeNil())
 
@@ -137,6 +163,7 @@ func TestRestTrafficIntercept(t *testing.T) {
 	}
 
 	protoBreaker3 := conv.ConvertCircuitBreaker(cb3)
+	protoBreaker3.Option = ctrlmeshproto.CircuitBreaker_UPDATE
 	_, err = mgr.Sync(protoBreaker3)
 	g.Expect(err).Should(gomega.BeNil())
 	result = mgr.ValidateTrafficIntercept("www.hello.com", "DELETE")

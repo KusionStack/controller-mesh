@@ -31,6 +31,10 @@ func (c *FakeCtrlmeshV1alpha1) CircuitBreakers(namespace string) v1alpha1.Circui
 	return &FakeCircuitBreakers{c, namespace}
 }
 
+func (c *FakeCtrlmeshV1alpha1) FaultInjections(namespace string) v1alpha1.FaultInjectionInterface {
+	return &FakeFaultInjections{c, namespace}
+}
+
 func (c *FakeCtrlmeshV1alpha1) ManagerStates() v1alpha1.ManagerStateInterface {
 	return &FakeManagerStates{c}
 }

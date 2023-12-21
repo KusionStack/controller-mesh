@@ -1,6 +1,7 @@
 
 # Image URL to use all building/pushing image targets
 IMG ?= controller:latest
+CLUSTER_NAME ?= kindcluster
 
 CRD_OPTIONS ?= "crd:crdVersions=v1"
 
@@ -76,6 +77,19 @@ docker-push: ## Push docker image with the manager.
 	docker push ${IMG}
 
 ##@ Deployment
+
+deploy-local-kind:
+	sed -i'' -e 's@name: .*@name: '"${CLUSTER_NAME}"'@' ./e2e/scripts/kind-conf.yaml
+	kind create cluster --image kindest/node:v1.21.1 --config ./e2e/scripts/kind-conf.yaml
+
+kind-kube-config:
+	kind get kubeconfig --name ${CLUSTER_NAME} > /tmp/kind-kubeconfig.yaml
+	export KUBECONFIG=/tmp/kind-kubeconfig.yaml
+
+kind: deploy-local-kind kind-kube-config # deploy kind
+
+clear-kind:
+	kind delete cluster --name ${CLUSTER_NAME}
 
 install: manifests kustomize ## Install CRDs into the K8s cluster specified in ~/.kube/config.
 	$(KUSTOMIZE) build config/crd

@@ -18,7 +18,7 @@ import (
 // generated with a version of connect newer than the one compiled into your binary. You can fix the
 // problem by either regenerating this code with an older version of connect or updating the connect
 // version compiled into your binary.
-const _ = connect.IsAtLeastVersion0_1_0
+const _ = connect.IsAtLeastVersion1_13_0
 
 const (
 	// ControllerMeshName is the fully-qualified name of the ControllerMesh service.
@@ -35,6 +35,12 @@ const (
 const (
 	// ControllerMeshRegisterProcedure is the fully-qualified name of the ControllerMesh's Register RPC.
 	ControllerMeshRegisterProcedure = "/proto.ControllerMesh/Register"
+)
+
+// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
+var (
+	controllerMeshServiceDescriptor        = proto.File_pkg_apis_ctrlmesh_proto_ctrlmesh_proto.Services().ByName("ControllerMesh")
+	controllerMeshRegisterMethodDescriptor = controllerMeshServiceDescriptor.Methods().ByName("Register")
 )
 
 // ControllerMeshClient is a client for the proto.ControllerMesh service.
@@ -55,7 +61,8 @@ func NewControllerMeshClient(httpClient connect.HTTPClient, baseURL string, opts
 		register: connect.NewClient[proto.ProxyStatus, proto.ProxySpec](
 			httpClient,
 			baseURL+ControllerMeshRegisterProcedure,
-			opts...,
+			connect.WithSchema(controllerMeshRegisterMethodDescriptor),
+			connect.WithClientOptions(opts...),
 		),
 	}
 }
@@ -84,7 +91,8 @@ func NewControllerMeshHandler(svc ControllerMeshHandler, opts ...connect.Handler
 	controllerMeshRegisterHandler := connect.NewBidiStreamHandler(
 		ControllerMeshRegisterProcedure,
 		svc.Register,
-		opts...,
+		connect.WithSchema(controllerMeshRegisterMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
 	)
 	return "/proto.ControllerMesh/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
