@@ -17,6 +17,7 @@ limitations under the License.
 package conv
 
 import (
+	"strconv"
 	"time"
 
 	ctrlmeshproto "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/proto"
@@ -49,17 +50,25 @@ func ConvertHTTPFaultInjection(faultInjection *ctrlmeshv1alpha1.HTTPFaultInjecti
 		if err != nil {
 			return nil
 		}
+		percent, err := strconv.ParseFloat(faultInjection.Delay.Percent, 64) // 64 表示使用 float64 类型
+		if err != nil {
+			return nil
+		}
 		delay := durationpb.New(d)
 		protoFaultInjection.Delay = &ctrlmeshproto.HTTPFaultInjection_Delay{
 			HttpDelayType: &ctrlmeshproto.HTTPFaultInjection_Delay_FixedDelay{
 				FixedDelay: delay,
 			},
-			Percent: faultInjection.Delay.Percent,
+			Percent: percent,
 		}
 	}
 	if faultInjection.Abort != nil {
+		percent, err := strconv.ParseFloat(faultInjection.Abort.Percent, 64) // 64 表示使用 float64 类型
+		if err != nil {
+			return nil
+		}
 		protoFaultInjection.Abort = &ctrlmeshproto.HTTPFaultInjection_Abort{
-			Percent: faultInjection.Abort.Percent,
+			Percent: percent,
 			ErrorType: &ctrlmeshproto.HTTPFaultInjection_Abort_HttpStatus{
 				HttpStatus: int32(faultInjection.Abort.HttpStatus),
 			},
@@ -77,8 +86,9 @@ func ConvertHTTPMatch(match *ctrlmeshv1alpha1.HTTPMatchRequest) *ctrlmeshproto.H
 		Name: match.Name,
 	}
 	if match.RestRules != nil {
-		httpMatchRequest.RestRules = make([]*ctrlmeshproto.MutiRestRule, len(match.RestRules))
+		httpMatchRequest.RestRules = make([]*ctrlmeshproto.MultiRestRule, len(match.RestRules))
 		for i, restRule := range match.RestRules {
+			httpMatchRequest.RestRules[i] = &ctrlmeshproto.MultiRestRule{}
 			if restRule.URL != nil {
 				httpMatchRequest.RestRules[i].Url = make([]string, len(restRule.URL))
 				copy(httpMatchRequest.RestRules[i].Url, restRule.URL)
@@ -92,6 +102,7 @@ func ConvertHTTPMatch(match *ctrlmeshv1alpha1.HTTPMatchRequest) *ctrlmeshproto.H
 	if match.RelatedResources != nil {
 		httpMatchRequest.RelatedResources = make([]*ctrlmeshproto.ResourceMatch, len(match.RelatedResources))
 		for i, relatedResource := range match.RelatedResources {
+
 			httpMatchRequest.RelatedResources[i] = ConvertRelatedResources(relatedResource)
 		}
 

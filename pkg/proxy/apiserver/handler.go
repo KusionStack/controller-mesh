@@ -54,6 +54,7 @@ var (
 	enableWebhookProxy  = os.Getenv(constants.EnvEnableWebHookProxy) == "true"
 
 	disableCircuitBreaker = os.Getenv(constants.EnvDisableCircuitBreaker) == "true"
+	disableFaultInjection = os.Getenv(constants.EnvDisableCircuitBreaker) == "true"
 )
 
 type Proxy struct {
@@ -90,6 +91,9 @@ func NewProxy(opts *Options) (*Proxy, error) {
 	var handler http.Handler = inHandler
 	if opts.BreakerWrapperFunc != nil && !disableCircuitBreaker {
 		handler = opts.BreakerWrapperFunc(handler)
+	}
+	if opts.FaultInjectionWrapperFunc != nil && !disableFaultInjection {
+		handler = opts.FaultInjectionWrapperFunc(handler)
 	}
 	handler = genericfilters.WithWaitGroup(handler, opts.LongRunningFunc, opts.HandlerChainWaitGroup)
 	handler = WithRequestInfo(handler, opts.RequestInfoResolver)

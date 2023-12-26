@@ -35,9 +35,11 @@ import (
 
 	"github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/constants"
 	"github.com/KusionStack/controller-mesh/pkg/client"
+
 	proxyapiserver "github.com/KusionStack/controller-mesh/pkg/proxy/apiserver"
 	proxycache "github.com/KusionStack/controller-mesh/pkg/proxy/cache"
 	"github.com/KusionStack/controller-mesh/pkg/proxy/circuitbreaker"
+	"github.com/KusionStack/controller-mesh/pkg/proxy/faultinjection"
 	"github.com/KusionStack/controller-mesh/pkg/proxy/grpcserver"
 	protomanager "github.com/KusionStack/controller-mesh/pkg/proxy/proto"
 	"github.com/KusionStack/controller-mesh/pkg/utils"
@@ -76,7 +78,11 @@ func main() {
 	proxyClient := protomanager.NewGrpcClient(managerStateCache)
 
 	breakerMgr := circuitbreaker.NewManager(ctx)
-	proxyServer := grpcserver.GrpcServer{BreakerMgr: breakerMgr}
+	faultInjectionMgr := faultinjection.NewManager(ctx)
+	proxyServer := grpcserver.GrpcServer{
+		BreakerMgr:        breakerMgr,
+		FaultInjectionMgr: faultInjectionMgr,
+	}
 	go proxyServer.Start(ctx)
 
 	if err := proxyClient.Start(ctx); err != nil {
@@ -99,7 +105,9 @@ func main() {
 		opts.LeaderElectionName = *leaderElectionName
 		opts.SpecManager = proxyClient.GetSpecManager()
 		opts.BreakerWrapperFunc = breakerMgr.HandlerWrapper()
+		opts.FaultInjectionWrapperFunc = faultInjectionMgr.HandlerWrapper()
 		errs := opts.Validate()
+		ctrl.Log.Info("starting proxy")
 		if len(errs) > 0 {
 			klog.Fatalf("Failed to validate apiserver-proxy options %s: %v", utils.DumpJSON(opts), errs)
 		}

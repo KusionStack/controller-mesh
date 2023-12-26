@@ -34,9 +34,9 @@ type grpcFaultInjectHandler struct {
 func (g *grpcFaultInjectHandler) SendConfig(ctx context.Context, req *connect.Request[ctrlmeshproto.FaultInjection]) (*connect.Response[ctrlmeshproto.FaultInjectConfigResp], error) {
 
 	msg := protojson.MarshalOptions{Multiline: true, EmitUnpopulated: true}.Format(req.Msg)
-	klog.Infof("handle CircuitBreaker gRPC request %s", msg)
+	klog.Infof("handle FaultInjection gRPC request %s", msg)
 	if req.Msg == nil {
-		return connect.NewResponse(&ctrlmeshproto.FaultInjectConfigResp{Success: false}), fmt.Errorf("nil CircuitBreaker recieived from client")
+		return connect.NewResponse(&ctrlmeshproto.FaultInjectConfigResp{Success: false}), fmt.Errorf("nil FaultInjection recieived from client")
 	}
 	resp, err := g.mgr.Sync(req.Msg)
 	return connect.NewResponse(resp), err

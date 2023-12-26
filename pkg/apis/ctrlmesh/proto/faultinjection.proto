@@ -4,6 +4,7 @@ package proto;
 
 import "k8s.io/apimachinery/pkg/apis/meta/v1/generated.proto";
 import "google/protobuf/duration.proto";
+import "google/api/field_behavior.proto";
 
 service FaultInject {
   rpc SendConfig(FaultInjection) returns (FaultInjectConfigResp);
@@ -65,7 +66,7 @@ message HTTPFaultInjection {
     oneof http_delay_type {
       // Add a fixed delay before forwarding the request. Format:
       // 1h/1m/1s/1ms. MUST be >=1ms.
-      google.protobuf.Duration fixed_delay = 2;
+      google.protobuf.Duration fixed_delay = 2[(google.api.field_behavior) = REQUIRED];
 
       // google.protobuf.Duration exponential_delay = 3 ;
     }
@@ -92,7 +93,7 @@ message HTTPFaultInjection {
   }
 }
 
-message MutiRestRule {
+message MultiRestRule {
   repeated string url = 1;
   repeated string method = 2;
 }
@@ -105,7 +106,7 @@ message HTTPMatchRequest {
 
   //
   repeated ResourceMatch relatedResources = 2;
-  repeated MutiRestRule restRules = 3;
+  repeated MultiRestRule restRules = 3;
 }
 
 // Describes how to match K8s resources.

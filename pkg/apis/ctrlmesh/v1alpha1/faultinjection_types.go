@@ -51,7 +51,7 @@ type HTTPFaultInjectionDelay struct {
 	FixedDelay string `json:"fixedDelay,omitempty"`
 	// Percent of requests on which the delay will be injected.
 	// If left unspecified, no request will be delayed
-	Percent float64 `json:"percent,omitempty"`
+	Percent string `json:"percent,omitempty"`
 }
 
 type HTTPFaultInjectionAbort struct {
@@ -60,7 +60,7 @@ type HTTPFaultInjectionAbort struct {
 	HttpStatus HTTPSTATUS `json:"httpStatus,omitempty"`
 	// Percent of requests to be aborted with the error code provided.
 	// If not specified, no request will be aborted.
-	Percent float64 `json:"percent,omitempty"`
+	Percent string `json:"percent,omitempty"`
 }
 
 type ResourceMatch struct {
@@ -71,7 +71,7 @@ type ResourceMatch struct {
 }
 
 // RestRule defines the target rest resource of the limiting policy
-type MutiRestRule struct {
+type MultiRestRule struct {
 	// URL gives the location of the rest request, in standard URL form (`scheme://host:port/path`)
 	URL []string `json:"url"`
 	// Method specifies the http method of the request, like: PUT, POST, GET, DELETE.
@@ -82,7 +82,7 @@ type HTTPMatchRequest struct {
 	Name             string           `json:"name,omitempty"`
 	RelatedResources []*ResourceMatch `json:"relatedResources,omitempty"`
 
-	RestRules []MutiRestRule `json:"restRules,omitempty"`
+	RestRules []*MultiRestRule `json:"restRules,omitempty"`
 }
 
 // HTTPFaultInjection can be used to specify one or more faults to inject

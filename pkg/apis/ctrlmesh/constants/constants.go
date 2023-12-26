@@ -63,6 +63,7 @@ const (
 	EnvEnableSim = "ENABLE_SIM"
 
 	EnvDisableCircuitBreaker         = "DISABLE_CIRCUIT_BREAKER"
+	EnvDisableFaultInjection         = "DISABLE_FAULT_INJECTION"
 	EnvEnableApiServerCircuitBreaker = "ENABLE_API_SERVER_BREAKER"
 	EnvEnableRestCircuitBreaker      = "ENABLE_REST_BREAKER"
 

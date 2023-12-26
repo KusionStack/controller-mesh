@@ -19,12 +19,10 @@ package faultinjection
 import (
 	"context"
 	"fmt"
-	"math"
 	"regexp"
 	"sync"
 	"time"
 
-	"golang.org/x/time/rate"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog/v2"
@@ -106,16 +104,14 @@ func (s *state) transitionTo(newStatus ctrlmeshproto.FaultInjectionState, t *met
 	return false
 }
 
-// limiterStore is a thread-safe local store for faultinjection rules and limiters
+// faultInjectionStore is a thread-safe local store for faultinjection rules
 type store struct {
 	mu sync.RWMutex
-	// limiter cache, key is {cb.namespace}:{cb.name}:{rule.name}
-	limiters map[string]*rate.Limiter
 	// rule cache, key is {cb.namespace}:{cb.name}:{rule.name}
 	rules map[string]*ctrlmeshproto.HTTPFaultInjection
 	// circuit breaker states
 	states map[string]*state
-	// limiter indices: resource indices and rest indices
+	// indices: resource indices and rest indices
 	indices indices
 
 	faultinjectionLease *lease
@@ -123,9 +119,8 @@ type store struct {
 	ctx context.Context
 }
 
-func newLimiterStore(ctx context.Context) *store {
+func newFaultInjectionStore(ctx context.Context) *store {
 	s := &store{
-		limiters:            make(map[string]*rate.Limiter),
 		rules:               make(map[string]*ctrlmeshproto.HTTPFaultInjection),
 		states:              make(map[string]*state),
 		indices:             indices{},
@@ -146,9 +141,8 @@ func (s *store) createOrUpdateRule(key string, faultinjection *ctrlmeshproto.HTT
 
 	oldOne, ok := s.rules[key]
 	if !ok {
-		// all new, just assign limiter, rules and states, and update indices
+		// all new, just assign rules and states, and update indices
 		s.rules[key] = faultinjection
-		//s.limiters[key] = rateLimiter(faultinjection.Bucket)
 		s.states[key] = &state{
 			key:                key,
 			state:              snapshot.State,
@@ -159,10 +153,6 @@ func (s *store) createOrUpdateRule(key string, faultinjection *ctrlmeshproto.HTT
 		// there is an old one, assign the new rule, update indices
 		s.rules[key] = faultinjection.DeepCopy()
 		s.updateIndices(oldOne, faultinjection, key)
-		// if limiter bucket changes, assign a new limiter and re-calculate the limits
-		// if !bucketEquals(oldOne.Bucket, faultinjection.Bucket) {
-		// 	s.limiters[key] = rateLimiter(faultinjection.Bucket)
-		// }
 	}
 }
 
@@ -174,39 +164,36 @@ func (s *store) deleteRule(key string) {
 	if obj, ok := s.rules[key]; ok {
 		s.deleteFromIndices(obj, key)
 		delete(s.rules, key)
-		delete(s.limiters, key)
 		delete(s.states, key)
 	}
 }
 
 // byKey get the rule by a specific key
-func (s *store) byKey(key string) (*ctrlmeshproto.HTTPFaultInjection, *rate.Limiter, *state) {
+func (s *store) byKey(key string) (*ctrlmeshproto.HTTPFaultInjection, *state) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return s.rules[key], s.limiters[key], s.states[key]
+	return s.rules[key], s.states[key]
 }
 
 // byIndex lists rules by a specific index
-func (s *store) byIndex(indexName, indexedValue string) ([]*ctrlmeshproto.HTTPFaultInjection, []*rate.Limiter, []*state) {
+func (s *store) byIndex(indexName, indexedValue string) ([]*ctrlmeshproto.HTTPFaultInjection, []*state) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
 	indexFunc := indexFunctions[indexName]
 	if indexFunc == nil {
-		return nil, nil, nil
+		return nil, nil
 	}
 	idx := s.indices[indexName]
 	set := idx[indexedValue]
 
 	limitings := make([]*ctrlmeshproto.HTTPFaultInjection, 0, set.Len())
-	limiters := make([]*rate.Limiter, 0, set.Len())
 	states := make([]*state, 0, set.Len())
 	for key := range set {
 		limitings = append(limitings, s.rules[key])
-		limiters = append(limiters, s.limiters[key])
 		states = append(states, s.states[key])
 	}
-	return limitings, limiters, states
+	return limitings, states
 }
 
 // updateIndices updates current indices of the rules
@@ -263,21 +250,6 @@ func (s *store) iterate(f func(key string)) {
 
 func bucketEquals(oldOne, newOne *ctrlmeshproto.Bucket) bool {
 	return oldOne.Interval == newOne.Interval && oldOne.Limit == newOne.Limit && oldOne.Burst == newOne.Burst
-}
-
-func rateLimiter(bucket *ctrlmeshproto.Bucket) *rate.Limiter {
-	// ensure no failure with webhook
-	interval, _ := time.ParseDuration(bucket.Interval)
-
-	r := func() rate.Limit {
-		if bucket.Limit == 0 {
-			return rate.Every(math.MaxInt64)
-		}
-		return rate.Every(interval / time.Duration(bucket.Limit))
-	}()
-	rt := rate.NewLimiter(r, int(bucket.Burst))
-	rt.AllowN(time.Now(), 0)
-	return rt
 }
 
 func indexForResource(namespace, apiGroup, resource, verb string) string {

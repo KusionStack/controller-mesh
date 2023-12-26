@@ -54,7 +54,8 @@ type Options struct {
 	LeaderElectionName string
 	SpecManager        *protomanager.SpecManager
 
-	BreakerWrapperFunc func(http.Handler) http.Handler
+	BreakerWrapperFunc        func(http.Handler) http.Handler
+	FaultInjectionWrapperFunc func(http.Handler) http.Handler
 }
 
 func NewOptions() *Options {

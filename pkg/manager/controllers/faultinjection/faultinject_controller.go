@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package faultinject
+package faultinjection
 
 import (
 	"context"
@@ -116,10 +116,10 @@ func (r *FaultInjectionReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 			defaultPodConfigCache.Add(po.Namespace, po.Name, fi.Name)
 		}
 		status := &ctrlmeshv1alpha1.FaultInjectionTargetStatus{
-			PodName:           po.Name,
-			PodIP:             po.Status.PodIP,
-			ConfigHash:        currentHash,
-			Message:           msg,
+			PodName:                 po.Name,
+			PodIP:                   po.Status.PodIP,
+			ConfigHash:              currentHash,
+			Message:                 msg,
 			FaultInjectionSnapshots: conv.ConvertFaultInjectionSnapshots(snapshots),
 		}
 		targetStatus = append(targetStatus, status)
@@ -201,7 +201,7 @@ func (r *FaultInjectionReconciler) tryClearOrAddFinalizer(ctx context.Context, f
 
 	var disabled bool
 	if fi.Labels != nil {
-		_, disabled = fi.Labels[ctrlmesh.CtrlmeshCircuitBreakerDisableKey]
+		_, disabled = fi.Labels[ctrlmesh.CtrlmeshFaultInjectionDisableKey]
 	}
 	if disabled || fi.DeletionTimestamp != nil {
 		shouldClear = true
@@ -321,6 +321,7 @@ func (r *FaultInjectionReconciler) InjectClient(c client.Client) error {
 // SetupWithManager sets up the controller with the Manager.
 func (r *FaultInjectionReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	r.recorder = mgr.GetEventRecorderFor("sharding-config-controller")
+	klog.Infof("===>", "starting fault manager")
 	return ctrl.NewControllerManagedBy(mgr).
 		WithOptions(controller.Options{MaxConcurrentReconciles: *concurrentReconciles}).
 		For(&ctrlmeshv1alpha1.FaultInjection{}, builder.WithPredicates(&FaultInjectionPredicate{})).

@@ -23,13 +23,14 @@ import (
 	"fmt"
 	"math/rand"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
 
-	"golang.org/x/time/rate"
 	"k8s.io/apiserver/pkg/endpoints/handlers/responsewriters"
 	apirequest "k8s.io/apiserver/pkg/endpoints/request"
+	"k8s.io/klog/v2"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	ctrlmeshproto "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/proto"
@@ -37,7 +38,7 @@ import (
 )
 
 var (
-	logger  = logf.Log.WithName("limiter-manager")
+	logger  = logf.Log.WithName("fault-injection-manager")
 	randNum = rand.New(rand.NewSource(time.Now().UnixNano()))
 )
 
@@ -67,7 +68,8 @@ type manager struct {
 
 func NewManager(ctx context.Context) ManagerInterface {
 	return &manager{
-		faultInjectionMap: map[string]*ctrlmeshproto.FaultInjection{},
+		faultInjectionMap:   map[string]*ctrlmeshproto.FaultInjection{},
+		faultInjectionStore: newFaultInjectionStore(ctx),
 	}
 }
 
@@ -81,7 +83,7 @@ func (m *manager) Sync(config *ctrlmeshproto.FaultInjection) (*ctrlmeshproto.Fau
 		if ok && config.ConfigHash == fi.ConfigHash {
 			return &ctrlmeshproto.FaultInjectConfigResp{
 				Success:                 true,
-				Message:                 fmt.Sprintf("circuitBreaker spec hash not updated, hash %s", fi.ConfigHash),
+				Message:                 fmt.Sprintf("faultInjection spec hash not updated, hash %s", fi.ConfigHash),
 				FaultInjectionSnapshots: m.snapshot(config.Name),
 			}, nil
 		} else {
@@ -105,12 +107,12 @@ func (m *manager) Sync(config *ctrlmeshproto.FaultInjection) (*ctrlmeshproto.Fau
 			delete(m.faultInjectionMap, config.Name)
 			return &ctrlmeshproto.FaultInjectConfigResp{
 				Success: true,
-				Message: fmt.Sprintf("circuitBreaker config %s success deleted", fi.Name),
+				Message: fmt.Sprintf("faultInjection config %s success deleted", fi.Name),
 			}, nil
 		} else {
 			return &ctrlmeshproto.FaultInjectConfigResp{
 				Success: true,
-				Message: fmt.Sprintf("circuitBreaker config %s already deleted", config.Name),
+				Message: fmt.Sprintf("faultInjection config %s already deleted", config.Name),
 			}, nil
 		}
 	case ctrlmeshproto.FaultInjection_CHECK:
@@ -118,13 +120,13 @@ func (m *manager) Sync(config *ctrlmeshproto.FaultInjection) (*ctrlmeshproto.Fau
 		if !ok {
 			return &ctrlmeshproto.FaultInjectConfigResp{
 				Success:                 false,
-				Message:                 fmt.Sprintf("circuit breaker config %s not found", cb.Name),
+				Message:                 fmt.Sprintf("fault injection config %s not found", cb.Name),
 				FaultInjectionSnapshots: m.snapshot(config.Name),
 			}, nil
 		} else if config.ConfigHash != cb.ConfigHash {
 			return &ctrlmeshproto.FaultInjectConfigResp{
 				Success:                 false,
-				Message:                 fmt.Sprintf("unequal circuit breaker %s hash, old %s, new %s", cb.Name, cb.ConfigHash, config.ConfigHash),
+				Message:                 fmt.Sprintf("unequal fault injection %s hash, old %s, new %s", cb.Name, cb.ConfigHash, config.ConfigHash),
 				FaultInjectionSnapshots: m.snapshot(config.Name),
 			}, nil
 		}
@@ -179,6 +181,7 @@ func (m *manager) snapshot(breaker string) []*ctrlmeshproto.FaultInjectionSnapsh
 
 func (m *manager) HandlerWrapper() func(http.Handler) http.Handler {
 	return func(handler http.Handler) http.Handler {
+		klog.Infof("===>", "fault proxy start")
 		return withFaultInjection(m, handler)
 	}
 }
@@ -186,6 +189,40 @@ func (m *manager) HandlerWrapper() func(http.Handler) http.Handler {
 // ValidateRest validate a rest request
 // TODO: consider regex matching
 func (m *manager) ValidateRest(URL string, method string) (result *ValidateResult) {
+	now := time.Now()
+	defer func() {
+		logger.Info("validate rest", "URL", URL, "method", method, "result", result, "cost time", time.Since(now).String())
+	}()
+
+	urls := generateWildcardUrls(URL, method)
+	for _, url := range urls {
+		limitings, states := m.faultInjectionStore.byIndex(IndexRest, url)
+		if len(limitings) == 0 {
+			continue
+		}
+		result = m.doValidation(limitings, states)
+		return result
+	}
+	result = &ValidateResult{Allowed: true, Reason: "No rule match"}
+	return result
+}
+
+func generateWildcardUrls(URL string, method string) []string {
+	var result []string
+	result = append(result, indexForRest(URL, method))
+	URL = strings.TrimSuffix(URL, "/")
+	u, err := url.Parse(URL)
+	if err != nil {
+		logger.Error(err, "failed to url", "URL", URL, "method", method)
+		return result
+	}
+	if len(u.Path) > 0 {
+		subPaths := strings.Split(u.Path, "/")
+		for i := len(subPaths) - 1; i > 0; i-- {
+			subPath := u.Scheme + "://" + u.Host + strings.Join(subPaths[:i], "/") + "/*"
+			result = append(result, indexForRest(subPath, method))
+		}
+	}
 
 	return result
 }
@@ -197,14 +234,13 @@ func (m *manager) ValidateResource(namespace, apiGroup, resource, verb string) (
 	defer func() {
 		logger.Info("validate resource", "namespace", namespace, "apiGroup", apiGroup, "resource", resource, "verb", verb, "result", result, "cost time", time.Since(now).String())
 	}()
-	fmt.Println("===>ValidateResource")
 	seeds := generateWildcardSeeds(namespace, apiGroup, resource, verb)
 	for _, seed := range seeds {
-		limitings, limiters, states := m.faultInjectionStore.byIndex(IndexResource, seed)
+		limitings, states := m.faultInjectionStore.byIndex(IndexResource, seed)
 		if len(limitings) == 0 {
 			continue
 		}
-		result = m.doValidation(limitings, limiters, states)
+		result = m.doValidation(limitings, states)
 		return result
 	}
 	result = &ValidateResult{Allowed: true, Reason: "No rule match"}
@@ -252,10 +288,10 @@ func withFaultInjection(validator Validator, handler http.Handler) http.Handler 
 			responsewriters.InternalError(w, req, errors.New("no RequestInfo found in the context"))
 			return
 		}
-
+		klog.Infof("===>", "withFaultInjection start", requestInfo.Namespace, requestInfo.APIGroup, requestInfo.Resource, requestInfo.Verb)
 		result := validator.ValidateResource(requestInfo.Namespace, requestInfo.APIGroup, requestInfo.Resource, requestInfo.Verb)
+
 		if !result.Allowed {
-			// http.Error(w, fmt.Sprintf("Circuit breaking by TrafficPolicy, %s, %s", result.Reason, result.Message), int(result.ErrCode))
 			apiErr := httpToAPIError(int(result.ErrCode), result.Message)
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(int(apiErr.Code))
@@ -267,26 +303,27 @@ func withFaultInjection(validator Validator, handler http.Handler) http.Handler 
 	})
 }
 
-func (m *manager) doValidation(limitings []*ctrlmeshproto.HTTPFaultInjection, limiters []*rate.Limiter, states []*state) *ValidateResult {
+func (m *manager) doValidation(limitings []*ctrlmeshproto.HTTPFaultInjection, states []*state) *ValidateResult {
 	result := &ValidateResult{
 		Allowed: true,
 		Reason:  "Default allow",
 	}
 	for idx := range limitings {
-		// check current circuit breaker status first
-		status, _, _ := states[idx].read()
-		switch status {
-		case ctrlmeshproto.FaultInjectionState_STATEOPENED: // fi already opened, just refuse
-			result.Allowed = false
-			result.Reason = "FaultInjectionTriggered"
-			result.Message = fmt.Sprintf("the fault injection is triggered. Limiting rule name: %s", limitings[idx].Name)
-		}
+		// check current fault injection status first
+		// status, _, _ := states[idx].read()
+		// switch status {
+		// case ctrlmeshproto.FaultInjectionState_STATEOPENED: // fi already opened, just refuse
+		// 	result.Allowed = false
+		// 	result.Reason = "FaultInjectionTriggered"
+		// 	result.Message = fmt.Sprintf("the fault injection is triggered. Limiting rule name: %s", limitings[idx].Name)
+		// }
 
 		if limitings[idx].Delay != nil {
 			// 随机部分请求进行延时
 			if isInpercentRange(limitings[idx].Delay.Percent) {
 				delay := limitings[idx].Delay.GetFixedDelay()
 				delayDuration := delay.AsDuration()
+				fmt.Println("Delaying for ", delayDuration)
 				time.Sleep(delayDuration)
 			}
 		}
@@ -384,7 +421,7 @@ func httpToAPIError(code int, serverMessage string) *metav1.Status {
 	return status
 }
 
-// RegisterRules register a fault injection to the local limiter store
+// RegisterRules register a fault injection to the local store
 func (m *manager) registerRules(fi *ctrlmeshproto.FaultInjection) {
 	logger.Info("register rule", "faultInjection", fi.Name)
 	if _, ok := m.faultInjectionMap[fi.Name]; ok {
@@ -402,7 +439,7 @@ func (m *manager) registerRules(fi *ctrlmeshproto.FaultInjection) {
 	}
 }
 
-// UnregisterRules unregister a fault injection to the local limiter store
+// UnregisterRules unregister a fault injection to the local store
 func (m *manager) unregisterRules(fiName string) {
 	logger.Info("unregister rule", "faultInjection", fiName)
 	fi, ok := m.faultInjectionMap[fiName]

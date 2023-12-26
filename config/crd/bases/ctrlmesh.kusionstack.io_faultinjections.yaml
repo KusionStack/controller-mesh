@@ -76,53 +76,55 @@ spec:
                     match:
                       description: Match specifies a set of criterion to be met in
                         order for the rule to be applied to the HTTP request.
-                      items:
-                        properties:
-                          relatedResources:
-                            items:
-                              properties:
-                                apiGroups:
-                                  items:
-                                    type: string
-                                  type: array
-                                namespaces:
-                                  items:
-                                    type: string
-                                  type: array
-                                resources:
-                                  items:
-                                    type: string
-                                  type: array
-                                verbs:
-                                  items:
-                                    type: string
-                                  type: array
-                              type: object
-                            type: array
-                          restRules:
-                            items:
-                              description: RestRule defines the target rest resource
-                                of the limiting policy
-                              properties:
-                                method:
-                                  description: 'Method specifies the http method of
-                                    the request, like: PUT, POST, GET, DELETE.'
-                                  items:
-                                    type: string
-                                  type: array
-                                url:
-                                  description: URL gives the location of the rest
-                                    request, in standard URL form (`scheme://host:port/path`)
-                                  items:
-                                    type: string
-                                  type: array
-                              required:
-                              - method
-                              - url
-                              type: object
-                            type: array
-                        type: object
-                      type: array
+                      properties:
+                        name:
+                          type: string
+                        relatedResources:
+                          items:
+                            properties:
+                              apiGroups:
+                                items:
+                                  type: string
+                                type: array
+                              namespaces:
+                                items:
+                                  type: string
+                                type: array
+                              resources:
+                                items:
+                                  type: string
+                                type: array
+                              verbs:
+                                items:
+                                  type: string
+                                type: array
+                            type: object
+                          type: array
+                        restRules:
+                          items:
+                            description: RestRule defines the target rest resource
+                              of the limiting policy
+                            properties:
+                              method:
+                                description: 'Method specifies the http method of
+                                  the request, like: PUT, POST, GET, DELETE.'
+                                items:
+                                  type: string
+                                type: array
+                              url:
+                                description: URL gives the location of the rest request,
+                                  in standard URL form (`scheme://host:port/path`)
+                                items:
+                                  type: string
+                                type: array
+                            required:
+                            - method
+                            - url
+                            type: object
+                          type: array
+                      type: object
+                    name:
+                      type: string
                   type: object
                 type: array
               selector:
@@ -172,6 +174,50 @@ spec:
                 x-kubernetes-map-type: atomic
             type: object
           status:
+            properties:
+              currentSpecHash:
+                type: string
+              faultinjectiontargetStatus:
+                items:
+                  properties:
+                    configHash:
+                      type: string
+                    faultInjectionSnapshots:
+                      items:
+                        description: LimitingSnapshot defines the snapshot of the
+                          whole faultinjection policy
+                        properties:
+                          lastTransitionTime:
+                            description: LastTransitionTime is the last time that
+                              the status changed
+                            format: date-time
+                            type: string
+                          name:
+                            description: Name specifies the name of the policy
+                            type: string
+                          state:
+                            description: Status is the status of the fault injection,
+                              which may be 'Opened' or 'Closed'.
+                            type: string
+                        required:
+                        - name
+                        - state
+                        type: object
+                      type: array
+                    message:
+                      type: string
+                    podIP:
+                      type: string
+                    podName:
+                      type: string
+                  type: object
+                type: array
+              lastUpdatedTime:
+                format: date-time
+                type: string
+              observedGeneration:
+                format: int64
+                type: integer
             type: object
         type: object
     served: true
