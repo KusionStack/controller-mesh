@@ -5,10 +5,10 @@ version: v1
 #    default: github.com/kusionstack/kridge/api/gen
 plugins:
 # Remote plugins
-- plugin: buf.build/protocolbuffers/go
+- plugin: buf.build/protocolbuffers/go:v1.32.0
   out: .
   opt: paths=source_relative
-- plugin: buf.build/connectrpc/go
+- plugin: buf.build/connectrpc/go:v1.14.0
   out: .
   opt: paths=source_relative
 # Local plugins:

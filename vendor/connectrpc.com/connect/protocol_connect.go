@@ -1,4 +1,4 @@
-// Copyright 2021-2023 Buf Technologies, Inc.
+// Copyright 2021-2023 The Connect Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -59,8 +59,6 @@ const (
 )
 
 // defaultConnectUserAgent returns a User-Agent string similar to those used in gRPC.
-//
-//nolint:gochecknoglobals
 var defaultConnectUserAgent = fmt.Sprintf("connect-go/%s (%s)", Version, runtime.Version())
 
 type protocolConnect struct{}
@@ -256,7 +254,7 @@ func (h *connectHandler) NewConn(
 			request:        request,
 			responseWriter: responseWriter,
 			marshaler: connectUnaryMarshaler{
-				writer:           responseWriter,
+				sender:           writeSender{writer: responseWriter},
 				codec:            codec,
 				compressMinBytes: h.CompressMinBytes,
 				compressionName:  responseCompression,
@@ -282,7 +280,7 @@ func (h *connectHandler) NewConn(
 			responseWriter: responseWriter,
 			marshaler: connectStreamingMarshaler{
 				envelopeWriter: envelopeWriter{
-					writer:           responseWriter,
+					sender:           writeSender{responseWriter},
 					codec:            codec,
 					compressMinBytes: h.CompressMinBytes,
 					compressionPool:  h.CompressionPools.Get(responseCompression),
@@ -377,7 +375,7 @@ func (c *connectClient) NewConn(
 			bufferPool:       c.BufferPool,
 			marshaler: connectUnaryRequestMarshaler{
 				connectUnaryMarshaler: connectUnaryMarshaler{
-					writer:           duplexCall,
+					sender:           duplexCall,
 					codec:            c.Codec,
 					compressMinBytes: c.CompressMinBytes,
 					compressionName:  c.CompressionName,
@@ -417,7 +415,7 @@ func (c *connectClient) NewConn(
 			codec:            c.Codec,
 			marshaler: connectStreamingMarshaler{
 				envelopeWriter: envelopeWriter{
-					writer:           duplexCall,
+					sender:           duplexCall,
 					codec:            c.Codec,
 					compressMinBytes: c.CompressMinBytes,
 					compressionPool:  c.CompressionPools.Get(c.CompressionName),
@@ -478,7 +476,9 @@ func (cc *connectUnaryClientConn) CloseRequest() error {
 }
 
 func (cc *connectUnaryClientConn) Receive(msg any) error {
-	cc.duplexCall.BlockUntilResponseReady()
+	if err := cc.duplexCall.BlockUntilResponseReady(); err != nil {
+		return err
+	}
 	if err := cc.unmarshaler.Unmarshal(msg); err != nil {
 		return err
 	}
@@ -486,12 +486,12 @@ func (cc *connectUnaryClientConn) Receive(msg any) error {
 }
 
 func (cc *connectUnaryClientConn) ResponseHeader() http.Header {
-	cc.duplexCall.BlockUntilResponseReady()
+	_ = cc.duplexCall.BlockUntilResponseReady()
 	return cc.responseHeader
 }
 
 func (cc *connectUnaryClientConn) ResponseTrailer() http.Header {
-	cc.duplexCall.BlockUntilResponseReady()
+	_ = cc.duplexCall.BlockUntilResponseReady()
 	return cc.responseTrailer
 }
 
@@ -589,7 +589,9 @@ func (cc *connectStreamingClientConn) CloseRequest() error {
 }
 
 func (cc *connectStreamingClientConn) Receive(msg any) error {
-	cc.duplexCall.BlockUntilResponseReady()
+	if err := cc.duplexCall.BlockUntilResponseReady(); err != nil {
+		return err
+	}
 	err := cc.unmarshaler.Unmarshal(msg)
 	if err == nil {
 		return nil
@@ -603,7 +605,7 @@ func (cc *connectStreamingClientConn) Receive(msg any) error {
 		// error.
 		serverErr.meta = cc.responseHeader.Clone()
 		mergeHeaders(serverErr.meta, cc.responseTrailer)
-		cc.duplexCall.SetError(serverErr)
+		_ = cc.duplexCall.CloseWrite()
 		return serverErr
 	}
 	// If the error is EOF but not from a last message, we want to return
@@ -614,18 +616,18 @@ func (cc *connectStreamingClientConn) Receive(msg any) error {
 	// There's no error in the trailers, so this was probably an error
 	// converting the bytes to a message, an error reading from the network, or
 	// just an EOF. We're going to return it to the user, but we also want to
-	// setResponseError so Send errors out.
-	cc.duplexCall.SetError(err)
+	// close the writer so Send errors out.
+	_ = cc.duplexCall.CloseWrite()
 	return err
 }
 
 func (cc *connectStreamingClientConn) ResponseHeader() http.Header {
-	cc.duplexCall.BlockUntilResponseReady()
+	_ = cc.duplexCall.BlockUntilResponseReady()
 	return cc.responseHeader
 }
 
 func (cc *connectStreamingClientConn) ResponseTrailer() http.Header {
-	cc.duplexCall.BlockUntilResponseReady()
+	_ = cc.duplexCall.BlockUntilResponseReady()
 	return cc.responseTrailer
 }
 
@@ -872,7 +874,7 @@ func (u *connectStreamingUnmarshaler) Unmarshal(message any) *Error {
 	for name, value := range end.Trailer {
 		canonical := http.CanonicalHeaderKey(name)
 		if name != canonical {
-			delete(end.Trailer, name)
+			delHeaderCanonical(end.Trailer, name)
 			end.Trailer[canonical] = append(end.Trailer[canonical], value...)
 		}
 	}
@@ -890,7 +892,7 @@ func (u *connectStreamingUnmarshaler) EndStreamError() *Error {
 }
 
 type connectUnaryMarshaler struct {
-	writer           io.Writer
+	sender           messageSender
 	codec            Codec
 	compressMinBytes int
 	compressionName  string
@@ -936,7 +938,9 @@ func (m *connectUnaryMarshaler) Marshal(message any) *Error {
 }
 
 func (m *connectUnaryMarshaler) write(data []byte) *Error {
-	if _, err := m.writer.Write(data); err != nil {
+	payload := bytes.NewReader(data)
+	if _, err := m.sender.Send(payload); err != nil {
+		err = wrapIfContextError(err)
 		if connectErr, ok := asError(err); ok {
 			return connectErr
 		}
@@ -1043,7 +1047,10 @@ func (m *connectUnaryRequestMarshaler) buildGetURL(data []byte, compressed bool)
 }
 
 func (m *connectUnaryRequestMarshaler) writeWithGet(url *url.URL) *Error {
-	delete(m.header, connectHeaderProtocolVersion)
+	delHeaderCanonical(m.header, connectHeaderProtocolVersion)
+	delHeaderCanonical(m.header, headerContentType)
+	delHeaderCanonical(m.header, headerContentEncoding)
+	delHeaderCanonical(m.header, headerContentLength)
 	m.duplexCall.SetMethod(http.MethodGet)
 	*m.duplexCall.URL() = *url
 	return nil
@@ -1076,6 +1083,7 @@ func (u *connectUnaryUnmarshaler) UnmarshalFunc(message any, unmarshal func([]by
 	// ReadFrom ignores io.EOF, so any error here is real.
 	bytesRead, err := data.ReadFrom(reader)
 	if err != nil {
+		err = wrapIfContextError(err)
 		if connectErr, ok := asError(err); ok {
 			return connectErr
 		}
@@ -1101,7 +1109,7 @@ func (u *connectUnaryUnmarshaler) UnmarshalFunc(message any, unmarshal func([]by
 		data = decompressed
 	}
 	if err := unmarshal(data.Bytes(), message); err != nil {
-		return errorf(CodeInvalidArgument, "unmarshal into %T: %w", message, err)
+		return errorf(CodeInvalidArgument, "unmarshal message: %w", err)
 	}
 	return nil
 }
@@ -1119,8 +1127,8 @@ func (d *connectWireDetail) MarshalJSON() ([]byte, error) {
 		Value string          `json:"value"`
 		Debug json.RawMessage `json:"debug,omitempty"`
 	}{
-		Type:  strings.TrimPrefix(d.pb.TypeUrl, defaultAnyResolverPrefix),
-		Value: base64.RawStdEncoding.EncodeToString(d.pb.Value),
+		Type:  typeNameFromURL(d.pb.GetTypeUrl()),
+		Value: base64.RawStdEncoding.EncodeToString(d.pb.GetValue()),
 	}
 	// Try to produce debug info, but expect failure when we don't have
 	// descriptors.

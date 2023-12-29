@@ -27,8 +27,33 @@ clean: ## Delete intermediate build artifacts
 	git clean -Xdf
 
 .PHONY: test
-test: build ## Run unit tests
-	go test -vet=off -race -cover ./...
+test: shorttest slowtest
+
+.PHONY: shorttest
+shorttest: build ## Run unit tests
+	go test -vet=off -race -cover -short ./...
+
+.PHONY: slowtest
+# Runs all tests, including known long/slow ones. The
+# race detector is not used for a few reasons:
+#  1. Race coverage of the short tests should be
+#     adequate to catch race conditions.
+#  2. It slows tests down, which is not good if we
+#     know these are already slow tests.
+#  3. Some of the slow tests can't repro issues and
+#     find regressions as reliably with the race
+#     detector enabled.
+slowtest: build
+	go test ./...
+
+.PHONY: runconformance
+runconformance: build ## Run conformance test suite
+	cd internal/conformance && ./runconformance.sh
+
+.PHONY: bench
+bench: BENCH ?= .*
+bench: build ## Run benchmarks for root package
+	go test -vet=off -run '^$$' -bench '$(BENCH)' -benchmem -cpuprofile cpu.pprof -memprofile mem.pprof .
 
 .PHONY: build
 build: generate ## Build all packages
@@ -40,15 +65,14 @@ install: ## Install all binaries
 
 .PHONY: lint
 lint: $(BIN)/golangci-lint $(BIN)/buf ## Lint Go and protobuf
-	test -z "$$($(BIN)/buf format -d . | tee /dev/stderr)"
 	go vet ./...
-	golangci-lint run
+	golangci-lint run --modules-download-mode=readonly --timeout=3m0s
 	buf lint
 	buf format -d --exit-code
 
 .PHONY: lintfix
 lintfix: $(BIN)/golangci-lint $(BIN)/buf ## Automatically fix some lint errors
-	golangci-lint run --fix
+	golangci-lint run --fix --modules-download-mode=readonly --timeout=3m0s
 	buf format -w
 
 .PHONY: generate
@@ -57,7 +81,7 @@ generate: $(BIN)/buf $(BIN)/protoc-gen-go $(BIN)/protoc-gen-connect-go $(BIN)/li
 	PATH="$(abspath $(BIN))" buf generate
 	license-header \
 		--license-type apache \
-		--copyright-holder "Buf Technologies, Inc." \
+		--copyright-holder "The Connect Authors" \
 		--year-range "$(COPYRIGHT_YEARS)" $(LICENSE_IGNORE)
 
 .PHONY: upgrade
@@ -76,15 +100,15 @@ $(BIN)/protoc-gen-connect-go:
 
 $(BIN)/buf: Makefile
 	@mkdir -p $(@D)
-	go install github.com/bufbuild/buf/cmd/buf@v1.26.1
+	go install github.com/bufbuild/buf/cmd/buf@v1.27.2
 
 $(BIN)/license-header: Makefile
 	@mkdir -p $(@D)
-	go install github.com/bufbuild/buf/private/pkg/licenseheader/cmd/license-header@v1.26.1
+	go install github.com/bufbuild/buf/private/pkg/licenseheader/cmd/license-header@v1.27.2
 
 $(BIN)/golangci-lint: Makefile
 	@mkdir -p $(@D)
-	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.54.1
+	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.55.2
 
 $(BIN)/protoc-gen-go: Makefile go.mod
 	@mkdir -p $(@D)
