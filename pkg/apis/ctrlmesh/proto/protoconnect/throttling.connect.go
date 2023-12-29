@@ -18,7 +18,7 @@ import (
 // generated with a version of connect newer than the one compiled into your binary. You can fix the
 // problem by either regenerating this code with an older version of connect or updating the connect
 // version compiled into your binary.
-const _ = connect.IsAtLeastVersion0_1_0
+const _ = connect.IsAtLeastVersion1_13_0
 
 const (
 	// ThrottlingName is the fully-qualified name of the Throttling service.
@@ -35,6 +35,12 @@ const (
 const (
 	// ThrottlingSendConfigProcedure is the fully-qualified name of the Throttling's SendConfig RPC.
 	ThrottlingSendConfigProcedure = "/proto.Throttling/SendConfig"
+)
+
+// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
+var (
+	throttlingServiceDescriptor          = proto.File_pkg_apis_ctrlmesh_proto_throttling_proto.Services().ByName("Throttling")
+	throttlingSendConfigMethodDescriptor = throttlingServiceDescriptor.Methods().ByName("SendConfig")
 )
 
 // ThrottlingClient is a client for the proto.Throttling service.
@@ -55,7 +61,8 @@ func NewThrottlingClient(httpClient connect.HTTPClient, baseURL string, opts ...
 		sendConfig: connect.NewClient[proto.CircuitBreaker, proto.ConfigResp](
 			httpClient,
 			baseURL+ThrottlingSendConfigProcedure,
-			opts...,
+			connect.WithSchema(throttlingSendConfigMethodDescriptor),
+			connect.WithClientOptions(opts...),
 		),
 	}
 }
@@ -84,7 +91,8 @@ func NewThrottlingHandler(svc ThrottlingHandler, opts ...connect.HandlerOption) 
 	throttlingSendConfigHandler := connect.NewUnaryHandler(
 		ThrottlingSendConfigProcedure,
 		svc.SendConfig,
-		opts...,
+		connect.WithSchema(throttlingSendConfigMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
 	)
 	return "/proto.Throttling/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {

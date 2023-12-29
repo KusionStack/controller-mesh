@@ -1,4 +1,4 @@
-// Copyright 2021-2023 Buf Technologies, Inc.
+// Copyright 2021-2023 The Connect Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -92,7 +92,7 @@ func NewClient[Req, Res any](httpClient HTTPClient, url string, options ...Clien
 			_ = conn.CloseResponse()
 			return nil, err
 		}
-		response, err := receiveUnaryResponse[Res](conn)
+		response, err := receiveUnaryResponse[Res](conn, config.Initializer)
 		if err != nil {
 			_ = conn.CloseResponse()
 			return nil, err
@@ -135,7 +135,10 @@ func (c *Client[Req, Res]) CallClientStream(ctx context.Context) *ClientStreamFo
 	if c.err != nil {
 		return &ClientStreamForClient[Req, Res]{err: c.err}
 	}
-	return &ClientStreamForClient[Req, Res]{conn: c.newConn(ctx, StreamTypeClient, nil)}
+	return &ClientStreamForClient[Req, Res]{
+		conn:        c.newConn(ctx, StreamTypeClient, nil),
+		initializer: c.config.Initializer,
+	}
 }
 
 // CallServerStream calls a server streaming procedure.
@@ -160,7 +163,10 @@ func (c *Client[Req, Res]) CallServerStream(ctx context.Context, request *Reques
 	if err := conn.CloseRequest(); err != nil {
 		return nil, err
 	}
-	return &ServerStreamForClient[Res]{conn: conn}, nil
+	return &ServerStreamForClient[Res]{
+		conn:        conn,
+		initializer: c.config.Initializer,
+	}, nil
 }
 
 // CallBidiStream calls a bidirectional streaming procedure.
@@ -168,7 +174,10 @@ func (c *Client[Req, Res]) CallBidiStream(ctx context.Context) *BidiStreamForCli
 	if c.err != nil {
 		return &BidiStreamForClient[Req, Res]{err: c.err}
 	}
-	return &BidiStreamForClient[Req, Res]{conn: c.newConn(ctx, StreamTypeBidi, nil)}
+	return &BidiStreamForClient[Req, Res]{
+		conn:        c.newConn(ctx, StreamTypeBidi, nil),
+		initializer: c.config.Initializer,
+	}
 }
 
 func (c *Client[Req, Res]) newConn(ctx context.Context, streamType StreamType, onRequestSend func(r *http.Request)) StreamingClientConn {
@@ -189,6 +198,8 @@ type clientConfig struct {
 	URL                    *url.URL
 	Protocol               protocol
 	Procedure              string
+	Schema                 any
+	Initializer            maybeInitializer
 	CompressMinBytes       int
 	Interceptor            Interceptor
 	CompressionPools       map[string]*compressionPool
@@ -251,6 +262,7 @@ func (c *clientConfig) newSpec(t StreamType) Spec {
 	return Spec{
 		StreamType:       t,
 		Procedure:        c.Procedure,
+		Schema:           c.Schema,
 		IsClient:         true,
 		IdempotencyLevel: c.IdempotencyLevel,
 	}

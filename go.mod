@@ -3,7 +3,7 @@ module github.com/KusionStack/controller-mesh
 go 1.20
 
 require (
-	connectrpc.com/connect v1.11.1
+	connectrpc.com/connect v1.14.0
 	github.com/go-logr/zapr v1.2.3
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.24.1
@@ -15,7 +15,7 @@ require (
 	golang.org/x/time v0.3.0
 	gomodules.xyz/jsonpatch/v2 v2.2.0
 	google.golang.org/grpc v1.49.0
-	google.golang.org/protobuf v1.31.0
+	google.golang.org/protobuf v1.32.0
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 	k8s.io/api v0.26.1
 	k8s.io/apimachinery v0.26.1

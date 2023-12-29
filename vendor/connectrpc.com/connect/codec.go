@@ -1,4 +1,4 @@
-// Copyright 2021-2023 Buf Technologies, Inc.
+// Copyright 2021-2023 The Connect Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -118,7 +118,11 @@ func (c *protoBinaryCodec) Unmarshal(data []byte, message any) error {
 	if !ok {
 		return errNotProto(message)
 	}
-	return proto.Unmarshal(data, protoMessage)
+	err := proto.Unmarshal(data, protoMessage)
+	if err != nil {
+		return fmt.Errorf("unmarshal into %T: %w", message, err)
+	}
+	return nil
 }
 
 func (c *protoBinaryCodec) MarshalStable(message any) ([]byte, error) {
@@ -174,7 +178,11 @@ func (c *protoJSONCodec) Unmarshal(binary []byte, message any) error {
 	// Discard unknown fields so clients and servers aren't forced to always use
 	// exactly the same version of the schema.
 	options := protojson.UnmarshalOptions{DiscardUnknown: true}
-	return options.Unmarshal(binary, protoMessage)
+	err := options.Unmarshal(binary, protoMessage)
+	if err != nil {
+		return fmt.Errorf("unmarshal into %T: %w", message, err)
+	}
+	return nil
 }
 
 func (c *protoJSONCodec) MarshalStable(message any) ([]byte, error) {

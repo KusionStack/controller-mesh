@@ -1,4 +1,4 @@
-// Copyright 2021-2023 Buf Technologies, Inc.
+// Copyright 2021-2023 The Connect Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -184,6 +184,34 @@ type Option interface {
 	HandlerOption
 }
 
+// WithSchema provides a parsed representation of the schema for an RPC to a
+// client or handler. The supplied schema is exposed as [Spec.Schema]. This
+// option is typically added by generated code.
+//
+// For services using protobuf schemas, the supplied schema should be a
+// [protoreflect.MethodDescriptor].
+func WithSchema(schema any) Option {
+	return &schemaOption{Schema: schema}
+}
+
+// WithRequestInitializer provides a function that initializes a new message.
+// It may be used to dynamically construct request messages. It is called on
+// server receives to construct the message to be unmarshaled into. The message
+// will be a non nil pointer to the type created by the handler. Use the Schema
+// field of the [Spec] to determine the type of the message.
+func WithRequestInitializer(initializer func(spec Spec, message any) error) HandlerOption {
+	return &initializerOption{Initializer: initializer}
+}
+
+// WithResponseInitializer provides a function that initializes a new message.
+// It may be used to dynamically construct response messages. It is called on
+// client receives to construct the message to be unmarshaled into. The message
+// will be a non nil pointer to the type created by the client. Use the Schema
+// field of the [Spec] to determine the type of the message.
+func WithResponseInitializer(initializer func(spec Spec, message any) error) ClientOption {
+	return &initializerOption{Initializer: initializer}
+}
+
 // WithCodec registers a serialization method with a client or handler.
 // Handlers may have multiple codecs registered, and use whichever the client
 // chooses. Clients may only have a single codec.
@@ -326,6 +354,41 @@ func WithInterceptors(interceptors ...Interceptor) Option {
 // WithOptions composes multiple Options into one.
 func WithOptions(options ...Option) Option {
 	return &optionsOption{options}
+}
+
+type schemaOption struct {
+	Schema any
+}
+
+func (o *schemaOption) applyToClient(config *clientConfig) {
+	config.Schema = o.Schema
+}
+
+func (o *schemaOption) applyToHandler(config *handlerConfig) {
+	config.Schema = o.Schema
+}
+
+type initializerOption struct {
+	Initializer func(spec Spec, message any) error
+}
+
+func (o *initializerOption) applyToHandler(config *handlerConfig) {
+	config.Initializer = maybeInitializer{initializer: o.Initializer}
+}
+
+func (o *initializerOption) applyToClient(config *clientConfig) {
+	config.Initializer = maybeInitializer{initializer: o.Initializer}
+}
+
+type maybeInitializer struct {
+	initializer func(spec Spec, message any) error
+}
+
+func (o maybeInitializer) maybe(spec Spec, message any) error {
+	if o.initializer != nil {
+		return o.initializer(spec, message)
+	}
+	return nil
 }
 
 type clientOptionsOption struct {

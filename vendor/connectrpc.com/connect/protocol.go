@@ -1,4 +1,4 @@
-// Copyright 2021-2023 Buf Technologies, Inc.
+// Copyright 2021-2023 The Connect Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -35,10 +35,12 @@ const (
 )
 
 const (
-	headerContentType = "Content-Type"
-	headerHost        = "Host"
-	headerUserAgent   = "User-Agent"
-	headerTrailer     = "Trailer"
+	headerContentType     = "Content-Type"
+	headerContentEncoding = "Content-Encoding"
+	headerContentLength   = "Content-Length"
+	headerHost            = "Host"
+	headerUserAgent       = "User-Agent"
+	headerTrailer         = "Trailer"
 
 	discardLimit = 1024 * 1024 * 4 // 4MiB
 )
