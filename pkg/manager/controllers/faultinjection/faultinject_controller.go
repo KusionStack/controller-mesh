@@ -56,7 +56,7 @@ var (
 	concurrentReconciles = flag.Int("ctrlmesh-inject-workers", 3, "Max concurrent workers for CtrlMesh Server controller.")
 )
 
-// FaultInjectionReconciler reconciles a CircuitBreaker object
+// FaultInjectionReconciler reconciles a faultinjection object
 type FaultInjectionReconciler struct {
 	client.Client
 	recorder record.EventRecorder
@@ -111,7 +111,7 @@ func (r *FaultInjectionReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 			klog.Errorf(msg)
 			reconcileErr = errors.Join(reconcileErr, stateErr)
 		} else {
-			klog.Infof("sync circuitbreaker %s to pod %s success, configHash=%s", fi.Name, utils.KeyFunc(&po), protoFi.ConfigHash)
+			klog.Infof("sync faultinjection %s to pod %s success, configHash=%s", fi.Name, utils.KeyFunc(&po), protoFi.ConfigHash)
 			currentHash = protoFi.ConfigHash
 			defaultPodConfigCache.Add(po.Namespace, po.Name, fi.Name)
 		}
@@ -276,7 +276,7 @@ func disableConfig(ctx context.Context, podIp string, name string) error {
 	if resp != nil && resp.Msg != nil && !resp.Msg.Success {
 		return fmt.Errorf("fail to disable pod [%s, %s] circuit breaker config, %s", podIp, name, resp.Msg.Message)
 	}
-	klog.Infof("pod[ip=%s] circuitbreaker %s was disabled", podIp, name)
+	klog.Infof("pod[ip=%s] faultinjection %s was disabled", podIp, name)
 	return nil
 }
 
@@ -321,7 +321,6 @@ func (r *FaultInjectionReconciler) InjectClient(c client.Client) error {
 // SetupWithManager sets up the controller with the Manager.
 func (r *FaultInjectionReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	r.recorder = mgr.GetEventRecorderFor("sharding-config-controller")
-	klog.Infof("===>", "starting fault manager")
 	return ctrl.NewControllerManagedBy(mgr).
 		WithOptions(controller.Options{MaxConcurrentReconciles: *concurrentReconciles}).
 		For(&ctrlmeshv1alpha1.FaultInjection{}, builder.WithPredicates(&FaultInjectionPredicate{})).

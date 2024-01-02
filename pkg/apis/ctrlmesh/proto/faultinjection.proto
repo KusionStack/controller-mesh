@@ -5,6 +5,8 @@ package proto;
 import "k8s.io/apimachinery/pkg/apis/meta/v1/generated.proto";
 import "google/protobuf/duration.proto";
 import "google/api/field_behavior.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
 
 service FaultInject {
   rpc SendConfig(FaultInjection) returns (FaultInjectConfigResp);
@@ -57,6 +59,8 @@ message HTTPFaultInjection {
 
   string Name = 4;
 
+  EffectiveTimeRange effective_time = 5;
+
   message Delay {
     // Percentage of requests on which the delay will be injected (0-100).
     // Use of integer `percent` value is deprecated. Use the double `percentage`
@@ -92,6 +96,29 @@ message HTTPFaultInjection {
     }
   }
 }
+
+// EffectiveTimeRange specifies the effective time range for fault injection configuration.
+message EffectiveTimeRange {
+  // StartTime is the time when the fault injection configuration starts to take effect.
+  string start_time = 1;
+
+  // EndTime is the time when the fault injection configuration ceases to be effective.
+  string end_time = 2;
+
+  // DaysOfWeek specifies which days of the week the fault injection configuration is effective.
+  // 0 represents Sunday, 1 represents Monday, and so on.
+  repeated int32 days_of_week = 3;
+
+  // DaysOfMonth specifies on which days of the month the fault injection configuration is effective.
+  // For example, 1 represents the first day of the month, and so on.
+  repeated int32 days_of_month = 4;
+
+  // Months specifies which months of the year the fault injection configuration is effective.
+  // 1 represents January, 2 represents February, and so on.
+  repeated int32 months = 5;
+}
+
+
 
 message MultiRestRule {
   repeated string url = 1;

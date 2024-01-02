@@ -44,12 +44,21 @@ func (b *FaultInjectionPredicate) Update(e event.UpdateEvent) bool {
 	if newFault.DeletionTimestamp != nil || len(oldFault.Finalizers) != len(newFault.Finalizers) {
 		return true
 	}
-	if newFault.Labels != nil {
-		_, ok := newFault.Labels[ctrlmesh.CtrlmeshFaultInjectionDisableKey]
-		if ok {
-			return true
-		}
+
+	oldValue, oldExists := "", false
+	newValue, newExists := "", false
+
+	if oldFault.Labels != nil {
+		oldValue, oldExists = oldFault.Labels[ctrlmesh.CtrlmeshFaultInjectionDisableKey]
 	}
+	if newFault.Labels != nil {
+		newValue, newExists = newFault.Labels[ctrlmesh.CtrlmeshFaultInjectionDisableKey]
+	}
+
+	if (oldExists != newExists) || (oldExists && newExists && oldValue != newValue) {
+		return true
+	}
+
 	oldProtoFault := conv.ConvertFaultInjection(oldFault)
 	newProtoFault := conv.ConvertFaultInjection(newFault)
 	return oldProtoFault.ConfigHash != newProtoFault.ConfigHash

@@ -78,6 +78,9 @@ func ConvertHTTPFaultInjection(faultInjection *ctrlmeshv1alpha1.HTTPFaultInjecti
 		protoFaultInjection.Match = ConvertHTTPMatch(faultInjection.Match)
 
 	}
+	if faultInjection.EffectiveTime != nil {
+		protoFaultInjection.EffectiveTime = ConvertEffectiveTime(faultInjection.EffectiveTime)
+	}
 	return protoFaultInjection
 }
 
@@ -108,6 +111,34 @@ func ConvertHTTPMatch(match *ctrlmeshv1alpha1.HTTPMatchRequest) *ctrlmeshproto.H
 
 	}
 	return httpMatchRequest
+}
+
+func ConvertEffectiveTime(timeRange *ctrlmeshv1alpha1.EffectiveTimeRange) *ctrlmeshproto.EffectiveTimeRange {
+	if timeRange == nil {
+		return nil
+	}
+
+	timeRangeRes := &ctrlmeshproto.EffectiveTimeRange{
+		StartTime: timeRange.StartTime,
+		EndTime:   timeRange.EndTime,
+	}
+
+	// Convert DaysOfWeek slice to protobuf repeated field
+	for _, day := range timeRange.DaysOfWeek {
+		timeRangeRes.DaysOfWeek = append(timeRangeRes.DaysOfWeek, int32(day))
+	}
+
+	// Convert DaysOfMonth slice to protobuf repeated field
+	for _, day := range timeRange.DaysOfMonth {
+		timeRangeRes.DaysOfMonth = append(timeRangeRes.DaysOfMonth, int32(day))
+	}
+
+	// Convert Months slice to protobuf repeated field
+	for _, month := range timeRange.Months {
+		timeRangeRes.Months = append(timeRangeRes.Months, int32(month))
+	}
+
+	return timeRangeRes
 }
 
 func ConvertRelatedResources(resourceRule *ctrlmeshv1alpha1.ResourceMatch) *ctrlmeshproto.ResourceMatch {

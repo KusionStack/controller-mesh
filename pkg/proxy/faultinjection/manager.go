@@ -24,22 +24,28 @@ import (
 	"math/rand"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"sync"
 	"time"
 
 	"k8s.io/apiserver/pkg/endpoints/handlers/responsewriters"
 	apirequest "k8s.io/apiserver/pkg/endpoints/request"
-	"k8s.io/klog/v2"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
+	// pkgfi "github.com/KusionStack/controller-mesh/circuitbreaker"
+
+	"github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/constants"
 	ctrlmeshproto "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/proto"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const timeLayout = "15:04:05"
+
 var (
-	logger  = logf.Log.WithName("fault-injection-manager")
-	randNum = rand.New(rand.NewSource(time.Now().UnixNano()))
+	logger                   = logf.Log.WithName("fault-injection-manager")
+	randNum                  = rand.New(rand.NewSource(time.Now().UnixNano()))
+	enableRestFaultInjection = os.Getenv(constants.EnvEnableRestFaultInjection) == "true"
 )
 
 type ManagerInterface interface {
@@ -181,7 +187,6 @@ func (m *manager) snapshot(breaker string) []*ctrlmeshproto.FaultInjectionSnapsh
 
 func (m *manager) HandlerWrapper() func(http.Handler) http.Handler {
 	return func(handler http.Handler) http.Handler {
-		klog.Infof("===>", "fault proxy start")
 		return withFaultInjection(m, handler)
 	}
 }
@@ -288,16 +293,44 @@ func withFaultInjection(validator Validator, handler http.Handler) http.Handler 
 			responsewriters.InternalError(w, req, errors.New("no RequestInfo found in the context"))
 			return
 		}
-		klog.Infof("===>", "withFaultInjection start", requestInfo.Namespace, requestInfo.APIGroup, requestInfo.Resource, requestInfo.Verb)
 		result := validator.ValidateResource(requestInfo.Namespace, requestInfo.APIGroup, requestInfo.Resource, requestInfo.Verb)
 
 		if !result.Allowed {
 			apiErr := httpToAPIError(int(result.ErrCode), result.Message)
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(int(apiErr.Code))
-			json.NewEncoder(w).Encode(apiErr)
+			if apiErr.Code != http.StatusOK {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(int(apiErr.Code))
+				json.NewEncoder(w).Encode(apiErr)
+				logger.Info("faultinjection rule", fmt.Sprintf("fault injection, %s, %s,%d", result.Reason, result.Message, result.ErrCode))
+				return
+			}
+		}
+
+		realEndPointUrl, err := url.Parse(req.Header.Get("Mesh-Real-Endpoint"))
+		logger.Info("receive proxy-host:%s, proxy-method:%s, Mesh-Real-Endpoint:%s", realEndPointUrl.Host, req.Method, req.Header.Get("Mesh-Real-Endpoint"))
+		if err != nil || realEndPointUrl == nil {
+			logger.Error(err, "Request Header Mesh-Real-Endpoint Parse Error")
+			http.Error(w, fmt.Sprintf("Can not find real endpoint in header %s", err), http.StatusInternalServerError)
 			return
 		}
+		// if enableRestFaultInjection {
+		// 	result := pkgfi.ValidateRest(realEndPointUrl.Host, req.Method)
+		// 	if result.Allowed == false {
+		// 		logger.Error("ErrorTProxy: %s %s  ValidateTrafficIntercept NOPASSED ,checkresult:\t%s", realEndPointUrl.Host, req.Method, result.Reason)
+		// 		http.Error(w, fmt.Sprintf("Forbidden by  ValidateTrafficIntercept breaker, %s, %s", result.Message, result.Reason), http.StatusForbidden)
+		// 		return
+		// 	}
+		// }
+
+		// ValidateRest check
+		logger.Info("start ValidateRest checkrule %s %s", realEndPointUrl.Host, req.Method)
+		validateresult := validator.ValidateRest(req.Header.Get("Mesh-Real-Endpoint"), req.Method)
+		if !validateresult.Allowed {
+			logger.Info("ErrorTProxy: %s %s  ValidateRest NOPASSED ,checkresult:%t, validateresultReason:%s", req.Header.Get("Mesh-Real-Endpoint"), req.Method, validateresult.Allowed, validateresult.Reason)
+			// http.Error(w, fmt.Sprintf("Forbidden by circuit ValidateRest breaker, %s, %s", validateresult.Message, validateresult.Reason), http.StatusForbidden)
+			// return
+		}
+		logger.Info("TProxy: %s %s ValidateRest check PASSED", realEndPointUrl.Host, req.Method)
 
 		handler.ServeHTTP(w, req)
 	})
@@ -318,8 +351,11 @@ func (m *manager) doValidation(limitings []*ctrlmeshproto.HTTPFaultInjection, st
 		// 	result.Message = fmt.Sprintf("the fault injection is triggered. Limiting rule name: %s", limitings[idx].Name)
 		// }
 
+		if limitings[idx].EffectiveTime != nil && !isEffectiveTimeRange(limitings[idx].EffectiveTime) {
+			continue
+		}
+
 		if limitings[idx].Delay != nil {
-			// 随机部分请求进行延时
 			if isInpercentRange(limitings[idx].Delay.Percent) {
 				delay := limitings[idx].Delay.GetFixedDelay()
 				delayDuration := delay.AsDuration()
@@ -328,7 +364,6 @@ func (m *manager) doValidation(limitings []*ctrlmeshproto.HTTPFaultInjection, st
 			}
 		}
 		if limitings[idx].Abort != nil {
-			// 随机部分请求进行abort
 			if isInpercentRange(limitings[idx].Abort.Percent) {
 				result.Allowed = false
 				result.Reason = "FaultInjectionTriggered"
@@ -337,6 +372,7 @@ func (m *manager) doValidation(limitings []*ctrlmeshproto.HTTPFaultInjection, st
 			}
 
 		}
+		states[idx].triggerFaultInjection()
 	}
 	return result
 }
@@ -346,15 +382,102 @@ func isInpercentRange(value float64) bool {
 		fmt.Println("Value must be between 0 and 100")
 		return false
 	}
-
-	// 生成一个0-100的随机数（包括0）
+	if value == 0 {
+		return true
+	}
 	randomNumber := randNum.Float64() * 100
 
-	// 返回比较的结果
 	return randomNumber < value
 }
 
-// httpToAPIError 将HTTP错误码转换为Kubernetes API标准错误
+// isEffectiveTimeRange checks whether the current time falls within the specified EffectiveTimeRange.
+// It considers the start time, end time, days of the week, days of the month, and months.
+// The function returns true if the current time is within the effective time range, otherwise false.
+func isEffectiveTimeRange(timeRange *ctrlmeshproto.EffectiveTimeRange) bool {
+	now := time.Now()
+
+	// Parse startTime string into a time.Time struct, only considering the time part
+	startTime, err := time.Parse(timeLayout, timeRange.StartTime)
+	if err != nil {
+		return false
+	}
+
+	// Parse endTime string into a time.Time struct, only considering the time part
+	endTime, err := time.Parse(timeLayout, timeRange.EndTime)
+	if err != nil {
+		return false
+	}
+
+	// Compare only the time components (hours, minutes, seconds) by extracting
+	// them from the current time and the parsed start and end times
+	currentHour, currentMinute, currentSecond := now.Clock()
+	startHour, startMinute, startSecond := startTime.Clock()
+	endHour, endMinute, endSecond := endTime.Clock()
+
+	// Convert the hours, minutes, and seconds to a comparable integer value
+	currentTimeInt := currentHour*3600 + currentMinute*60 + currentSecond
+	startTimeInt := startHour*3600 + startMinute*60 + startSecond
+	endTimeInt := endHour*3600 + endMinute*60 + endSecond
+
+	// Check if the current time is after the start time and before the end time,
+	// only considering the time part and ignoring the date part
+	if currentTimeInt < startTimeInt {
+		return false
+	}
+	if currentTimeInt > endTimeInt {
+		return false
+	}
+
+	// Check if the current day of the week is within the allowed range
+	if len(timeRange.DaysOfWeek) > 0 {
+		currentDayOfWeek := int32(now.Weekday())
+		dayIncluded := false
+		for _, day := range timeRange.DaysOfWeek {
+			if currentDayOfWeek == day {
+				dayIncluded = true
+				break
+			}
+		}
+		if !dayIncluded {
+			return false
+		}
+	}
+
+	// Check if the current day of the month is within the allowed range
+	if len(timeRange.DaysOfMonth) > 0 {
+		currentDayOfMonth := int32(now.Day())
+		dayIncluded := false
+		for _, day := range timeRange.DaysOfMonth {
+			if currentDayOfMonth == day {
+				dayIncluded = true
+				break
+			}
+		}
+		if !dayIncluded {
+			return false
+		}
+	}
+
+	// Check if the current month is within the allowed range
+	if len(timeRange.Months) > 0 {
+		currentMonth := int32(now.Month())
+		monthIncluded := false
+		for _, month := range timeRange.Months {
+			if currentMonth == month {
+				monthIncluded = true
+				break
+			}
+		}
+		if !monthIncluded {
+			return false
+		}
+	}
+
+	// If all checks pass, the current time is within the effective time range
+	return true
+}
+
+// httpToAPIError convert http error to kubernetes api error
 func httpToAPIError(code int, serverMessage string) *metav1.Status {
 	status := &metav1.Status{
 		Status:  metav1.StatusFailure,
@@ -365,6 +488,10 @@ func httpToAPIError(code int, serverMessage string) *metav1.Status {
 	reason := metav1.StatusReasonUnknown
 	message := fmt.Sprintf("the server responded with the status code %d but did not return more information", code)
 	switch code {
+	case http.StatusOK:
+		reason = ""
+		message = "code is 200"
+		status.Status = metav1.StatusSuccess
 	case http.StatusConflict:
 
 		reason = metav1.StatusReasonConflict
@@ -411,10 +538,14 @@ func httpToAPIError(code int, serverMessage string) *metav1.Status {
 		reason = metav1.StatusReasonTooManyRequests
 		message = "the server has received too many requests and has asked us to try again later"
 	default:
-		if code >= 500 {
-			reason = metav1.StatusReasonInternalError
-			message = fmt.Sprintf("an error on the server (%q) has prevented the request from succeeding", serverMessage)
-		}
+		// if code >= 500 {
+		// 	reason = metav1.StatusReasonInternalError
+		// 	message = fmt.Sprintf("an error on the server (%q) has prevented the request from succeeding", serverMessage)
+		// }
+		status.Status = metav1.StatusSuccess
+		reason = "code is not allowed"
+		message = "code is not allowed"
+		status.Code = http.StatusOK
 	}
 	status.Reason = reason
 	status.Message = message

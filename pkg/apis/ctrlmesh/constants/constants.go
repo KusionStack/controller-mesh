@@ -66,6 +66,7 @@ const (
 	EnvDisableFaultInjection         = "DISABLE_FAULT_INJECTION"
 	EnvEnableApiServerCircuitBreaker = "ENABLE_API_SERVER_BREAKER"
 	EnvEnableRestCircuitBreaker      = "ENABLE_REST_BREAKER"
+	EnvEnableRestFaultInjection     = "ENABLE_REST_Fault_Injection"
 
 	EnvProxyGRPCServerPort = "PROXY_GRPC_SERVER_PORT"
 )

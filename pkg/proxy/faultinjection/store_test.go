@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/onsi/gomega"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -57,6 +58,18 @@ func TestFaultInjectionStore(t *testing.T) {
 					Verbs:      []string{"delete"},
 				},
 			},
+		},
+		EffectiveTime: &ctrlmeshv1alpha1.EffectiveTimeRange{
+			StartTime: "&v1.Time{Time: time.Date(2023, 4, 14, 8, 0, 0, 0, time.UTC)}",
+			EndTime:   "&v1.Time{Time: time.Date(2023, 4, 28, 18, 0, 0, 0, time.UTC)}",
+			DaysOfWeek: []int{
+				int(time.Monday), // 1
+				int(time.Tuesday), // 2
+				int(time.Wednesday), // 3
+				int(time.Friday),    // 5
+			},
+			DaysOfMonth: []int{},                // 1st and 15th of the month
+			Months:      []int{1, 4, 7, 10, 12}, // January, April, July, October
 		},
 	}
 

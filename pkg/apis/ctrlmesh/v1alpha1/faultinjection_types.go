@@ -88,6 +88,7 @@ type HTTPMatchRequest struct {
 // HTTPFaultInjection can be used to specify one or more faults to inject
 // while forwarding HTTP requests to the destination specified in a route.
 type HTTPFaultInjection struct {
+	// Name is the name of the policy
 	Name string `json:"name,omitempty"`
 	// Delay requests before forwarding, emulating various failures such as
 	// network issues, overloaded upstream service, etc.
@@ -99,6 +100,8 @@ type HTTPFaultInjection struct {
 	// Match specifies a set of criterion to be met in order for the
 	// rule to be applied to the HTTP request.
 	Match *HTTPMatchRequest `json:"match,omitempty"`
+	// Effective time of fault injection
+	EffectiveTime *EffectiveTimeRange `json:"effectiveTime,omitempty"`
 }
 
 type FaultInjectionSpec struct {
@@ -109,6 +112,27 @@ type FaultInjectionSpec struct {
 
 	HTTPFaultInjections []*HTTPFaultInjection `json:"httpFault,omitempty"`
 }
+
+type EffectiveTimeRange struct {
+    // StartTime is the starting time of fault injection.
+    StartTime string `json:"startTime,omitempty"`
+
+    // EndTime is the ending time of fault injection.
+    EndTime string `json:"endTime,omitempty"`
+
+    // DaysOfWeek specifies on which days of the week the fault injection configuration is effective.
+    // 0 represents Sunday, 1 represents Monday, and so on.
+    DaysOfWeek []int `json:"daysOfWeek,omitempty"`
+
+    // DaysOfMonth specifies on which days of the month the fault injection configuration is effective.
+    // For example, 1 represents the first day of the month, and so on.
+    DaysOfMonth []int `json:"daysOfMonth,omitempty"`
+
+    // Months specifies in which months of the year the fault injection configuration is effective.
+    // 1 represents January, 2 represents February, and so on.
+    Months []int `json:"months,omitempty"`
+}
+
 
 // FaultInjectionState is the status of the fault injection, which may be 'Opened' or 'Closed'.
 type FaultInjectionState string

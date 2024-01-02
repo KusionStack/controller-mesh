@@ -73,6 +73,38 @@ spec:
                             be injected. If left unspecified, no request will be delayed
                           type: string
                       type: object
+                    effectiveTime:
+                      description: Effective time of fault injection
+                      properties:
+                        daysOfMonth:
+                          description: DaysOfMonth specifies on which days of the
+                            month the fault injection configuration is effective.
+                            For example, 1 represents the first day of the month,
+                            and so on.
+                          items:
+                            type: integer
+                          type: array
+                        daysOfWeek:
+                          description: DaysOfWeek specifies on which days of the week
+                            the fault injection configuration is effective. 0 represents
+                            Sunday, 1 represents Monday, and so on.
+                          items:
+                            type: integer
+                          type: array
+                        endTime:
+                          description: EndTime is the ending time of fault injection.
+                          type: string
+                        months:
+                          description: Months specifies in which months of the year
+                            the fault injection configuration is effective. 1 represents
+                            January, 2 represents February, and so on.
+                          items:
+                            type: integer
+                          type: array
+                        startTime:
+                          description: StartTime is the starting time of fault injection.
+                          type: string
+                      type: object
                     match:
                       description: Match specifies a set of criterion to be met in
                         order for the rule to be applied to the HTTP request.
@@ -124,6 +156,7 @@ spec:
                           type: array
                       type: object
                     name:
+                      description: Name is the name of the policy
                       type: string
                   type: object
                 type: array
