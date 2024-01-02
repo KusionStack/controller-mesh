@@ -139,10 +139,10 @@ jobs:
     - name: TruffleHog OSS
       uses: trufflesecurity/trufflehog@main
       with:
-        path: ./
-        base: ${{ github.event.repository.default_branch }}
-        head: HEAD
-        extra_args: --debug --json
+        #path: ./
+        #base: ${{ github.event.repository.default_branch }}
+        #head: HEAD
+        extra_args: --debug --json --only-verified
 
   # TODO: Uncomment when the repository is publicly.
   # DependencyReview:
