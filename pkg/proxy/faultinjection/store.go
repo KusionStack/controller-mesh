@@ -135,7 +135,7 @@ func (s *store) registerState(st *state) {
 }
 
 // createOrUpdateRule stores new rules (or updates existing rules) in local store
-func (s *store) createOrUpdateRule(key string, faultinjection *ctrlmeshproto.HTTPFaultInjection, snapshot *ctrlmeshproto.FaultInjectionSnapshot) {
+func (s *store) createOrUpdateRule(key string, faultinjection *ctrlmeshproto.HTTPFaultInjection) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -145,8 +145,6 @@ func (s *store) createOrUpdateRule(key string, faultinjection *ctrlmeshproto.HTT
 		s.rules[key] = faultinjection
 		s.states[key] = &state{
 			key:                key,
-			state:              snapshot.State,
-			lastTransitionTime: snapshot.LastTransitionTime,
 		}
 		s.updateIndices(nil, faultinjection, key)
 	} else {

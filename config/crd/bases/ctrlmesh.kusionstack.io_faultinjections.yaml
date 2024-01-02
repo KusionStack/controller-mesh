@@ -51,7 +51,6 @@ spec:
                         httpStatus:
                           description: HttpStatus is used to indicate the HTTP status
                             code to return to the caller.
-                          format: int32
                           type: integer
                         percent:
                           description: Percent of requests to be aborted with the

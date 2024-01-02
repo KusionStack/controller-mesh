@@ -53,6 +53,8 @@ var (
 	leaderElectionName = flag.String(constants.ProxyLeaderElectionNameFlag, "", "The name of leader election.")
 	webhookServePort   = flag.Int(constants.ProxyWebhookServePortFlag, 0, "Port that the real webhook binds, 0 means no proxy for webhook.")
 	webhookCertDir     = flag.String(constants.ProxyWebhookCertDirFlag, "", "The directory where the webhook certs generated or mounted.")
+
+	proxyIptablePort = flag.Int(constants.ProxyIptablesFlag, constants.ProxyIptablesPort, "port that http-tproxy listens on")
 )
 
 func main() {
@@ -120,6 +122,17 @@ func main() {
 		if err != nil {
 			klog.Fatalf("Failed to start apiserver proxy: %v", err)
 		}
+	}
+
+	// start iptable proxy
+	{
+		tproxy, err := faultinjection.NewTProxy(*proxyIptablePort, faultInjectionMgr)
+		if err != nil {
+			klog.Fatalf("failed to create http-tproxy: %s", err)
+			return
+		}
+		// start proxies
+		go tproxy.Start()
 	}
 
 	serveHTTP(ctx, readyHandler)

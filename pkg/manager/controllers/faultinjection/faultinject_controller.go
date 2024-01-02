@@ -96,7 +96,6 @@ func (r *FaultInjectionReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 			continue
 		}
 		var msg, currentHash string
-		var snapshots []*proto.FaultInjectionSnapshot
 		var stateErr error
 		state := r.currentPodStatus(fi, po.Name)
 		if state != nil {
@@ -106,7 +105,7 @@ func (r *FaultInjectionReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 			defaultPodConfigCache.Delete(po.Namespace, po.Name)
 			msg = fmt.Sprintf("pod %s is not available to sync circuit breaker proto", utils.KeyFunc(&po))
 			klog.Infof(msg)
-		} else if snapshots, stateErr = r.syncPodConfig(ctx, protoFi, po.Status.PodIP); stateErr != nil {
+		} else if stateErr = r.syncPodConfig(ctx, protoFi, po.Status.PodIP); stateErr != nil {
 			msg = stateErr.Error()
 			klog.Errorf(msg)
 			reconcileErr = errors.Join(reconcileErr, stateErr)
@@ -120,7 +119,6 @@ func (r *FaultInjectionReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 			PodIP:                   po.Status.PodIP,
 			ConfigHash:              currentHash,
 			Message:                 msg,
-			FaultInjectionSnapshots: conv.ConvertFaultInjectionSnapshots(snapshots),
 		}
 		targetStatus = append(targetStatus, status)
 		newTargetMap[po.Name] = status
@@ -173,19 +171,19 @@ func (r *FaultInjectionReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	return ctrl.Result{}, reconcileErr
 }
 
-func (r *FaultInjectionReconciler) syncPodConfig(ctx context.Context, fi *proto.FaultInjection, podIp string) ([]*proto.FaultInjectionSnapshot, error) {
+func (r *FaultInjectionReconciler) syncPodConfig(ctx context.Context, fi *proto.FaultInjection, podIp string) error {
 	fi.Option = proto.FaultInjection_UPDATE
 	resp, err := protoClient(podIp).SendConfig(ctx, connect.NewRequest(fi))
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if resp.Msg == nil {
-		return nil, fmt.Errorf("fail to update pod [%s, %s] circuit breaker config, server return nil response", podIp, fi.Name)
+		return fmt.Errorf("fail to update pod [%s, %s] circuit breaker config, server return nil response", podIp, fi.Name)
 	}
 	if resp != nil && !resp.Msg.Success {
-		return nil, fmt.Errorf("fail to update pod [%s, %s] circuit breaker config, %s", podIp, fi.Name, resp.Msg.Message)
+		return fmt.Errorf("fail to update pod [%s, %s] circuit breaker config, %s", podIp, fi.Name, resp.Msg.Message)
 	}
-	return resp.Msg.FaultInjectionSnapshots, nil
+	return nil
 }
 
 func (r *FaultInjectionReconciler) currentPodStatus(fi *ctrlmeshv1alpha1.FaultInjection, podName string) *ctrlmeshv1alpha1.FaultInjectionTargetStatus {
@@ -274,7 +272,7 @@ func disableConfig(ctx context.Context, podIp string, name string) error {
 		return err
 	}
 	if resp != nil && resp.Msg != nil && !resp.Msg.Success {
-		return fmt.Errorf("fail to disable pod [%s, %s] circuit breaker config, %s", podIp, name, resp.Msg.Message)
+		return fmt.Errorf("fail to disable pod [%s, %s] fault injection config, %s", podIp, name, resp.Msg.Message)
 	}
 	klog.Infof("pod[ip=%s] faultinjection %s was disabled", podIp, name)
 	return nil

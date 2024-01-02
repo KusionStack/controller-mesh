@@ -49,20 +49,20 @@ var (
 )
 
 type ManagerInterface interface {
-	Validator
+	FaultInjector
 	Sync(config *ctrlmeshproto.FaultInjection) (*ctrlmeshproto.FaultInjectConfigResp, error)
 }
 
-type ValidateResult struct {
-	Allowed bool
+type FaultInjectionResult struct {
+	Abort   bool
 	Reason  string
 	Message string
 	ErrCode int32
 }
 
-type Validator interface {
-	ValidateRest(URL string, method string) (result *ValidateResult)
-	ValidateResource(namespace, apiGroup, resource, verb string) (result *ValidateResult)
+type FaultInjector interface {
+	FaultInjectionRest(URL string, method string) (result *FaultInjectionResult)
+	FaultInjectionResource(namespace, apiGroup, resource, verb string) (result *FaultInjectionResult)
 	HandlerWrapper() func(http.Handler) http.Handler
 }
 
@@ -88,9 +88,8 @@ func (m *manager) Sync(config *ctrlmeshproto.FaultInjection) (*ctrlmeshproto.Fau
 		fi, ok := m.faultInjectionMap[config.Name]
 		if ok && config.ConfigHash == fi.ConfigHash {
 			return &ctrlmeshproto.FaultInjectConfigResp{
-				Success:                 true,
-				Message:                 fmt.Sprintf("faultInjection spec hash not updated, hash %s", fi.ConfigHash),
-				FaultInjectionSnapshots: m.snapshot(config.Name),
+				Success: true,
+				Message: fmt.Sprintf("faultInjection spec hash not updated, hash %s", fi.ConfigHash),
 			}, nil
 		} else {
 			m.faultInjectionMap[config.Name] = config
@@ -102,9 +101,8 @@ func (m *manager) Sync(config *ctrlmeshproto.FaultInjection) (*ctrlmeshproto.Fau
 				msg = fmt.Sprintf("faultInjection spec hash updated, old hash %s, new %s", fi.ConfigHash, config.ConfigHash)
 			}
 			return &ctrlmeshproto.FaultInjectConfigResp{
-				Success:                 true,
-				Message:                 msg,
-				FaultInjectionSnapshots: m.snapshot(config.Name),
+				Success: true,
+				Message: msg,
 			}, nil
 		}
 	case ctrlmeshproto.FaultInjection_DELETE:
@@ -125,35 +123,18 @@ func (m *manager) Sync(config *ctrlmeshproto.FaultInjection) (*ctrlmeshproto.Fau
 		cb, ok := m.faultInjectionMap[config.Name]
 		if !ok {
 			return &ctrlmeshproto.FaultInjectConfigResp{
-				Success:                 false,
-				Message:                 fmt.Sprintf("fault injection config %s not found", cb.Name),
-				FaultInjectionSnapshots: m.snapshot(config.Name),
+				Success: false,
+				Message: fmt.Sprintf("fault injection config %s not found", cb.Name),
 			}, nil
 		} else if config.ConfigHash != cb.ConfigHash {
 			return &ctrlmeshproto.FaultInjectConfigResp{
-				Success:                 false,
-				Message:                 fmt.Sprintf("unequal fault injection %s hash, old %s, new %s", cb.Name, cb.ConfigHash, config.ConfigHash),
-				FaultInjectionSnapshots: m.snapshot(config.Name),
+				Success: false,
+				Message: fmt.Sprintf("unequal fault injection %s hash, old %s, new %s", cb.Name, cb.ConfigHash, config.ConfigHash),
 			}, nil
 		}
 		return &ctrlmeshproto.FaultInjectConfigResp{
-			Success:                 true,
-			Message:                 "",
-			FaultInjectionSnapshots: m.snapshot(config.Name),
-		}, nil
-	case ctrlmeshproto.FaultInjection_RECOVER:
-		var recoverNames string
-		if config.HttpFaultInjections != nil {
-			for _, hfi := range config.HttpFaultInjections {
-				key := fmt.Sprintf("%s:%s", config.Name, hfi.Name)
-				m.recoverFaultInjection(key)
-				recoverNames = fmt.Sprintf("%s [%s]", recoverNames, key)
-			}
-		}
-		return &ctrlmeshproto.FaultInjectConfigResp{
-			Success:                 true,
-			Message:                 fmt.Sprintf("recovered limiting rules %s", recoverNames),
-			FaultInjectionSnapshots: m.snapshot(config.Name),
+			Success: true,
+			Message: "",
 		}, nil
 	default:
 		return &ctrlmeshproto.FaultInjectConfigResp{
@@ -164,36 +145,13 @@ func (m *manager) Sync(config *ctrlmeshproto.FaultInjection) (*ctrlmeshproto.Fau
 	}
 }
 
-func (m *manager) snapshot(breaker string) []*ctrlmeshproto.FaultInjectionSnapshot {
-	var res []*ctrlmeshproto.FaultInjectionSnapshot
-	m.faultInjectionStore.mu.RLock()
-	defer m.faultInjectionStore.mu.RUnlock()
-	for key, sta := range m.faultInjectionStore.states {
-		arr := strings.Split(key, ":")
-		fiName, limitName := arr[0], arr[1]
-		if fiName != breaker {
-			continue
-		}
-		breakerState, lastTransitionTime, recoverTime := sta.read()
-		res = append(res, &ctrlmeshproto.FaultInjectionSnapshot{
-			LimitingName:       limitName,
-			State:              breakerState,
-			RecoverTime:        recoverTime,
-			LastTransitionTime: lastTransitionTime,
-		})
-	}
-	return res
-}
-
 func (m *manager) HandlerWrapper() func(http.Handler) http.Handler {
 	return func(handler http.Handler) http.Handler {
 		return withFaultInjection(m, handler)
 	}
 }
 
-// ValidateRest validate a rest request
-// TODO: consider regex matching
-func (m *manager) ValidateRest(URL string, method string) (result *ValidateResult) {
+func (m *manager) FaultInjectionRest(URL string, method string) (result *FaultInjectionResult) {
 	now := time.Now()
 	defer func() {
 		logger.Info("validate rest", "URL", URL, "method", method, "result", result, "cost time", time.Since(now).String())
@@ -201,14 +159,14 @@ func (m *manager) ValidateRest(URL string, method string) (result *ValidateResul
 
 	urls := generateWildcardUrls(URL, method)
 	for _, url := range urls {
-		limitings, states := m.faultInjectionStore.byIndex(IndexRest, url)
-		if len(limitings) == 0 {
+		faultInjections, states := m.faultInjectionStore.byIndex(IndexRest, url)
+		if len(faultInjections) == 0 {
 			continue
 		}
-		result = m.doValidation(limitings, states)
+		result = m.doFaultInjection(faultInjections, states)
 		return result
 	}
-	result = &ValidateResult{Allowed: true, Reason: "No rule match"}
+	result = &FaultInjectionResult{Abort: true, Reason: "No rule match"}
 	return result
 }
 
@@ -232,23 +190,21 @@ func generateWildcardUrls(URL string, method string) []string {
 	return result
 }
 
-// ValidateResource validate a request to api server
-// TODO: consider regex matching
-func (m *manager) ValidateResource(namespace, apiGroup, resource, verb string) (result *ValidateResult) {
+func (m *manager) FaultInjectionResource(namespace, apiGroup, resource, verb string) (result *FaultInjectionResult) {
 	now := time.Now()
 	defer func() {
 		logger.Info("validate resource", "namespace", namespace, "apiGroup", apiGroup, "resource", resource, "verb", verb, "result", result, "cost time", time.Since(now).String())
 	}()
 	seeds := generateWildcardSeeds(namespace, apiGroup, resource, verb)
 	for _, seed := range seeds {
-		limitings, states := m.faultInjectionStore.byIndex(IndexResource, seed)
-		if len(limitings) == 0 {
+		faultInjections, states := m.faultInjectionStore.byIndex(IndexResource, seed)
+		if len(faultInjections) == 0 {
 			continue
 		}
-		result = m.doValidation(limitings, states)
+		result = m.doFaultInjection(faultInjections, states)
 		return result
 	}
-	result = &ValidateResult{Allowed: true, Reason: "No rule match"}
+	result = &FaultInjectionResult{Abort: true, Reason: "No rule match"}
 	return result
 }
 
@@ -284,7 +240,7 @@ func generateWildcardSeeds(namespace, apiGroup, resource, verb string) []string 
 	return result
 }
 
-func withFaultInjection(validator Validator, handler http.Handler) http.Handler {
+func withFaultInjection(injector FaultInjector, handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		ctx := req.Context()
 		requestInfo, ok := apirequest.RequestInfoFrom(ctx)
@@ -293,9 +249,9 @@ func withFaultInjection(validator Validator, handler http.Handler) http.Handler 
 			responsewriters.InternalError(w, req, errors.New("no RequestInfo found in the context"))
 			return
 		}
-		result := validator.ValidateResource(requestInfo.Namespace, requestInfo.APIGroup, requestInfo.Resource, requestInfo.Verb)
+		result := injector.FaultInjectionResource(requestInfo.Namespace, requestInfo.APIGroup, requestInfo.Resource, requestInfo.Verb)
 
-		if !result.Allowed {
+		if !result.Abort {
 			apiErr := httpToAPIError(int(result.ErrCode), result.Message)
 			if apiErr.Code != http.StatusOK {
 				w.Header().Set("Content-Type", "application/json")
@@ -306,69 +262,36 @@ func withFaultInjection(validator Validator, handler http.Handler) http.Handler 
 			}
 		}
 
-		realEndPointUrl, err := url.Parse(req.Header.Get("Mesh-Real-Endpoint"))
-		logger.Info("receive proxy-host:%s, proxy-method:%s, Mesh-Real-Endpoint:%s", realEndPointUrl.Host, req.Method, req.Header.Get("Mesh-Real-Endpoint"))
-		if err != nil || realEndPointUrl == nil {
-			logger.Error(err, "Request Header Mesh-Real-Endpoint Parse Error")
-			http.Error(w, fmt.Sprintf("Can not find real endpoint in header %s", err), http.StatusInternalServerError)
-			return
-		}
-		// if enableRestFaultInjection {
-		// 	result := pkgfi.ValidateRest(realEndPointUrl.Host, req.Method)
-		// 	if result.Allowed == false {
-		// 		logger.Error("ErrorTProxy: %s %s  ValidateTrafficIntercept NOPASSED ,checkresult:\t%s", realEndPointUrl.Host, req.Method, result.Reason)
-		// 		http.Error(w, fmt.Sprintf("Forbidden by  ValidateTrafficIntercept breaker, %s, %s", result.Message, result.Reason), http.StatusForbidden)
-		// 		return
-		// 	}
-		// }
-
-		// ValidateRest check
-		logger.Info("start ValidateRest checkrule %s %s", realEndPointUrl.Host, req.Method)
-		validateresult := validator.ValidateRest(req.Header.Get("Mesh-Real-Endpoint"), req.Method)
-		if !validateresult.Allowed {
-			logger.Info("ErrorTProxy: %s %s  ValidateRest NOPASSED ,checkresult:%t, validateresultReason:%s", req.Header.Get("Mesh-Real-Endpoint"), req.Method, validateresult.Allowed, validateresult.Reason)
-			// http.Error(w, fmt.Sprintf("Forbidden by circuit ValidateRest breaker, %s, %s", validateresult.Message, validateresult.Reason), http.StatusForbidden)
-			// return
-		}
-		logger.Info("TProxy: %s %s ValidateRest check PASSED", realEndPointUrl.Host, req.Method)
-
 		handler.ServeHTTP(w, req)
 	})
 }
 
-func (m *manager) doValidation(limitings []*ctrlmeshproto.HTTPFaultInjection, states []*state) *ValidateResult {
-	result := &ValidateResult{
-		Allowed: true,
-		Reason:  "Default allow",
+func (m *manager) doFaultInjection(faultInjections []*ctrlmeshproto.HTTPFaultInjection, states []*state) *FaultInjectionResult {
+	result := &FaultInjectionResult{
+		Abort:  true,
+		Reason: "Default allow",
 	}
-	for idx := range limitings {
-		// check current fault injection status first
-		// status, _, _ := states[idx].read()
-		// switch status {
-		// case ctrlmeshproto.FaultInjectionState_STATEOPENED: // fi already opened, just refuse
-		// 	result.Allowed = false
-		// 	result.Reason = "FaultInjectionTriggered"
-		// 	result.Message = fmt.Sprintf("the fault injection is triggered. Limiting rule name: %s", limitings[idx].Name)
-		// }
+	for idx := range faultInjections {
 
-		if limitings[idx].EffectiveTime != nil && !isEffectiveTimeRange(limitings[idx].EffectiveTime) {
+		if faultInjections[idx].EffectiveTime != nil && !isEffectiveTimeRange(faultInjections[idx].EffectiveTime) {
+			fmt.Println("effective time is not in range", faultInjections[idx].EffectiveTime)
 			continue
 		}
 
-		if limitings[idx].Delay != nil {
-			if isInpercentRange(limitings[idx].Delay.Percent) {
-				delay := limitings[idx].Delay.GetFixedDelay()
+		if faultInjections[idx].Delay != nil {
+			if isInpercentRange(faultInjections[idx].Delay.Percent) {
+				delay := faultInjections[idx].Delay.GetFixedDelay()
 				delayDuration := delay.AsDuration()
 				fmt.Println("Delaying for ", delayDuration)
 				time.Sleep(delayDuration)
 			}
 		}
-		if limitings[idx].Abort != nil {
-			if isInpercentRange(limitings[idx].Abort.Percent) {
-				result.Allowed = false
+		if faultInjections[idx].Abort != nil {
+			if isInpercentRange(faultInjections[idx].Abort.Percent) {
+				result.Abort = false
 				result.Reason = "FaultInjectionTriggered"
-				result.Message = fmt.Sprintf("the fault injection is triggered. Limiting rule name: %s", limitings[idx].Name)
-				result.ErrCode = limitings[idx].Abort.GetHttpStatus()
+				result.Message = fmt.Sprintf("the fault injection is triggered. Limiting rule name: %s", faultInjections[idx].Name)
+				result.ErrCode = faultInjections[idx].Abort.GetHttpStatus()
 			}
 
 		}
@@ -394,30 +317,28 @@ func isInpercentRange(value float64) bool {
 // It considers the start time, end time, days of the week, days of the month, and months.
 // The function returns true if the current time is within the effective time range, otherwise false.
 func isEffectiveTimeRange(timeRange *ctrlmeshproto.EffectiveTimeRange) bool {
-	now := time.Now()
+	location, err := time.LoadLocation("UTC")
+	if err != nil {
+		return false
+	}
+	now := time.Now().In(location)
 
 	// Parse startTime string into a time.Time struct, only considering the time part
-	startTime, err := time.Parse(timeLayout, timeRange.StartTime)
+	startTime, err := time.ParseInLocation(timeLayout, timeRange.StartTime, location)
 	if err != nil {
 		return false
 	}
 
 	// Parse endTime string into a time.Time struct, only considering the time part
-	endTime, err := time.Parse(timeLayout, timeRange.EndTime)
+	endTime, err := time.ParseInLocation(timeLayout, timeRange.EndTime, location)
 	if err != nil {
 		return false
 	}
 
-	// Compare only the time components (hours, minutes, seconds) by extracting
-	// them from the current time and the parsed start and end times
-	currentHour, currentMinute, currentSecond := now.Clock()
-	startHour, startMinute, startSecond := startTime.Clock()
-	endHour, endMinute, endSecond := endTime.Clock()
-
 	// Convert the hours, minutes, and seconds to a comparable integer value
-	currentTimeInt := currentHour*3600 + currentMinute*60 + currentSecond
-	startTimeInt := startHour*3600 + startMinute*60 + startSecond
-	endTimeInt := endHour*3600 + endMinute*60 + endSecond
+	currentTimeInt := now.Hour()*3600 + now.Minute()*60 + now.Second()
+	startTimeInt := startTime.Hour()*3600 + startTime.Minute()*60 + startTime.Second()
+	endTimeInt := endTime.Hour()*3600 + endTime.Minute()*60 + endTime.Second()
 
 	// Check if the current time is after the start time and before the end time,
 	// only considering the time part and ignoring the date part
@@ -563,9 +484,6 @@ func (m *manager) registerRules(fi *ctrlmeshproto.FaultInjection) {
 		key := fmt.Sprintf("%s:%s", fi.Name, faultInjection.Name)
 		m.faultInjectionStore.createOrUpdateRule(
 			key, faultInjection.DeepCopy(),
-			&ctrlmeshproto.FaultInjectionSnapshot{
-				State: ctrlmeshproto.FaultInjectionState_STATECLOSED,
-			},
 		)
 	}
 }
@@ -581,13 +499,4 @@ func (m *manager) unregisterRules(fiName string) {
 		key := fmt.Sprintf("%s:%s", fi.Name, faultInjection.Name)
 		m.faultInjectionStore.deleteRule(key)
 	}
-}
-
-func (m *manager) recoverFaultInjection(key string) {
-	if m.faultInjectionStore.states[key] == nil {
-		logger.Error(fmt.Errorf("breaker not found"), fmt.Sprintf("limitingName %s not exist", key))
-		return
-	}
-	logger.Info("RecoverBreaker", "name", key, "state", m.faultInjectionStore.states[key].state)
-	m.faultInjectionStore.states[key].recoverBreaker()
 }

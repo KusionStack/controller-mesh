@@ -72,7 +72,7 @@ var circuitBreaker = &ctrlmeshv1alpha1.CircuitBreaker{
 	Spec: ctrlmeshv1alpha1.CircuitBreakerSpec{
 		Selector: &metav1.LabelSelector{
 			MatchLabels: map[string]string{
-				"test": "test2",
+				"test": "test",
 			},
 		},
 		RateLimitings: []*ctrlmeshv1alpha1.Limiting{

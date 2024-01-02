@@ -162,21 +162,3 @@ func ConvertRelatedResources(resourceRule *ctrlmeshv1alpha1.ResourceMatch) *ctrl
 	return protoResourceRule
 }
 
-func ConvertFaultInjectionSnapshots(in []*ctrlmeshproto.FaultInjectionSnapshot) []*ctrlmeshv1alpha1.FaultInjectionSnapshot {
-	var res []*ctrlmeshv1alpha1.FaultInjectionSnapshot
-	for _, s := range in {
-		var state ctrlmeshv1alpha1.FaultInjectionState
-		switch s.State {
-		case ctrlmeshproto.FaultInjectionState_STATEOPENED:
-			state = ctrlmeshv1alpha1.FaultInjectionStatusOpened
-		case ctrlmeshproto.FaultInjectionState_STATECLOSED:
-			state = ctrlmeshv1alpha1.FaultInjectionStatusClosed
-		}
-		res = append(res, &ctrlmeshv1alpha1.FaultInjectionSnapshot{
-			Name:               s.LimitingName,
-			State:              state,
-			LastTransitionTime: s.LastTransitionTime,
-		})
-	}
-	return res
-}

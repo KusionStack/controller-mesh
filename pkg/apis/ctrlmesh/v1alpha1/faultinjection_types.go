@@ -27,25 +27,6 @@ type StringMatch struct {
 
 type StringMatchType string
 
-type HTTPSTATUS int32
-
-const (
-	StatusOK                   HTTPSTATUS = 200
-	StatusBadRequest           HTTPSTATUS = 400
-	StatusUnauthorized         HTTPSTATUS = 401
-	StatusForbidden            HTTPSTATUS = 403
-	StatusNotFound             HTTPSTATUS = 404
-	StatusMethodNotAllowed     HTTPSTATUS = 405
-	StatusNotAcceptable        HTTPSTATUS = 406
-	StatusConflict             HTTPSTATUS = 409
-	StatusUnsupportedMediaType HTTPSTATUS = 415
-	StatusUnprocessableEntity  HTTPSTATUS = 422
-	StatusTooManyRequests      HTTPSTATUS = 429
-	StatusInternalServerError  HTTPSTATUS = 500
-	StatusServiceUnavailable   HTTPSTATUS = 503
-	StatusGatewayTimeout       HTTPSTATUS = 504
-)
-
 type HTTPFaultInjectionDelay struct {
 	// FixedDelay is used to indicate the amount of delay in seconds.
 	FixedDelay string `json:"fixedDelay,omitempty"`
@@ -57,7 +38,7 @@ type HTTPFaultInjectionDelay struct {
 type HTTPFaultInjectionAbort struct {
 	// HttpStatus is used to indicate the HTTP status code to
 	// return to the caller.
-	HttpStatus HTTPSTATUS `json:"httpStatus,omitempty"`
+	HttpStatus int `json:"httpStatus,omitempty"`
 	// Percent of requests to be aborted with the error code provided.
 	// If not specified, no request will be aborted.
 	Percent string `json:"percent,omitempty"`
@@ -70,7 +51,8 @@ type ResourceMatch struct {
 	Verbs      []string `json:"verbs,omitempty"`
 }
 
-// RestRule defines the target rest resource of the limiting policy
+// MultiRestRule specifies the criteria for matching HTTP requests to RESTful resources
+// as part of HTTP FaultInjection. Each rule can target one or more URLs and HTTP methods.
 type MultiRestRule struct {
 	// URL gives the location of the rest request, in standard URL form (`scheme://host:port/path`)
 	URL []string `json:"url"`
@@ -78,6 +60,9 @@ type MultiRestRule struct {
 	Method []string `json:"method"`
 }
 
+// HTTPMatchRequest defines a set of rules and criteria for matching incoming HTTP requests.
+// It associates a name with the set of criteria and can relate to additional resources that are relevant
+// to the request matching, enabling complex and granular control over request matching in HTTP FaultInjection.
 type HTTPMatchRequest struct {
 	Name             string           `json:"name,omitempty"`
 	RelatedResources []*ResourceMatch `json:"relatedResources,omitempty"`
@@ -137,21 +122,6 @@ type EffectiveTimeRange struct {
 // FaultInjectionState is the status of the fault injection, which may be 'Opened' or 'Closed'.
 type FaultInjectionState string
 
-var (
-	FaultInjectionStatusOpened FaultInjectionState = "Opened"
-	FaultInjectionStatusClosed FaultInjectionState = "Closed"
-)
-
-// LimitingSnapshot defines the snapshot of the whole faultinjection policy
-type FaultInjectionSnapshot struct {
-	// Name specifies the name of the policy
-	Name string `json:"name"`
-	// Status is the status of the fault injection, which may be 'Opened' or 'Closed'.
-	State FaultInjectionState `json:"state"`
-	// LastTransitionTime is the last time that the status changed
-	LastTransitionTime *metav1.Time `json:"lastTransitionTime,omitempty"`
-}
-
 type FaultInjectionStatus struct {
 	ObservedGeneration int64                         `json:"observedGeneration,omitempty"`
 	LastUpdatedTime    *metav1.Time                  `json:"lastUpdatedTime,omitempty"`
@@ -164,7 +134,6 @@ type FaultInjectionTargetStatus struct {
 	PodIP                   string                    `json:"podIP,omitempty"`
 	ConfigHash              string                    `json:"configHash,omitempty"`
 	Message                 string                    `json:"message,omitempty"`
-	FaultInjectionSnapshots []*FaultInjectionSnapshot `json:"faultInjectionSnapshots,omitempty"`
 }
 
 // +genclient
