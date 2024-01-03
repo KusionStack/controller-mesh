@@ -18,7 +18,6 @@ package faultinjection
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
@@ -74,7 +73,6 @@ func TestMain(m *testing.M) {
 		if err = (&FaultInjectionReconciler{
 			Client: &warpClient{
 				Client: mgr.GetClient(),
-				ch:     request,
 			},
 		}).SetupWithManager(mgr); err != nil {
 			panic(err)
@@ -100,29 +98,8 @@ func Stop() {
 
 type warpClient struct {
 	client.Client
-	ch chan struct{}
 }
 
 func (w *warpClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
-	w.ch <- struct{}{}
 	return w.Client.Get(ctx, key, obj, opts...)
-}
-
-func waitProcess() {
-	waitProcessFinished(request)
-}
-
-func waitProcessFinished(reqChan chan struct{}) {
-	timeout := time.After(10 * time.Second)
-	for {
-		select {
-		case <-time.After(5 * time.Second):
-			return
-		case <-timeout:
-			fmt.Println("timeout!")
-			return
-		case <-reqChan:
-			continue
-		}
-	}
 }

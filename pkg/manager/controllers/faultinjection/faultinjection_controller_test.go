@@ -39,10 +39,10 @@ import (
 
 var mockPod = &v1.Pod{
 	ObjectMeta: metav1.ObjectMeta{
-		Name:      "testpod",
+		Name:      "testpod2",
 		Namespace: "default",
 		Labels: map[string]string{
-			"test": "test",
+			"test2": "test2",
 		},
 	},
 	Spec: v1.PodSpec{
@@ -66,13 +66,13 @@ var mockPod = &v1.Pod{
 
 var faultInjection = &ctrlmeshv1alpha1.FaultInjection{
 	ObjectMeta: metav1.ObjectMeta{
-		Name:      "testcb",
+		Name:      "testfi",
 		Namespace: "default",
 	},
 	Spec: ctrlmeshv1alpha1.FaultInjectionSpec{
 		Selector: &metav1.LabelSelector{
 			MatchLabels: map[string]string{
-				"test": "test",
+				"test2": "test2",
 			},
 		},
 		HTTPFaultInjections: []*ctrlmeshv1alpha1.HTTPFaultInjection{
@@ -115,19 +115,27 @@ func TestFaultInjection(t *testing.T) {
 	defer func() {
 		c.Delete(ctx, testPod)
 	}()
-	waitProcess()
 	cb := &ctrlmeshv1alpha1.FaultInjection{}
-	g.Expect(c.Get(ctx, types.NamespacedName{Name: "testcb", Namespace: "default"}, cb)).Should(gomega.BeNil())
-	g.Expect(cb.Status.TargetStatus).ShouldNot(gomega.BeNil())
+
+	g.Eventually(func() bool {
+		if err := c.Get(ctx, types.NamespacedName{Name: "testfi", Namespace: "default"}, cb); err != nil {
+			return false
+		}
+		return cb.Status.TargetStatus != nil
+	}, 5*time.Second, 1*time.Second).Should(gomega.BeTrue())
+
 	// pod is not available
 	g.Expect(strings.Contains(cb.Status.TargetStatus[0].Message, "not available")).Should(gomega.BeTrue())
 	testPod.Status = *mockPod.Status.DeepCopy()
 	g.Expect(c.Status().Update(ctx, testPod)).Should(gomega.BeNil())
-	waitProcess()
-	g.Expect(c.Get(ctx, types.NamespacedName{Name: "testcb", Namespace: "default"}, cb)).Should(gomega.BeNil())
-	g.Expect(cb.Status.TargetStatus).ShouldNot(gomega.BeNil())
-	// pod is available
-	g.Expect(cb.Status.TargetStatus[0].PodIP).Should(gomega.BeEquivalentTo("127.0.0.1"))
+	g.Eventually(func() string {
+		g.Expect(c.Get(ctx, types.NamespacedName{Name: "testfi", Namespace: "default"}, cb)).Should(gomega.BeNil())
+		if cb.Status.TargetStatus != nil {
+			return cb.Status.TargetStatus[0].PodIP
+		}
+		return ""
+	}, 5*time.Second, 1*time.Second).Should(gomega.Equal("127.0.0.1"))
+
 	g.Expect(len(cb.Finalizers) > 0).Should(gomega.BeTrue())
 	cb.Spec.HTTPFaultInjections = append(cb.Spec.HTTPFaultInjections, &ctrlmeshv1alpha1.HTTPFaultInjection{
 		Name: "test-abort",
@@ -160,24 +168,34 @@ func TestFaultInjection(t *testing.T) {
 			},
 		},
 	})
+	localCount := syncCount
 	g.Expect(c.Update(ctx, cb)).Should(gomega.BeNil())
-	waitProcess()
-	g.Expect(c.Get(ctx, types.NamespacedName{Name: "testcb", Namespace: "default"}, cb)).Should(gomega.BeNil())
-	waitProcess()
+
+	g.Eventually(func() bool {
+		g.Expect(c.Get(ctx, types.NamespacedName{Name: "testfi", Namespace: "default"}, cb)).Should(gomega.BeNil())
+		if len(cb.Spec.HTTPFaultInjections) > 0 && cb.Spec.HTTPFaultInjections[len(cb.Spec.HTTPFaultInjections)-1].Name == "test-abort" {
+			return cb.Status.ObservedGeneration == cb.Generation && syncCount != localCount
+		}
+		return false
+	}, 5*time.Second, 1*time.Second).Should(gomega.BeTrue())
+
 	g.Expect(faultManager.FaultInjectionRest("aaa.aaa.aaa", "GET").Abort).Should(gomega.BeTrue())
 	if cb.Labels == nil {
 		cb.Labels = map[string]string{}
 	}
 	cb.Labels[ctrlmesh.CtrlmeshFaultInjectionDisableKey] = "true"
+	localCount = syncCount
 	g.Expect(c.Update(ctx, cb)).Should(gomega.BeNil())
-	waitProcess()
-	g.Expect(c.Get(ctx, types.NamespacedName{Name: "testcb", Namespace: "default"}, cb)).Should(gomega.BeNil())
-	g.Expect(len(cb.Status.TargetStatus) == 0).Should(gomega.BeTrue())
-	g.Expect(len(cb.Finalizers) == 0).Should(gomega.BeTrue())
+	g.Eventually(func() bool {
+		g.Expect(c.Get(ctx, types.NamespacedName{Name: "testfi", Namespace: "default"}, cb)).Should(gomega.BeNil())
+		return len(cb.Status.TargetStatus) == 0 && len(cb.Finalizers) == 0 && syncCount != localCount
+	}, 5*time.Second, 1*time.Second).Should(gomega.BeTrue())
 	g.Expect(c.Delete(ctx, testFaultInjection)).Should(gomega.BeNil())
-	waitProcess()
-	g.Expect(c.Get(ctx, types.NamespacedName{Name: "testcb", Namespace: "default"}, cb)).Should(gomega.HaveOccurred())
+	g.Eventually(func() error {
+		return c.Get(ctx, types.NamespacedName{Name: "testfi", Namespace: "default"}, cb)
+	}, 5*time.Second, 1*time.Second).Should(gomega.HaveOccurred())
 	fmt.Println("test finished")
+
 }
 
 var faultManager faultinjection.ManagerInterface
@@ -190,6 +208,8 @@ func RunMockServer() {
 	<-time.After(2 * time.Second)
 }
 
+var syncCount int
+
 type mockFaultInjectionManager struct {
 	faultinjection.ManagerInterface
 }
@@ -198,6 +218,7 @@ func (m *mockFaultInjectionManager) Sync(config *ctrlmeshproto.FaultInjection) (
 	resp, err := m.ManagerInterface.Sync(config)
 	utilruntime.Must(err)
 	printJson(resp)
+	syncCount++
 	return resp, err
 }
 

@@ -437,7 +437,7 @@ type HTTPMatchRequest struct {
 	// The name assigned to a match. The match's name will be
 	// concatenated with the parent route's name and will be logged in
 	// the access logs for requests matching this route.
-	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Name             string           `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	RelatedResources []*ResourceMatch `protobuf:"bytes,2,rep,name=relatedResources,proto3" json:"relatedResources,omitempty"`
 	RestRules        []*MultiRestRule `protobuf:"bytes,3,rep,name=restRules,proto3" json:"restRules,omitempty"`
 }
