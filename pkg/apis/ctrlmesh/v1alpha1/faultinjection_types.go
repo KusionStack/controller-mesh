@@ -99,25 +99,24 @@ type FaultInjectionSpec struct {
 }
 
 type EffectiveTimeRange struct {
-    // StartTime is the starting time of fault injection.
-    StartTime string `json:"startTime,omitempty"`
+	// StartTime is the starting time of fault injection.
+	StartTime string `json:"startTime,omitempty"`
 
-    // EndTime is the ending time of fault injection.
-    EndTime string `json:"endTime,omitempty"`
+	// EndTime is the ending time of fault injection.
+	EndTime string `json:"endTime,omitempty"`
 
-    // DaysOfWeek specifies on which days of the week the fault injection configuration is effective.
-    // 0 represents Sunday, 1 represents Monday, and so on.
-    DaysOfWeek []int `json:"daysOfWeek,omitempty"`
+	// DaysOfWeek specifies on which days of the week the fault injection configuration is effective.
+	// 0 represents Sunday, 1 represents Monday, and so on.
+	DaysOfWeek []int `json:"daysOfWeek,omitempty"`
 
-    // DaysOfMonth specifies on which days of the month the fault injection configuration is effective.
-    // For example, 1 represents the first day of the month, and so on.
-    DaysOfMonth []int `json:"daysOfMonth,omitempty"`
+	// DaysOfMonth specifies on which days of the month the fault injection configuration is effective.
+	// For example, 1 represents the first day of the month, and so on.
+	DaysOfMonth []int `json:"daysOfMonth,omitempty"`
 
-    // Months specifies in which months of the year the fault injection configuration is effective.
-    // 1 represents January, 2 represents February, and so on.
-    Months []int `json:"months,omitempty"`
+	// Months specifies in which months of the year the fault injection configuration is effective.
+	// 1 represents January, 2 represents February, and so on.
+	Months []int `json:"months,omitempty"`
 }
-
 
 // FaultInjectionState is the status of the fault injection, which may be 'Opened' or 'Closed'.
 type FaultInjectionState string
@@ -130,10 +129,10 @@ type FaultInjectionStatus struct {
 }
 
 type FaultInjectionTargetStatus struct {
-	PodName                 string                    `json:"podName,omitempty"`
-	PodIP                   string                    `json:"podIP,omitempty"`
-	ConfigHash              string                    `json:"configHash,omitempty"`
-	Message                 string                    `json:"message,omitempty"`
+	PodName    string `json:"podName,omitempty"`
+	PodIP      string `json:"podIP,omitempty"`
+	ConfigHash string `json:"configHash,omitempty"`
+	Message    string `json:"message,omitempty"`
 }
 
 // +genclient

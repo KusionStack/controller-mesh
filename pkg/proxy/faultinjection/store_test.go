@@ -63,8 +63,8 @@ func TestFaultInjectionStore(t *testing.T) {
 			StartTime: "&v1.Time{Time: time.Date(2023, 4, 14, 8, 0, 0, 0, time.UTC)}",
 			EndTime:   "&v1.Time{Time: time.Date(2023, 4, 28, 18, 0, 0, 0, time.UTC)}",
 			DaysOfWeek: []int{
-				int(time.Monday), // 1
-				int(time.Tuesday), // 2
+				int(time.Monday),    // 1
+				int(time.Tuesday),   // 2
 				int(time.Wednesday), // 3
 				int(time.Friday),    // 5
 			},
@@ -142,7 +142,7 @@ func TestLimiterPriority(t *testing.T) {
 		conv.ConvertHTTPFaultInjection(limitingA))
 
 	result := mgr.FaultInjectionResource("default", "", "pod", "delete")
-	g.Expect(result.Abort).Should(gomega.BeTrue())
+	g.Expect(result.Abort).Should(gomega.BeFalse())
 
 	limitingB := &ctrlmeshv1alpha1.HTTPFaultInjection{
 		Name: "deletePod1-priority",

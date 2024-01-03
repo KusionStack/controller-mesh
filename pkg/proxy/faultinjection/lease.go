@@ -78,7 +78,6 @@ func (l *lease) processingLoop() {
 			l.mu.Lock()
 			delete(l.stateSet, st.key)
 			l.mu.Unlock()
-			st.recoverBreaker()
 		}
 		l.stateQueue.Done(st)
 	}

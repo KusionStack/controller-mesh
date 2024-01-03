@@ -406,8 +406,10 @@ func httpToAPIError(code int, serverMessage string) *metav1.Status {
 		Reason:  metav1.StatusReason(fmt.Sprintf("HTTP %d", code)),
 		Message: serverMessage,
 	}
-	reason := metav1.StatusReasonUnknown
-	message := fmt.Sprintf("the server responded with the status code %d but did not return more information", code)
+	var (
+		reason  metav1.StatusReason
+		message string
+	)
 	switch code {
 	case http.StatusOK:
 		reason = ""

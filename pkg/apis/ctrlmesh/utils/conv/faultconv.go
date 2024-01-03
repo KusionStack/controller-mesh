@@ -161,4 +161,3 @@ func ConvertRelatedResources(resourceRule *ctrlmeshv1alpha1.ResourceMatch) *ctrl
 	}
 	return protoResourceRule
 }
-

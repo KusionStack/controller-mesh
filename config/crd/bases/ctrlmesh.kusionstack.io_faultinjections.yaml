@@ -133,8 +133,10 @@ spec:
                           type: array
                         restRules:
                           items:
-                            description: RestRule defines the target rest resource
-                              of the limiting policy
+                            description: MultiRestRule specifies the criteria for
+                              matching HTTP requests to RESTful resources as part
+                              of HTTP FaultInjection. Each rule can target one or
+                              more URLs and HTTP methods.
                             properties:
                               method:
                                 description: 'Method specifies the http method of
@@ -214,28 +216,6 @@ spec:
                   properties:
                     configHash:
                       type: string
-                    faultInjectionSnapshots:
-                      items:
-                        description: LimitingSnapshot defines the snapshot of the
-                          whole faultinjection policy
-                        properties:
-                          lastTransitionTime:
-                            description: LastTransitionTime is the last time that
-                              the status changed
-                            format: date-time
-                            type: string
-                          name:
-                            description: Name specifies the name of the policy
-                            type: string
-                          state:
-                            description: Status is the status of the fault injection,
-                              which may be 'Opened' or 'Closed'.
-                            type: string
-                        required:
-                        - name
-                        - state
-                        type: object
-                      type: array
                     message:
                       type: string
                     podIP:

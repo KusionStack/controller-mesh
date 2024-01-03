@@ -115,10 +115,10 @@ func (r *FaultInjectionReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 			defaultPodConfigCache.Add(po.Namespace, po.Name, fi.Name)
 		}
 		status := &ctrlmeshv1alpha1.FaultInjectionTargetStatus{
-			PodName:                 po.Name,
-			PodIP:                   po.Status.PodIP,
-			ConfigHash:              currentHash,
-			Message:                 msg,
+			PodName:    po.Name,
+			PodIP:      po.Status.PodIP,
+			ConfigHash: currentHash,
+			Message:    msg,
 		}
 		targetStatus = append(targetStatus, status)
 		newTargetMap[po.Name] = status

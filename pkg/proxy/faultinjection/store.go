@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"regexp"
 	"sync"
-	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -76,25 +75,6 @@ func (s *state) triggerFaultInjection() {
 	}
 }
 
-func (s *state) triggerBreakerWithTimeWindow(windowSize time.Duration) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	tm := metav1.Now()
-	if s.transitionTo(ctrlmeshproto.FaultInjectionState_STATEOPENED, &tm) {
-		t := metav1.Now().Add(windowSize)
-		s.recoverAt = &metav1.Time{Time: t}
-	}
-}
-
-func (s *state) recoverBreaker() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	tm := metav1.Now()
-	if s.transitionTo(ctrlmeshproto.FaultInjectionState_STATECLOSED, &tm) {
-		s.recoverAt = nil
-	}
-}
-
 func (s *state) transitionTo(newStatus ctrlmeshproto.FaultInjectionState, t *metav1.Time) bool {
 	if s.state != newStatus {
 		s.state = newStatus
@@ -144,7 +124,7 @@ func (s *store) createOrUpdateRule(key string, faultinjection *ctrlmeshproto.HTT
 		// all new, just assign rules and states, and update indices
 		s.rules[key] = faultinjection
 		s.states[key] = &state{
-			key:                key,
+			key: key,
 		}
 		s.updateIndices(nil, faultinjection, key)
 	} else {

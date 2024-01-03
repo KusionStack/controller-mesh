@@ -57,8 +57,6 @@ var (
 	disableFaultInjection = os.Getenv(constants.EnvDisableCircuitBreaker) == "true"
 )
 
-
-
 type Proxy struct {
 	opts           *Options
 	inSecureServer *http.Server
