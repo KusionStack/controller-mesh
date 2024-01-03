@@ -117,19 +117,25 @@ func TestCircuitBreaker(t *testing.T) {
 	defer func() {
 		c.Delete(ctx, testPod)
 	}()
-	waitProcess()
 	cb := &ctrlmeshv1alpha1.CircuitBreaker{}
-	g.Expect(c.Get(ctx, types.NamespacedName{Name: "testcb", Namespace: "default"}, cb)).Should(gomega.BeNil())
-	g.Expect(cb.Status.TargetStatus).ShouldNot(gomega.BeNil())
+	g.Eventually(func() bool {
+		if err := c.Get(ctx, types.NamespacedName{Name: "testcb", Namespace: "default"}, cb); err != nil {
+			return false
+		}
+		return cb.Status.TargetStatus != nil
+	}, 5*time.Second, 1*time.Second).Should(gomega.BeTrue())
 	// pod is not available
 	g.Expect(strings.Contains(cb.Status.TargetStatus[0].Message, "not available")).Should(gomega.BeTrue())
 	testPod.Status = *mockPod.Status.DeepCopy()
+
 	g.Expect(c.Status().Update(ctx, testPod)).Should(gomega.BeNil())
-	waitProcess()
-	g.Expect(c.Get(ctx, types.NamespacedName{Name: "testcb", Namespace: "default"}, cb)).Should(gomega.BeNil())
-	g.Expect(cb.Status.TargetStatus).ShouldNot(gomega.BeNil())
-	// pod is available
-	g.Expect(cb.Status.TargetStatus[0].PodIP).Should(gomega.BeEquivalentTo("127.0.0.1"))
+	g.Eventually(func() string {
+		g.Expect(c.Get(ctx, types.NamespacedName{Name: "testcb", Namespace: "default"}, cb)).Should(gomega.BeNil())
+		if cb.Status.TargetStatus != nil {
+			return cb.Status.TargetStatus[0].PodIP
+		}
+		return ""
+	}, 5*time.Second, 1*time.Second).Should(gomega.Equal("127.0.0.1"))
 	g.Expect(len(cb.Finalizers) > 0).Should(gomega.BeTrue())
 	cb.Spec.TrafficInterceptRules = append(cb.Spec.TrafficInterceptRules, &ctrlmeshv1alpha1.TrafficInterceptRule{
 		Name:          "testIntercept",
@@ -142,26 +148,35 @@ func TestCircuitBreaker(t *testing.T) {
 			"GET",
 		},
 	})
+	localCount := syncCount
 	g.Expect(c.Update(ctx, cb)).Should(gomega.BeNil())
-	waitProcess()
-	g.Expect(c.Get(ctx, types.NamespacedName{Name: "testcb", Namespace: "default"}, cb)).Should(gomega.BeNil())
+	g.Eventually(func() bool {
+		g.Expect(c.Get(ctx, types.NamespacedName{Name: "testcb", Namespace: "default"}, cb)).Should(gomega.BeNil())
+		if len(cb.Spec.TrafficInterceptRules) != 0 && cb.Spec.TrafficInterceptRules[0].Name == "testIntercept" {
+			return cb.Status.ObservedGeneration == cb.Generation && syncCount != localCount
+		}
+		return false
+	}, 5*time.Second, 1*time.Second).Should(gomega.BeTrue())
 	g.Expect(breakerManager.ValidateTrafficIntercept("aaa.aaa.aaa", "GET").Allowed).Should(gomega.BeFalse())
 	if cb.Labels == nil {
 		cb.Labels = map[string]string{}
 	}
 	cb.Labels[ctrlmesh.CtrlmeshCircuitBreakerDisableKey] = "true"
+	localCount = syncCount
 	g.Expect(c.Update(ctx, cb)).Should(gomega.BeNil())
-	waitProcess()
-	g.Expect(c.Get(ctx, types.NamespacedName{Name: "testcb", Namespace: "default"}, cb)).Should(gomega.BeNil())
-	g.Expect(len(cb.Status.TargetStatus) == 0).Should(gomega.BeTrue())
-	g.Expect(len(cb.Finalizers) == 0).Should(gomega.BeTrue())
+	g.Eventually(func() bool {
+		g.Expect(c.Get(ctx, types.NamespacedName{Name: "testcb", Namespace: "default"}, cb)).Should(gomega.BeNil())
+		return len(cb.Status.TargetStatus) == 0 && len(cb.Finalizers) == 0 && syncCount != localCount
+	}, 5*time.Second, 1*time.Second).Should(gomega.BeTrue())
 	g.Expect(c.Delete(ctx, testBreaker)).Should(gomega.BeNil())
-	waitProcess()
-	g.Expect(c.Get(ctx, types.NamespacedName{Name: "testcb", Namespace: "default"}, cb)).Should(gomega.HaveOccurred())
+	g.Eventually(func() error {
+		return c.Get(ctx, types.NamespacedName{Name: "testcb", Namespace: "default"}, cb)
+	}, 5*time.Second, 1*time.Second).Should(gomega.HaveOccurred())
 	fmt.Println("test finished")
 }
 
 var breakerManager circuitbreaker.ManagerInterface
+var syncCount int
 
 func RunMockServer() {
 	breakerMgr := circuitbreaker.NewManager(ctx)
@@ -179,6 +194,7 @@ func (m *mockBreakerManager) Sync(config *ctrlmeshproto.CircuitBreaker) (*ctrlme
 	resp, err := m.ManagerInterface.Sync(config)
 	utilruntime.Must(err)
 	printJson(resp)
+	syncCount++
 	return resp, err
 }
 
