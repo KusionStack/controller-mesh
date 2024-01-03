@@ -21,9 +21,11 @@ import (
 	"os"
 	"testing"
 
-	ctrlmeshproto "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/proto"
+	"github.com/onsi/gomega"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+
+	ctrlmeshproto "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/proto"
 )
 
 func init() {
@@ -36,6 +38,7 @@ func TestRestTrafficIntercept(t *testing.T) {
 }
 
 func TestIsEffectiveTimeRange(t *testing.T) {
+	g := gomega.NewGomegaWithT(t)
 	var tests = []struct {
 		timeRange *ctrlmeshproto.EffectiveTimeRange
 		want      bool
@@ -46,19 +49,17 @@ func TestIsEffectiveTimeRange(t *testing.T) {
 			DaysOfWeek:  []int32{1, 3, 5},
 			DaysOfMonth: []int32{1, 2, 3, 15},
 			Months:      []int32{1, 4, 7, 10},
-		}, true}, // 测试正常输入，时间范围内
+		}, true},
 		{&ctrlmeshproto.EffectiveTimeRange{
 			StartTime:   "00:00:00",
 			EndTime:     "23:59:59",
 			DaysOfWeek:  []int32{1, 2, 3, 4, 5, 7},
 			DaysOfMonth: []int32{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
 			Months:      []int32{2, 3, 4},
-		}, false}, // 测试异常输入，时间范围外
+		}, false},
 	}
 	for _, tt := range tests {
 		got := isEffectiveTimeRange(tt.timeRange)
-		if got != tt.want {
-			t.Errorf("isEffectiveTimeRange()错误, 期望得到: %v, 实际得到: %v", tt.want, got)
-		}
+		g.Expect(got).Should(gomega.BeEquivalentTo(tt.want))
 	}
 }
