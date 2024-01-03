@@ -16,6 +16,10 @@ limitations under the License.
 
 package ctrlmesh
 
+import (
+	"flag"
+)
+
 // Environments
 const (
 	EnvEnableWebhookServer     = "ENABLE_WEBHOOK_SERVER"
@@ -28,9 +32,6 @@ const (
 // Labels
 const (
 	CtrlmeshControlPrefix                 = "ctrlmesh.kusionstack.io/"
-	CtrlmeshShardHashKey                  = "ctrlmesh.kusionstack.io/shard-hash"
-	CtrlmeshControlKey                    = "ctrlmesh.kusionstack.io/control"
-	CtrlmeshNamespaceKey                  = "ctrlmesh.kusionstack.io/namespace"
 	CtrlmeshIgnoreWebhookLabel            = "ctrlmesh.kusionstack.io/ignore-webhook"
 	CtrlmeshIgnoreValidateLabel           = "ctrlmesh.kusionstack.io/ignore-validate"
 	CtrlmeshDefaultReplicasLabel          = "ctrlmesh.kusionstack.io/default-replicas"
@@ -62,7 +63,42 @@ const (
 	ProtectFinalizer = "finalizer.ctrlmesh.kusionstack.io/protected"
 )
 
-// Name
-const (
-	ShardingConfigMapName = "ctrlmesh-sharding-config"
+var (
+	shardHashLabel   string
+	meshControlLabel string
+	namespaceLabel   string
 )
+
+func init() {
+	flag.StringVar(&shardHashLabel, "label-shard-hash", "ctrlmesh.kusionstack.io/shard-hash", "The sharding hash label.")
+	flag.StringVar(&meshControlLabel, "label-mesh-control", "ctrlmesh.kusionstack.io/control", "The controller mesh control label.")
+	flag.StringVar(&namespaceLabel, "label-namespace", "ctrlmesh.kusionstack.io/namespace", "The namespace label.")
+}
+
+func ShardHashLabel() string {
+	return shardHashLabel
+}
+
+func MeshControlLabel() string {
+	return meshControlLabel
+}
+
+func NamespaceShardLabel() string {
+	return namespaceLabel
+}
+
+func IsControlledByMesh(labels map[string]string) bool {
+	if labels == nil {
+		return false
+	}
+	val, ok := labels[MeshControlLabel()]
+	return ok && val == "true"
+}
+
+func ShouldSyncLabels() []string {
+	return []string{
+		ShardHashLabel(),
+		MeshControlLabel(),
+		NamespaceShardLabel(),
+	}
+}

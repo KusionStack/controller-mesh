@@ -20,7 +20,6 @@ import (
 	"context"
 	"flag"
 	"reflect"
-	"strings"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -101,12 +100,13 @@ type ResourceConfig struct {
 
 func getShardingLabel(obj client.Object) map[string]string {
 	shardingLabels := map[string]string{}
-	if beNil(obj) || obj.GetLabels() == nil {
+	if beNil(obj) || obj.GetLabels() == nil || !ctrlmesh.IsControlledByMesh(obj.GetLabels()) {
 		return shardingLabels
 	}
-	for k, v := range obj.GetLabels() {
-		if strings.HasPrefix(k, ctrlmesh.CtrlmeshControlPrefix) {
-			shardingLabels[k] = v
+	lbs := obj.GetLabels()
+	for _, k := range ctrlmesh.ShouldSyncLabels() {
+		if val, ok := lbs[k]; ok {
+			shardingLabels[k] = val
 		}
 	}
 	return shardingLabels
@@ -119,6 +119,7 @@ func beNil(a interface{}) bool {
 	switch reflect.TypeOf(a).Kind() {
 	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Ptr, reflect.Slice:
 		return reflect.ValueOf(a).IsNil()
+	default:
+		return false
 	}
-	return false
 }

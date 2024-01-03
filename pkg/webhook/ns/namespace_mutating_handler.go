@@ -67,17 +67,17 @@ func (h *MutatingHandler) Handle(ctx context.Context, req admission.Request) adm
 
 func (h *MutatingHandler) shouldUpdateNs(ns *v1.Namespace) (shouldUpdate bool) {
 	shouldUpdate = false
-	if _, exist := ns.Labels[ctrlmesh.CtrlmeshControlKey]; !exist {
-		ns.Labels[ctrlmesh.CtrlmeshControlKey] = "true"
+	if _, exist := ns.Labels[ctrlmesh.MeshControlLabel()]; !exist {
+		ns.Labels[ctrlmesh.MeshControlLabel()] = "true"
 		shouldUpdate = true
 	}
-	if val, exist := ns.Labels[ctrlmesh.CtrlmeshNamespaceKey]; !exist || val != ns.Name {
-		ns.Labels[ctrlmesh.CtrlmeshNamespaceKey] = ns.Name
+	if val, exist := ns.Labels[ctrlmesh.NamespaceShardLabel()]; !exist || val != ns.Name {
+		ns.Labels[ctrlmesh.NamespaceShardLabel()] = ns.Name
 		shouldUpdate = true
 	}
 	nsHash := strconv.Itoa(rand.Hash(ns.Name, constants.DefaultShardingSize))
-	if val, exist := ns.Labels[ctrlmesh.CtrlmeshShardHashKey]; !exist || nsHash != val {
-		ns.Labels[ctrlmesh.CtrlmeshShardHashKey] = nsHash
+	if val, exist := ns.Labels[ctrlmesh.ShardHashLabel()]; !exist || nsHash != val {
+		ns.Labels[ctrlmesh.ShardHashLabel()] = nsHash
 		shouldUpdate = true
 	}
 	return shouldUpdate

@@ -20,7 +20,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"strings"
 
 	"gomodules.xyz/jsonpatch/v2"
 	admissionv1 "k8s.io/api/admission/v1"
@@ -34,6 +33,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
+
+	"github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh"
 )
 
 var (
@@ -75,18 +76,10 @@ func (r *MutatingHandler) Handle(ctx context.Context, req admission.Request) adm
 			return admission.Errored(http.StatusBadRequest, err)
 		}
 	}
-	patchLabel := map[string]string{}
-	if ns.Labels != nil {
-		for key, val := range ns.Labels {
-			if r.isSelecterKey(key) {
-				patchLabel[key] = val
-			}
-		}
-	}
+	patchLabel := r.getSyncLabels(ns.Labels)
 	if len(patchLabel) == 0 {
 		return admission.Allowed("")
 	}
-
 	marshalled, err := json.Marshal(&PatchMeta{&metav1.ObjectMeta{Labels: patchLabel}})
 	if err != nil {
 		klog.Errorf("meta marshal error, %s", err)
@@ -119,8 +112,18 @@ func (r *MutatingHandler) getNamespaceWithRetry(c client.Client, ctx context.Con
 	return nil
 }
 
-func (r *MutatingHandler) isSelecterKey(key string) bool {
-	return strings.HasPrefix(key, SelectorPrefix)
+func (r *MutatingHandler) getSyncLabels(labels map[string]string) map[string]string {
+	syncLabels := ctrlmesh.ShouldSyncLabels()
+	res := map[string]string{}
+	if !ctrlmesh.IsControlledByMesh(labels) {
+		return res
+	}
+	for _, l := range syncLabels {
+		if val, ok := labels[l]; ok {
+			res[l] = val
+		}
+	}
+	return res
 }
 
 func (r *MutatingHandler) InjectDecoder(d *admission.Decoder) error {
