@@ -19,12 +19,10 @@ package faultinjection
 import (
 	"context"
 	"fmt"
-	"regexp"
 	"sync"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
-	"k8s.io/klog/v2"
 
 	ctrlmeshproto "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/proto"
 )
@@ -48,40 +46,16 @@ type indices map[string]index
 type state struct {
 	mu                 sync.RWMutex
 	key                string
-	state              ctrlmeshproto.FaultInjectionState
 	lastTransitionTime *metav1.Time
-	recoverAt          *metav1.Time
 }
 
-func (s *state) read() (state ctrlmeshproto.FaultInjectionState, lastTime *metav1.Time, recoverTime *metav1.Time) {
+func (s *state) read() (lastTime *metav1.Time) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	if s.lastTransitionTime != nil {
 		lastTime = s.lastTransitionTime.DeepCopy()
 	}
-	if s.recoverAt != nil {
-		recoverTime = s.recoverAt.DeepCopy()
-	}
-	state = s.state
 	return
-}
-
-func (s *state) triggerFaultInjection() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	tm := metav1.Now()
-	if s.transitionTo(ctrlmeshproto.FaultInjectionState_STATEOPENED, &tm) {
-		s.recoverAt = nil
-	}
-}
-
-func (s *state) transitionTo(newStatus ctrlmeshproto.FaultInjectionState, t *metav1.Time) bool {
-	if s.state != newStatus {
-		s.state = newStatus
-		s.lastTransitionTime = t
-		return true
-	}
-	return false
 }
 
 // faultInjectionStore is a thread-safe local store for faultinjection rules
@@ -89,8 +63,6 @@ type store struct {
 	mu sync.RWMutex
 	// rule cache, key is {cb.namespace}:{cb.name}:{rule.name}
 	rules map[string]*ctrlmeshproto.HTTPFaultInjection
-	// circuit breaker states
-	states map[string]*state
 	// indices: resource indices and rest indices
 	indices indices
 
@@ -102,16 +74,11 @@ type store struct {
 func newFaultInjectionStore(ctx context.Context) *store {
 	s := &store{
 		rules:               make(map[string]*ctrlmeshproto.HTTPFaultInjection),
-		states:              make(map[string]*state),
 		indices:             indices{},
 		faultinjectionLease: newFaultInjectionLease(ctx),
 		ctx:                 ctx,
 	}
 	return s
-}
-
-func (s *store) registerState(st *state) {
-	s.faultinjectionLease.registerState(st)
 }
 
 // createOrUpdateRule stores new rules (or updates existing rules) in local store
@@ -123,9 +90,6 @@ func (s *store) createOrUpdateRule(key string, faultinjection *ctrlmeshproto.HTT
 	if !ok {
 		// all new, just assign rules and states, and update indices
 		s.rules[key] = faultinjection
-		s.states[key] = &state{
-			key: key,
-		}
 		s.updateIndices(nil, faultinjection, key)
 	} else {
 		// there is an old one, assign the new rule, update indices
@@ -142,15 +106,7 @@ func (s *store) deleteRule(key string) {
 	if obj, ok := s.rules[key]; ok {
 		s.deleteFromIndices(obj, key)
 		delete(s.rules, key)
-		delete(s.states, key)
 	}
-}
-
-// byKey get the rule by a specific key
-func (s *store) byKey(key string) (*ctrlmeshproto.HTTPFaultInjection, *state) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return s.rules[key], s.states[key]
 }
 
 // byIndex lists rules by a specific index
@@ -169,7 +125,7 @@ func (s *store) byIndex(indexName, indexedValue string) ([]*ctrlmeshproto.HTTPFa
 	states := make([]*state, 0, set.Len())
 	for key := range set {
 		limitings = append(limitings, s.rules[key])
-		states = append(states, s.states[key])
+
 	}
 	return limitings, states
 }
@@ -218,18 +174,6 @@ func (s *store) deleteFromIndices(oldOne *ctrlmeshproto.HTTPFaultInjection, key 
 	}
 }
 
-func (s *store) iterate(f func(key string)) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	for key := range s.rules {
-		f(key)
-	}
-}
-
-func bucketEquals(oldOne, newOne *ctrlmeshproto.Bucket) bool {
-	return oldOne.Interval == newOne.Interval && oldOne.Limit == newOne.Limit && oldOne.Burst == newOne.Burst
-}
-
 func indexForResource(namespace, apiGroup, resource, verb string) string {
 	return fmt.Sprintf("%s:%s:%s:%s", namespace, apiGroup, resource, verb)
 }
@@ -264,121 +208,4 @@ func indexFuncForRest(faultinjection *ctrlmeshproto.HTTPFaultInjection) []string
 		}
 	}
 	return result
-}
-
-func slicesFilterWildcard(slices []string) []string {
-	for _, slice := range slices {
-		if slice == "*" {
-			return []string{"*"}
-		}
-	}
-	return slices
-}
-
-// regexpInfo is contain regexp info
-type regexpInfo struct {
-	// reg is after regexp compiled result
-	reg *regexp.Regexp
-	// regType is represent intercept type
-	regType ctrlmeshproto.TrafficInterceptRule_InterceptType
-	// method is represent url request method
-	method string
-}
-
-// trafficInterceptStore is a thread-safe local store for traffic intercept rules
-type trafficInterceptStore struct {
-	mu sync.RWMutex
-	// rules cache, key is {cb.namespace}:{cb.name}:{rule.name}
-	rules map[string]*ctrlmeshproto.TrafficInterceptRule
-	// normalIndex cache, key is {trafficInterceptStore.Content}:{trafficInterceptStore.Method}, value is {cb.namespace}:{cb.name}:{rule.name}
-	normalIndexes map[string]sets.Set[string]
-	// regexpIndex cache, key is {cb.namespace}:{cb.name}:{rule.name}, value is regexpInfo
-	regexpIndexes map[string][]*regexpInfo
-}
-
-func newTrafficInterceptStore() *trafficInterceptStore {
-	return &trafficInterceptStore{
-		rules:         make(map[string]*ctrlmeshproto.TrafficInterceptRule),
-		normalIndexes: make(map[string]sets.Set[string]),
-		regexpIndexes: make(map[string][]*regexpInfo),
-	}
-}
-
-// createOrUpdateRule stores new rules (or updates existing rules) in local trafficInterceptStore
-func (s *trafficInterceptStore) createOrUpdateRule(key string, trafficInterceptRule *ctrlmeshproto.TrafficInterceptRule) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	oldOne, ok := s.rules[key]
-	if !ok {
-		s.rules[key] = trafficInterceptRule.DeepCopy()
-		s.updateIndex(nil, trafficInterceptRule, key)
-	} else {
-		// there is an old one, assign the new rule, update indices
-		s.rules[key] = trafficInterceptRule.DeepCopy()
-		s.updateIndex(oldOne, trafficInterceptRule, key)
-	}
-}
-
-// deleteRule deletes rules by ley
-func (s *trafficInterceptStore) deleteRule(key string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	if obj, ok := s.rules[key]; ok {
-		s.deleteFromIndex(obj, key)
-	}
-}
-
-// updateIndices updates current indices of the rules
-func (s *trafficInterceptStore) updateIndex(oldOne, newOne *ctrlmeshproto.TrafficInterceptRule, key string) {
-	if oldOne != nil {
-		s.deleteFromIndex(oldOne, key)
-	}
-	if newOne.ContentType == ctrlmeshproto.TrafficInterceptRule_NORMAL {
-		for _, content := range newOne.Contents {
-			for _, method := range newOne.Methods {
-				urlMethod := indexForRest(content, method)
-				set := s.normalIndexes[urlMethod]
-				if set == nil {
-					set = sets.New[string]()
-					s.normalIndexes[urlMethod] = set
-				}
-				set.Insert(key)
-			}
-		}
-	} else if newOne.ContentType == ctrlmeshproto.TrafficInterceptRule_REGEXP {
-		for _, content := range newOne.Contents {
-			if reg, err := regexp.Compile(content); err != nil {
-				klog.Error("Regexp compile with error %v", err)
-			} else {
-				for _, method := range newOne.Methods {
-					s.regexpIndexes[key] = append(s.regexpIndexes[key], &regexpInfo{reg: reg, regType: newOne.InterceptType, method: method})
-				}
-			}
-		}
-	}
-}
-
-// deleteFromIndex delete index of specified key
-func (s *trafficInterceptStore) deleteFromIndex(oldOne *ctrlmeshproto.TrafficInterceptRule, key string) {
-	if oldOne.ContentType == ctrlmeshproto.TrafficInterceptRule_NORMAL {
-		for _, content := range oldOne.Contents {
-			for _, method := range oldOne.Methods {
-				urlMethod := indexForRest(content, method)
-				if s.normalIndexes[urlMethod] != nil {
-					s.normalIndexes[urlMethod].Delete(key)
-					if s.normalIndexes[urlMethod].Len() == 0 {
-						delete(s.normalIndexes, urlMethod)
-					}
-				}
-			}
-		}
-	} else if oldOne.ContentType == ctrlmeshproto.TrafficInterceptRule_REGEXP {
-		for regKey := range s.regexpIndexes {
-			if regKey == key {
-				delete(s.regexpIndexes, key)
-			}
-		}
-	}
 }

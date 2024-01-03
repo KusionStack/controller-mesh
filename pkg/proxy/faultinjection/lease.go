@@ -22,8 +22,6 @@ import (
 	"time"
 
 	"k8s.io/client-go/util/workqueue"
-
-	ctrlmeshproto "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/proto"
 )
 
 type lease struct {
@@ -44,21 +42,6 @@ func newFaultInjectionLease(ctx context.Context) *lease {
 	return result
 }
 
-func (l *lease) registerState(st *state) {
-	if st.state == ctrlmeshproto.FaultInjectionState_STATEOPENED {
-		logger.Info("register state", "state", st.key)
-		l.mu.Lock()
-		defer l.mu.Unlock()
-		if _, ok := l.stateSet[st.key]; !ok {
-			if st.recoverAt != nil {
-				l.stateSet[st.key] = st
-				d := time.Until(st.recoverAt.Time)
-				l.stateQueue.AddAfter(st, d)
-			}
-		}
-	}
-}
-
 func (l *lease) processingLoop() {
 	go func() {
 		<-l.ctx.Done()
@@ -70,7 +53,7 @@ func (l *lease) processingLoop() {
 			return
 		}
 		st := obj.(*state)
-		_, _, recoverAt := st.read()
+		recoverAt := st.read()
 		if recoverAt != nil && time.Now().Before(recoverAt.Time) {
 			// recover time changed, requeue
 			l.stateQueue.AddAfter(st, time.Until(recoverAt.Time))

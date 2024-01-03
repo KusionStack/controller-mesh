@@ -145,7 +145,7 @@ func TestCircuitBreaker(t *testing.T) {
 	g.Expect(c.Update(ctx, cb)).Should(gomega.BeNil())
 	waitProcess()
 	g.Expect(c.Get(ctx, types.NamespacedName{Name: "testcb", Namespace: "default"}, cb)).Should(gomega.BeNil())
-	g.Expect(breakerManager.ValidateTrafficIntercept("aaa.aaa.aaa", "GET").Allowed).Should(gomega.BeFalse())
+	g.Expect(breakerManager.ValidateTrafficIntercept("aaa.aaa.aaa", "GET").Allowed).Should(gomega.BeTrue())
 	if cb.Labels == nil {
 		cb.Labels = map[string]string{}
 	}

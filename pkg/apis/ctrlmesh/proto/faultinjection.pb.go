@@ -25,52 +25,6 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type FaultInjectionState int32
-
-const (
-	FaultInjectionState_STATEOPENED FaultInjectionState = 0
-	FaultInjectionState_STATECLOSED FaultInjectionState = 1
-)
-
-// Enum value maps for FaultInjectionState.
-var (
-	FaultInjectionState_name = map[int32]string{
-		0: "STATEOPENED",
-		1: "STATECLOSED",
-	}
-	FaultInjectionState_value = map[string]int32{
-		"STATEOPENED": 0,
-		"STATECLOSED": 1,
-	}
-)
-
-func (x FaultInjectionState) Enum() *FaultInjectionState {
-	p := new(FaultInjectionState)
-	*p = x
-	return p
-}
-
-func (x FaultInjectionState) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (FaultInjectionState) Descriptor() protoreflect.EnumDescriptor {
-	return file_pkg_apis_ctrlmesh_proto_faultinjection_proto_enumTypes[0].Descriptor()
-}
-
-func (FaultInjectionState) Type() protoreflect.EnumType {
-	return &file_pkg_apis_ctrlmesh_proto_faultinjection_proto_enumTypes[0]
-}
-
-func (x FaultInjectionState) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use FaultInjectionState.Descriptor instead.
-func (FaultInjectionState) EnumDescriptor() ([]byte, []int) {
-	return file_pkg_apis_ctrlmesh_proto_faultinjection_proto_rawDescGZIP(), []int{0}
-}
-
 type FaultInjection_Option int32
 
 const (
@@ -107,11 +61,11 @@ func (x FaultInjection_Option) String() string {
 }
 
 func (FaultInjection_Option) Descriptor() protoreflect.EnumDescriptor {
-	return file_pkg_apis_ctrlmesh_proto_faultinjection_proto_enumTypes[1].Descriptor()
+	return file_pkg_apis_ctrlmesh_proto_faultinjection_proto_enumTypes[0].Descriptor()
 }
 
 func (FaultInjection_Option) Type() protoreflect.EnumType {
-	return &file_pkg_apis_ctrlmesh_proto_faultinjection_proto_enumTypes[1]
+	return &file_pkg_apis_ctrlmesh_proto_faultinjection_proto_enumTypes[0]
 }
 
 func (x FaultInjection_Option) Number() protoreflect.EnumNumber {
@@ -930,20 +884,17 @@ var file_pkg_apis_ctrlmesh_proto_faultinjection_proto_rawDesc = []byte{
 	0x70, 0x61, 0x63, 0x65, 0x73, 0x12, 0x1c, 0x0a, 0x09, 0x72, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63,
 	0x65, 0x73, 0x18, 0x04, 0x20, 0x03, 0x28, 0x09, 0x52, 0x09, 0x72, 0x65, 0x73, 0x6f, 0x75, 0x72,
 	0x63, 0x65, 0x73, 0x12, 0x14, 0x0a, 0x05, 0x76, 0x65, 0x72, 0x62, 0x73, 0x18, 0x05, 0x20, 0x03,
-	0x28, 0x09, 0x52, 0x05, 0x76, 0x65, 0x72, 0x62, 0x73, 0x2a, 0x37, 0x0a, 0x13, 0x46, 0x61, 0x75,
-	0x6c, 0x74, 0x49, 0x6e, 0x6a, 0x65, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x53, 0x74, 0x61, 0x74, 0x65,
-	0x12, 0x0f, 0x0a, 0x0b, 0x53, 0x54, 0x41, 0x54, 0x45, 0x4f, 0x50, 0x45, 0x4e, 0x45, 0x44, 0x10,
-	0x00, 0x12, 0x0f, 0x0a, 0x0b, 0x53, 0x54, 0x41, 0x54, 0x45, 0x43, 0x4c, 0x4f, 0x53, 0x45, 0x44,
-	0x10, 0x01, 0x32, 0x50, 0x0a, 0x0b, 0x46, 0x61, 0x75, 0x6c, 0x74, 0x49, 0x6e, 0x6a, 0x65, 0x63,
-	0x74, 0x12, 0x41, 0x0a, 0x0a, 0x53, 0x65, 0x6e, 0x64, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x12,
-	0x15, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x46, 0x61, 0x75, 0x6c, 0x74, 0x49, 0x6e, 0x6a,
-	0x65, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x1a, 0x1c, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x46,
-	0x61, 0x75, 0x6c, 0x74, 0x49, 0x6e, 0x6a, 0x65, 0x63, 0x74, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67,
-	0x52, 0x65, 0x73, 0x70, 0x42, 0x40, 0x5a, 0x3e, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63,
-	0x6f, 0x6d, 0x2f, 0x4b, 0x75, 0x73, 0x69, 0x6f, 0x6e, 0x53, 0x74, 0x61, 0x63, 0x6b, 0x2f, 0x63,
-	0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2d, 0x6d, 0x65, 0x73, 0x68, 0x2f, 0x70,
-	0x6b, 0x67, 0x2f, 0x61, 0x70, 0x69, 0x73, 0x2f, 0x63, 0x74, 0x72, 0x6c, 0x6d, 0x65, 0x73, 0x68,
-	0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x28, 0x09, 0x52, 0x05, 0x76, 0x65, 0x72, 0x62, 0x73, 0x32, 0x50, 0x0a, 0x0b, 0x46, 0x61, 0x75,
+	0x6c, 0x74, 0x49, 0x6e, 0x6a, 0x65, 0x63, 0x74, 0x12, 0x41, 0x0a, 0x0a, 0x53, 0x65, 0x6e, 0x64,
+	0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x12, 0x15, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x46,
+	0x61, 0x75, 0x6c, 0x74, 0x49, 0x6e, 0x6a, 0x65, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x1a, 0x1c, 0x2e,
+	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x46, 0x61, 0x75, 0x6c, 0x74, 0x49, 0x6e, 0x6a, 0x65, 0x63,
+	0x74, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x52, 0x65, 0x73, 0x70, 0x42, 0x40, 0x5a, 0x3e, 0x67,
+	0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x4b, 0x75, 0x73, 0x69, 0x6f, 0x6e,
+	0x53, 0x74, 0x61, 0x63, 0x6b, 0x2f, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72,
+	0x2d, 0x6d, 0x65, 0x73, 0x68, 0x2f, 0x70, 0x6b, 0x67, 0x2f, 0x61, 0x70, 0x69, 0x73, 0x2f, 0x63,
+	0x74, 0x72, 0x6c, 0x6d, 0x65, 0x73, 0x68, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x06, 0x70,
+	0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -958,34 +909,33 @@ func file_pkg_apis_ctrlmesh_proto_faultinjection_proto_rawDescGZIP() []byte {
 	return file_pkg_apis_ctrlmesh_proto_faultinjection_proto_rawDescData
 }
 
-var file_pkg_apis_ctrlmesh_proto_faultinjection_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_pkg_apis_ctrlmesh_proto_faultinjection_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_pkg_apis_ctrlmesh_proto_faultinjection_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_pkg_apis_ctrlmesh_proto_faultinjection_proto_goTypes = []interface{}{
-	(FaultInjectionState)(0),         // 0: proto.FaultInjectionState
-	(FaultInjection_Option)(0),       // 1: proto.FaultInjection.Option
-	(*FaultInjectConfigResp)(nil),    // 2: proto.FaultInjectConfigResp
-	(*FaultInjection)(nil),           // 3: proto.FaultInjection
-	(*HTTPFaultInjection)(nil),       // 4: proto.HTTPFaultInjection
-	(*EffectiveTimeRange)(nil),       // 5: proto.EffectiveTimeRange
-	(*MultiRestRule)(nil),            // 6: proto.MultiRestRule
-	(*HTTPMatchRequest)(nil),         // 7: proto.HTTPMatchRequest
-	(*ResourceMatch)(nil),            // 8: proto.ResourceMatch
-	(*HTTPFaultInjection_Delay)(nil), // 9: proto.HTTPFaultInjection.Delay
-	(*HTTPFaultInjection_Abort)(nil), // 10: proto.HTTPFaultInjection.Abort
-	(*durationpb.Duration)(nil),      // 11: google.protobuf.Duration
+	(FaultInjection_Option)(0),       // 0: proto.FaultInjection.Option
+	(*FaultInjectConfigResp)(nil),    // 1: proto.FaultInjectConfigResp
+	(*FaultInjection)(nil),           // 2: proto.FaultInjection
+	(*HTTPFaultInjection)(nil),       // 3: proto.HTTPFaultInjection
+	(*EffectiveTimeRange)(nil),       // 4: proto.EffectiveTimeRange
+	(*MultiRestRule)(nil),            // 5: proto.MultiRestRule
+	(*HTTPMatchRequest)(nil),         // 6: proto.HTTPMatchRequest
+	(*ResourceMatch)(nil),            // 7: proto.ResourceMatch
+	(*HTTPFaultInjection_Delay)(nil), // 8: proto.HTTPFaultInjection.Delay
+	(*HTTPFaultInjection_Abort)(nil), // 9: proto.HTTPFaultInjection.Abort
+	(*durationpb.Duration)(nil),      // 10: google.protobuf.Duration
 }
 var file_pkg_apis_ctrlmesh_proto_faultinjection_proto_depIdxs = []int32{
-	4,  // 0: proto.FaultInjection.httpFaultInjections:type_name -> proto.HTTPFaultInjection
-	1,  // 1: proto.FaultInjection.option:type_name -> proto.FaultInjection.Option
-	9,  // 2: proto.HTTPFaultInjection.delay:type_name -> proto.HTTPFaultInjection.Delay
-	10, // 3: proto.HTTPFaultInjection.abort:type_name -> proto.HTTPFaultInjection.Abort
-	7,  // 4: proto.HTTPFaultInjection.match:type_name -> proto.HTTPMatchRequest
-	5,  // 5: proto.HTTPFaultInjection.effective_time:type_name -> proto.EffectiveTimeRange
-	8,  // 6: proto.HTTPMatchRequest.relatedResources:type_name -> proto.ResourceMatch
-	6,  // 7: proto.HTTPMatchRequest.restRules:type_name -> proto.MultiRestRule
-	11, // 8: proto.HTTPFaultInjection.Delay.fixed_delay:type_name -> google.protobuf.Duration
-	3,  // 9: proto.FaultInject.SendConfig:input_type -> proto.FaultInjection
-	2,  // 10: proto.FaultInject.SendConfig:output_type -> proto.FaultInjectConfigResp
+	3,  // 0: proto.FaultInjection.httpFaultInjections:type_name -> proto.HTTPFaultInjection
+	0,  // 1: proto.FaultInjection.option:type_name -> proto.FaultInjection.Option
+	8,  // 2: proto.HTTPFaultInjection.delay:type_name -> proto.HTTPFaultInjection.Delay
+	9,  // 3: proto.HTTPFaultInjection.abort:type_name -> proto.HTTPFaultInjection.Abort
+	6,  // 4: proto.HTTPFaultInjection.match:type_name -> proto.HTTPMatchRequest
+	4,  // 5: proto.HTTPFaultInjection.effective_time:type_name -> proto.EffectiveTimeRange
+	7,  // 6: proto.HTTPMatchRequest.relatedResources:type_name -> proto.ResourceMatch
+	5,  // 7: proto.HTTPMatchRequest.restRules:type_name -> proto.MultiRestRule
+	10, // 8: proto.HTTPFaultInjection.Delay.fixed_delay:type_name -> google.protobuf.Duration
+	2,  // 9: proto.FaultInject.SendConfig:input_type -> proto.FaultInjection
+	1,  // 10: proto.FaultInject.SendConfig:output_type -> proto.FaultInjectConfigResp
 	10, // [10:11] is the sub-list for method output_type
 	9,  // [9:10] is the sub-list for method input_type
 	9,  // [9:9] is the sub-list for extension type_name
@@ -1121,7 +1071,7 @@ func file_pkg_apis_ctrlmesh_proto_faultinjection_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_pkg_apis_ctrlmesh_proto_faultinjection_proto_rawDesc,
-			NumEnums:      2,
+			NumEnums:      1,
 			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   1,

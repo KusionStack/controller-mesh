@@ -24,7 +24,6 @@ import (
 	"math/rand"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 	"sync"
 	"time"
@@ -35,7 +34,6 @@ import (
 
 	// pkgfi "github.com/KusionStack/controller-mesh/circuitbreaker"
 
-	"github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/constants"
 	ctrlmeshproto "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/proto"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -43,9 +41,8 @@ import (
 const timeLayout = "15:04:05"
 
 var (
-	logger                   = logf.Log.WithName("fault-injection-manager")
-	randNum                  = rand.New(rand.NewSource(time.Now().UnixNano()))
-	enableRestFaultInjection = os.Getenv(constants.EnvEnableRestFaultInjection) == "true"
+	logger  = logf.Log.WithName("fault-injection-manager")
+	randNum = rand.New(rand.NewSource(time.Now().UnixNano()))
 )
 
 type ManagerInterface interface {
@@ -166,7 +163,7 @@ func (m *manager) FaultInjectionRest(URL string, method string) (result *FaultIn
 		result = m.doFaultInjection(faultInjections, states)
 		return result
 	}
-	result = &FaultInjectionResult{Abort: true, Reason: "No rule match"}
+	result = &FaultInjectionResult{Abort: false, Reason: "No rule match"}
 	return result
 }
 
@@ -204,7 +201,7 @@ func (m *manager) FaultInjectionResource(namespace, apiGroup, resource, verb str
 		result = m.doFaultInjection(faultInjections, states)
 		return result
 	}
-	result = &FaultInjectionResult{Abort: true, Reason: "No rule match"}
+	result = &FaultInjectionResult{Abort: false, Reason: "No rule match"}
 	return result
 }
 
@@ -251,7 +248,7 @@ func withFaultInjection(injector FaultInjector, handler http.Handler) http.Handl
 		}
 		result := injector.FaultInjectionResource(requestInfo.Namespace, requestInfo.APIGroup, requestInfo.Resource, requestInfo.Verb)
 
-		if !result.Abort {
+		if result.Abort {
 			apiErr := httpToAPIError(int(result.ErrCode), result.Message)
 			if apiErr.Code != http.StatusOK {
 				w.Header().Set("Content-Type", "application/json")
@@ -268,7 +265,7 @@ func withFaultInjection(injector FaultInjector, handler http.Handler) http.Handl
 
 func (m *manager) doFaultInjection(faultInjections []*ctrlmeshproto.HTTPFaultInjection, states []*state) *FaultInjectionResult {
 	result := &FaultInjectionResult{
-		Abort:  true,
+		Abort:  false,
 		Reason: "Default allow",
 	}
 	for idx := range faultInjections {
@@ -288,14 +285,13 @@ func (m *manager) doFaultInjection(faultInjections []*ctrlmeshproto.HTTPFaultInj
 		}
 		if faultInjections[idx].Abort != nil {
 			if isInpercentRange(faultInjections[idx].Abort.Percent) {
-				result.Abort = false
+				result.Abort = true
 				result.Reason = "FaultInjectionTriggered"
 				result.Message = fmt.Sprintf("the fault injection is triggered. Limiting rule name: %s", faultInjections[idx].Name)
 				result.ErrCode = faultInjections[idx].Abort.GetHttpStatus()
 			}
 
 		}
-		states[idx].triggerFaultInjection()
 	}
 	return result
 }

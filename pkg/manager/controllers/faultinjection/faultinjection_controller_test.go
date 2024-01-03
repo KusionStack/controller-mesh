@@ -104,7 +104,7 @@ var faultInjection = &ctrlmeshv1alpha1.FaultInjection{
 	},
 }
 
-func TestCircuitBreaker(t *testing.T) {
+func TestFaultInjection(t *testing.T) {
 	g := gomega.NewGomegaWithT(t)
 	defer Stop()
 	RunMockServer()
@@ -163,6 +163,7 @@ func TestCircuitBreaker(t *testing.T) {
 	g.Expect(c.Update(ctx, cb)).Should(gomega.BeNil())
 	waitProcess()
 	g.Expect(c.Get(ctx, types.NamespacedName{Name: "testcb", Namespace: "default"}, cb)).Should(gomega.BeNil())
+	waitProcess()
 	g.Expect(faultManager.FaultInjectionRest("aaa.aaa.aaa", "GET").Abort).Should(gomega.BeTrue())
 	if cb.Labels == nil {
 		cb.Labels = map[string]string{}

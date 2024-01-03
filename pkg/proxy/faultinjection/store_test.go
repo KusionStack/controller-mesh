@@ -99,12 +99,12 @@ func TestFaultInjectionStore(t *testing.T) {
 	g := gomega.NewGomegaWithT(t)
 	g.Expect(len(rules)).To(gomega.BeEquivalentTo(1))
 	// g.Expect(len(limiters)).To(gomega.BeEquivalentTo(1))
-	g.Expect(len(states)).To(gomega.BeEquivalentTo(1))
+	g.Expect(len(states)).To(gomega.BeEquivalentTo(0))
 
 	rules, states = store.byIndex(IndexRest, "https://localhost:80/createDomain:POST")
 	g.Expect(len(rules)).To(gomega.BeEquivalentTo(1))
 	// g.Expect(len(limiters)).To(gomega.BeEquivalentTo(1))
-	g.Expect(len(states)).To(gomega.BeEquivalentTo(1))
+	g.Expect(len(states)).To(gomega.BeEquivalentTo(0))
 }
 
 func TestLimiterPriority(t *testing.T) {
@@ -142,7 +142,7 @@ func TestLimiterPriority(t *testing.T) {
 		conv.ConvertHTTPFaultInjection(limitingA))
 
 	result := mgr.FaultInjectionResource("default", "", "pod", "delete")
-	g.Expect(result.Abort).Should(gomega.BeFalse())
+	g.Expect(result.Abort).Should(gomega.BeTrue())
 
 	limitingB := &ctrlmeshv1alpha1.HTTPFaultInjection{
 		Name: "deletePod1-priority",
@@ -171,7 +171,7 @@ func TestLimiterPriority(t *testing.T) {
 		conv.ConvertHTTPFaultInjection(limitingB))
 
 	result = mgr.FaultInjectionResource("default", "", "pod", "delete")
-	g.Expect(result.Abort).Should(gomega.BeFalse())
+	g.Expect(result.Abort).Should(gomega.BeTrue())
 	g.Expect(result.Message).Should(gomega.ContainSubstring("deletePod1-priority"))
 
 	limitingC := &ctrlmeshv1alpha1.HTTPFaultInjection{
@@ -199,7 +199,7 @@ func TestLimiterPriority(t *testing.T) {
 	mgr.faultInjectionStore.createOrUpdateRule("global:deletePod2-priority",
 		conv.ConvertHTTPFaultInjection(limitingC))
 	result = mgr.FaultInjectionResource("default", "", "pod", "delete")
-	g.Expect(result.Abort).Should(gomega.BeFalse())
+	g.Expect(result.Abort).Should(gomega.BeTrue())
 	g.Expect(result.Message).Should(gomega.ContainSubstring("deletePod2-priority"))
 
 	limitingD := &ctrlmeshv1alpha1.HTTPFaultInjection{
@@ -227,7 +227,7 @@ func TestLimiterPriority(t *testing.T) {
 	mgr.faultInjectionStore.createOrUpdateRule("global:deletePod3-priority",
 		conv.ConvertHTTPFaultInjection(limitingD))
 	result = mgr.FaultInjectionResource("default", "", "pod", "delete")
-	g.Expect(result.Abort).Should(gomega.BeFalse())
+	g.Expect(result.Abort).Should(gomega.BeTrue())
 	g.Expect(result.Message).Should(gomega.ContainSubstring("deletePod3-priority"))
 }
 
@@ -298,7 +298,7 @@ func TestRestLimiterPriority(t *testing.T) {
 		conv.ConvertHTTPFaultInjection(limitingA))
 	g := gomega.NewGomegaWithT(t)
 	result := mgr.FaultInjectionRest("https://www.cnblogs.com/f-ck-need-u/p/9854932.html", "GET")
-	g.Expect(result.Abort).Should(gomega.BeFalse())
+	g.Expect(result.Abort).Should(gomega.BeTrue())
 
 	limitingB := &ctrlmeshv1alpha1.HTTPFaultInjection{
 		Name: "rest1-priority",
@@ -323,7 +323,7 @@ func TestRestLimiterPriority(t *testing.T) {
 	mgr.faultInjectionStore.createOrUpdateRule("global:rest1-priority",
 		conv.ConvertHTTPFaultInjection(limitingB))
 	result = mgr.FaultInjectionRest("https://www.cnblogs.com/f-ck-need-u/p/9854932.html", "GET")
-	g.Expect(result.Abort).Should(gomega.BeFalse())
+	g.Expect(result.Abort).Should(gomega.BeTrue())
 	g.Expect(result.Message).Should(gomega.ContainSubstring("rest1-priority"))
 
 	limitingC := &ctrlmeshv1alpha1.HTTPFaultInjection{
@@ -350,7 +350,7 @@ func TestRestLimiterPriority(t *testing.T) {
 	mgr.faultInjectionStore.createOrUpdateRule("global:rest2-priority",
 		conv.ConvertHTTPFaultInjection(limitingC))
 	result = mgr.FaultInjectionRest("https://www.cnblogs.com/f-ck-need-u/p/9854932.html", "GET")
-	g.Expect(result.Abort).Should(gomega.BeFalse())
+	g.Expect(result.Abort).Should(gomega.BeTrue())
 	g.Expect(result.Message).Should(gomega.ContainSubstring("rest2-priority"))
 
 	limitingD := &ctrlmeshv1alpha1.HTTPFaultInjection{
@@ -376,6 +376,6 @@ func TestRestLimiterPriority(t *testing.T) {
 	mgr.faultInjectionStore.createOrUpdateRule("global:rest3-priority",
 		conv.ConvertHTTPFaultInjection(limitingD))
 	result = mgr.FaultInjectionRest("https://www.cnblogs.com/f-ck-need-u/p/9854932.html", "GET")
-	g.Expect(result.Abort).Should(gomega.BeFalse())
+	g.Expect(result.Abort).Should(gomega.BeTrue())
 	g.Expect(result.Message).Should(gomega.ContainSubstring("rest3-priority"))
 }

@@ -71,7 +71,7 @@ func (t *tproxy) handleHTTP(resp http.ResponseWriter, req *http.Request) {
 	// ValidateRest check
 	logger.Info("start ValidateRest checkrule ", "realEndPointUrl.Host", realEndPointUrl.Host, "req.Method", req.Method)
 	result := t.FaultInjector.FaultInjectionRest(req.Header.Get(meshhttp.HeaderMeshRealEndpoint), req.Method)
-	if !result.Abort {
+	if result.Abort {
 		apiErr := httpToAPIError(int(result.ErrCode), result.Message)
 		if apiErr.Code != http.StatusOK {
 			resp.Header().Set("Content-Type", "application/json")

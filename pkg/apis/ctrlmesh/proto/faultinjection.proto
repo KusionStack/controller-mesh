@@ -17,11 +17,6 @@ message FaultInjectConfigResp {
   string message = 2;
 }
 
-enum FaultInjectionState {
-  STATEOPENED = 0;
-  STATECLOSED = 1;
-}
-
 message FaultInjection {
   repeated HTTPFaultInjection httpFaultInjections = 1;
 
