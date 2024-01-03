@@ -52,8 +52,9 @@ var (
 	scheme   = runtime.NewScheme()
 	setupLog = ctrl.Log.WithName("setup")
 
-	restConfigQPS   = flag.Int("rest-config-qps", 30, "QPS of rest config.")
-	restConfigBurst = flag.Int("rest-config-burst", 50, "Burst of rest config.")
+	restConfigQPS       = flag.Int("rest-config-qps", 30, "QPS of rest config.")
+	restConfigBurst     = flag.Int("rest-config-burst", 50, "Burst of rest config.")
+	enablePatchRunnable = flag.Bool("enable-patch-runnable", true, "")
 )
 
 func init() {
@@ -161,10 +162,11 @@ func main() {
 			setupLog.Error(err, "unable to create controller", "controller", "CircuitBreaker")
 			os.Exit(1)
 		}
-
-		if err = patchrunnable.SetupWithManager(mgr); err != nil {
-			setupLog.Error(err, "unable to create runnable", "runnable", "PatchRunnable")
-			os.Exit(1)
+		if *enablePatchRunnable {
+			if err = patchrunnable.SetupWithManager(mgr); err != nil {
+				setupLog.Error(err, "unable to create runnable", "runnable", "PatchRunnable")
+				os.Exit(1)
+			}
 		}
 	}()
 

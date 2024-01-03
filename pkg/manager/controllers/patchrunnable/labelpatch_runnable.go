@@ -295,25 +295,25 @@ func updateLabel(ns *v1.Namespace) (bool, error) {
 
 	nsHash := strconv.Itoa(rand.Hash(ns.Name, constants.DefaultShardingSize))
 
-	if _, ok := ns.Labels[ctrlmesh.CtrlmeshControlKey]; !ok {
-		if _, exist := ns.Labels[ctrlmesh.CtrlmeshShardHashKey]; exist {
-			return false, fmt.Errorf("label %s already exist but can not find %s", ctrlmesh.CtrlmeshShardHashKey, ctrlmesh.CtrlmeshControlKey)
+	if _, ok := ns.Labels[ctrlmesh.MeshControlLabel()]; !ok {
+		if _, exist := ns.Labels[ctrlmesh.ShardHashLabel()]; exist {
+			return false, fmt.Errorf("label %s already exist but can not find %s", ctrlmesh.ShardHashLabel(), ctrlmesh.MeshControlLabel())
 		}
-		if _, exist := ns.Labels[ctrlmesh.CtrlmeshNamespaceKey]; exist {
-			return false, fmt.Errorf("label %s already exist but can not find %s", ctrlmesh.CtrlmeshNamespaceKey, ctrlmesh.CtrlmeshControlKey)
+		if _, exist := ns.Labels[ctrlmesh.NamespaceShardLabel()]; exist {
+			return false, fmt.Errorf("label %s already exist but can not find %s", ctrlmesh.NamespaceShardLabel(), ctrlmesh.MeshControlLabel())
 		}
-		ns.Labels[ctrlmesh.CtrlmeshControlKey] = "true"
-		ns.Labels[ctrlmesh.CtrlmeshNamespaceKey] = ns.Name
-		ns.Labels[ctrlmesh.CtrlmeshShardHashKey] = nsHash
+		ns.Labels[ctrlmesh.MeshControlLabel()] = "true"
+		ns.Labels[ctrlmesh.NamespaceShardLabel()] = ns.Name
+		ns.Labels[ctrlmesh.ShardHashLabel()] = nsHash
 		return true, nil
 	} else {
-		if val, exist := ns.Labels[ctrlmesh.CtrlmeshShardHashKey]; !exist || nsHash != val {
-			ns.Labels[ctrlmesh.CtrlmeshNamespaceKey] = ns.Name
-			ns.Labels[ctrlmesh.CtrlmeshShardHashKey] = nsHash
+		if val, exist := ns.Labels[ctrlmesh.ShardHashLabel()]; !exist || nsHash != val {
+			ns.Labels[ctrlmesh.NamespaceShardLabel()] = ns.Name
+			ns.Labels[ctrlmesh.ShardHashLabel()] = nsHash
 			return true, nil
 		}
-		if val, exist := ns.Labels[ctrlmesh.CtrlmeshNamespaceKey]; !exist || val != ns.Name {
-			ns.Labels[ctrlmesh.CtrlmeshNamespaceKey] = ns.Name
+		if val, exist := ns.Labels[ctrlmesh.NamespaceShardLabel()]; !exist || val != ns.Name {
+			ns.Labels[ctrlmesh.NamespaceShardLabel()] = ns.Name
 			return true, nil
 		}
 	}
