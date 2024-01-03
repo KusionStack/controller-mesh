@@ -125,7 +125,7 @@ type FaultInjectionStatus struct {
 	ObservedGeneration int64                         `json:"observedGeneration,omitempty"`
 	LastUpdatedTime    *metav1.Time                  `json:"lastUpdatedTime,omitempty"`
 	CurrentSpecHash    string                        `json:"currentSpecHash,omitempty"`
-	TargetStatus       []*FaultInjectionTargetStatus `json:"faultinjectiontargetStatus,omitempty"`
+	TargetStatus       []*FaultInjectionTargetStatus `json:"targetStatus,omitempty"`
 }
 
 type FaultInjectionTargetStatus struct {

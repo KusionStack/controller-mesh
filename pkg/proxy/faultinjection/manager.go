@@ -34,8 +34,9 @@ import (
 
 	// pkgfi "github.com/KusionStack/controller-mesh/circuitbreaker"
 
-	ctrlmeshproto "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/proto"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	ctrlmeshproto "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/proto"
 )
 
 const timeLayout = "15:04:05"
@@ -258,7 +259,6 @@ func withFaultInjection(injector FaultInjector, handler http.Handler) http.Handl
 				return
 			}
 		}
-
 		handler.ServeHTTP(w, req)
 	})
 }

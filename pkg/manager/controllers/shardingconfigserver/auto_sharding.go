@@ -185,14 +185,14 @@ func genCanaryLimits(canaryConfig *ctrlmeshv1alpha1.CanaryConfig, originLimiter 
 		}
 		if len(canaryConfig.InNamespaces) > 0 {
 			newSel.Selector.MatchExpressions = append(newSel.Selector.MatchExpressions, metav1.LabelSelectorRequirement{
-				Key:      ctrlmesh.CtrlmeshNamespaceKey,
+				Key:      ctrlmesh.NamespaceShardLabel(),
 				Operator: metav1.LabelSelectorOpIn,
 				Values:   canaryConfig.InNamespaces,
 			})
 		}
 		if len(canaryConfig.InShardHash) > 0 {
 			newSel.Selector.MatchExpressions = append(newSel.Selector.MatchExpressions, metav1.LabelSelectorRequirement{
-				Key:      ctrlmesh.CtrlmeshShardHashKey,
+				Key:      ctrlmesh.ShardHashLabel(),
 				Operator: metav1.LabelSelectorOpIn,
 				Values:   canaryConfig.InShardHash,
 			})
@@ -214,20 +214,20 @@ func genShardingGlobalLimits(root *ctrlmeshv1alpha1.ShardingConfig, batch []stri
 		}
 		if canaryConfig != nil && len(canaryConfig.InNamespaces) > 0 && *root.Spec.Root.Canary.Replicas > 0 {
 			newSel.Selector.MatchExpressions = append(newSel.Selector.MatchExpressions, metav1.LabelSelectorRequirement{
-				Key:      ctrlmesh.CtrlmeshNamespaceKey,
+				Key:      ctrlmesh.NamespaceShardLabel(),
 				Operator: metav1.LabelSelectorOpNotIn,
 				Values:   canaryConfig.InNamespaces,
 			})
 		}
 		if canaryConfig != nil && len(canaryConfig.InShardHash) > 0 && *root.Spec.Root.Canary.Replicas > 0 {
 			newSel.Selector.MatchExpressions = append(newSel.Selector.MatchExpressions, metav1.LabelSelectorRequirement{
-				Key:      ctrlmesh.CtrlmeshShardHashKey,
+				Key:      ctrlmesh.ShardHashLabel(),
 				Operator: metav1.LabelSelectorOpNotIn,
 				Values:   canaryConfig.InShardHash,
 			})
 		}
 		newSel.Selector.MatchExpressions = append(newSel.Selector.MatchExpressions, metav1.LabelSelectorRequirement{
-			Key:      ctrlmesh.CtrlmeshShardHashKey,
+			Key:      ctrlmesh.ShardHashLabel(),
 			Operator: metav1.LabelSelectorOpIn,
 			Values:   batch,
 		})
