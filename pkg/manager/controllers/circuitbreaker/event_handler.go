@@ -59,9 +59,19 @@ func (h *podEventHandler) Update(e event.UpdateEvent, q workqueue.RateLimitingIn
 	if !sidecarInjected(oldPod) {
 		return
 	}
-	if !isProxyAvailable(newPod) || isProxyAvailable(oldPod) {
+	if !isProxyAvailable(newPod) {
 		return
 	}
+	if !isProxyAvailable(oldPod) {
+		breakers, err := effectiveBreakers(h.reader, newPod)
+		if err != nil {
+			klog.Errorf("fail to get effective CircuitBreakers by pod %s/%s, %v", newPod.Namespace, newPod.Name, err)
+			return
+		}
+		add(q, breakers)
+		return
+	}
+	// all available
 	breakers, err := matchChangedBreakers(h.reader, oldPod, newPod)
 	if err != nil {
 		klog.Errorf("fail to get effective CircuitBreakers by pod %s/%s, %v", newPod.Namespace, newPod.Name, err)

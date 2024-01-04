@@ -131,6 +131,7 @@ func TestCircuitBreaker(t *testing.T) {
 	g.Expect(c.Status().Update(ctx, testPod)).Should(gomega.BeNil())
 	g.Eventually(func() string {
 		g.Expect(c.Get(ctx, types.NamespacedName{Name: "testcb", Namespace: "default"}, cb)).Should(gomega.BeNil())
+		g.Expect(c.Get(ctx, types.NamespacedName{Name: testPod.Name, Namespace: "default"}, testPod)).Should(gomega.BeNil())
 		if cb.Status.TargetStatus != nil {
 			return cb.Status.TargetStatus[0].PodIP
 		}
@@ -181,8 +182,13 @@ var syncCount int
 func RunMockServer() {
 	breakerMgr := circuitbreaker.NewManager(ctx)
 	breakerManager = breakerMgr
-	proxyServer := grpcserver.GrpcServer{BreakerMgr: &mockBreakerManager{breakerMgr}}
-	go proxyServer.Start(ctx)
+	proxyGRPCServerPort = 5455
+	proxyServer := grpcserver.GrpcServer{BreakerMgr: &mockBreakerManager{breakerMgr}, Port: 5455}
+	wg.Add(1)
+	go func() {
+		proxyServer.Start(ctx)
+		wg.Done()
+	}()
 	<-time.After(2 * time.Second)
 }
 

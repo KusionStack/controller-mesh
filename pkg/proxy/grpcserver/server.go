@@ -35,7 +35,7 @@ import (
 )
 
 var (
-	GrpcServerPort = constants.ProxyGRPCServerPort
+	grpcServerPort = constants.ProxyGRPCServerPort
 )
 
 func init() {
@@ -43,7 +43,7 @@ func init() {
 	if envConfig != "" {
 		p, err := strconv.Atoi(envConfig)
 		if err != nil {
-			GrpcServerPort = p
+			grpcServerPort = p
 		}
 	}
 }
@@ -52,19 +52,25 @@ type GrpcServer struct {
 	BreakerMgr        circuitbreaker.ManagerInterface
 	FaultInjectionMgr faultinjection.ManagerInterface
 
-	mux *http.ServeMux
+	Port int
+	mux  *http.ServeMux
 }
 
 func (s *GrpcServer) Start(ctx context.Context) {
+	if s.Port == 0 {
+		s.Port = grpcServerPort
+	}
 	s.mux = http.NewServeMux()
 	s.mux.Handle(protoconnect.NewThrottlingHandler(&grpcThrottlingHandler{mgr: s.BreakerMgr}, connect.WithSendMaxBytes(1024*1024*64)))
 	s.mux.Handle(protoconnect.NewFaultInjectHandler(&grpcFaultInjectHandler{mgr: s.FaultInjectionMgr}, connect.WithSendMaxBytes(1024*1024*64)))
-	addr := fmt.Sprintf(":%d", GrpcServerPort)
+	addr := fmt.Sprintf(":%d", s.Port)
+	// Use h2c so we can serve HTTP/2 without TLS.
+	server := &http.Server{Addr: addr, Handler: h2c.NewHandler(s.mux, &http2.Server{})}
 	go func() {
-		// Use h2c so we can serve HTTP/2 without TLS.
-		if err := http.ListenAndServe(addr, h2c.NewHandler(s.mux, &http2.Server{})); err != nil {
+		if err := server.ListenAndServe(); err != nil {
 			klog.Errorf("serve gRPC error %v", err)
 		}
 	}()
 	<-ctx.Done()
+	server.Close()
 }

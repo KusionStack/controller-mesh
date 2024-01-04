@@ -73,7 +73,7 @@ func (r *CircuitBreakerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	defer func() {
-		if res.RequeueAfter == 0 {
+		if res.RequeueAfter == 0 && reconcileErr == nil {
 			res.RequeueAfter = defaultRequeueTime
 		}
 	}()
@@ -284,8 +284,10 @@ func protoClient(podIp string) protoconnect.ThrottlingClient {
 	return protoconnect.NewThrottlingClient(proto.DefaultHttpClient, podAddr(podIp))
 }
 
+var proxyGRPCServerPort = constants.ProxyGRPCServerPort
+
 func podAddr(podIp string) string {
-	return fmt.Sprintf("https://%s:%d", podIp, constants.ProxyGRPCServerPort)
+	return fmt.Sprintf("https://%s:%d", podIp, proxyGRPCServerPort)
 }
 
 func isProxyAvailable(po *v1.Pod) bool {

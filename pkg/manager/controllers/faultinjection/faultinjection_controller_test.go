@@ -107,7 +107,7 @@ var faultInjection = &ctrlmeshv1alpha1.FaultInjection{
 func TestFaultInjection(t *testing.T) {
 	g := gomega.NewGomegaWithT(t)
 	defer Stop()
-	grpcserver.GrpcServerPort = 5455
+	wg.Add(1)
 	RunMockServer()
 	testPod := mockPod.DeepCopy()
 	testFaultInjection := faultInjection.DeepCopy()
@@ -206,8 +206,12 @@ var faultManager faultinjection.ManagerInterface
 func RunMockServer() {
 	faultInjectionMgr := faultinjection.NewManager(ctx)
 	faultManager = faultInjectionMgr
-	proxyServer := grpcserver.GrpcServer{FaultInjectionMgr: &mockFaultInjectionManager{faultInjectionMgr}}
-	go proxyServer.Start(ctx)
+	proxyGRPCServerPort = 5456
+	proxyServer := grpcserver.GrpcServer{FaultInjectionMgr: &mockFaultInjectionManager{faultInjectionMgr}, Port: 5456}
+	go func() {
+		proxyServer.Start(ctx)
+		wg.Done()
+	}()
 	<-time.After(2 * time.Second)
 }
 

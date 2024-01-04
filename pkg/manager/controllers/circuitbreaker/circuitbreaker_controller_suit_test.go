@@ -22,7 +22,6 @@ import (
 	"path/filepath"
 	"sync"
 	"testing"
-	"time"
 
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -82,7 +81,6 @@ func TestMain(m *testing.M) {
 			panic(err)
 		}
 	}()
-	<-time.After(time.Second * 3)
 	code := m.Run()
 	env.Stop()
 	os.Exit(code)
