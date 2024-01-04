@@ -79,7 +79,7 @@ var faultInjection = &ctrlmeshv1alpha1.FaultInjection{
 			{
 				Delay: &ctrlmeshv1alpha1.HTTPFaultInjectionDelay{
 					Percent:    "100",
-					FixedDelay: "20s",
+					FixedDelay: "20ms",
 				},
 				Match: &ctrlmeshv1alpha1.Match{
 					Resources: []*ctrlmeshv1alpha1.ResourceMatch{

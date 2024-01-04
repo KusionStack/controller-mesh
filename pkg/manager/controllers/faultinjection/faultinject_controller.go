@@ -161,7 +161,7 @@ func (r *FaultInjectionReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 	fi.Status = *status
 	if err := r.Status().Update(ctx, fi); err != nil {
-		klog.Errorf("fail to update circuit breaker %s status", utils.KeyFunc(fi))
+		klog.Errorf("fail to update fault injection %s status", utils.KeyFunc(fi))
 		reconcileErr = errors.Join(reconcileErr, err)
 	}
 	return ctrl.Result{}, reconcileErr
