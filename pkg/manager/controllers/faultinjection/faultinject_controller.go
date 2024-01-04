@@ -44,6 +44,7 @@ import (
 	"github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/proto/protoconnect"
 	"github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/utils/conv"
 	ctrlmeshv1alpha1 "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/v1alpha1"
+	"github.com/KusionStack/controller-mesh/pkg/proxy/grpcserver"
 	"github.com/KusionStack/controller-mesh/pkg/utils"
 )
 
@@ -161,7 +162,7 @@ func (r *FaultInjectionReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 	fi.Status = *status
 	if err := r.Status().Update(ctx, fi); err != nil {
-		klog.Errorf("fail to update circuit breaker %s status", utils.KeyFunc(fi))
+		klog.Errorf("fail to update fault injection %s status", utils.KeyFunc(fi))
 		reconcileErr = errors.Join(reconcileErr, err)
 	}
 	return ctrl.Result{}, reconcileErr
@@ -279,7 +280,7 @@ func protoClient(podIp string) protoconnect.FaultInjectClient {
 }
 
 func podAddr(podIp string) string {
-	return fmt.Sprintf("https://%s:%d", podIp, constants.ProxyGRPCServerPort)
+	return fmt.Sprintf("https://%s:%d", podIp, grpcserver.GrpcServerPort)
 }
 
 // isProxyAvailable check whether the proxy container is available

@@ -18,6 +18,7 @@ package faultinjection
 
 import (
 	"context"
+	"reflect"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -127,7 +128,9 @@ func matchChangedFaults(c client.Reader, old, new *v1.Pod) ([]*ctrlmeshv1alpha1.
 		}
 		oldMatch := selector.Matches(labels.Set(old.Labels))
 		newMatch := selector.Matches(labels.Set(new.Labels))
-		if oldMatch != newMatch {
+		oldStatus := old.Status
+		newStatus := new.Status
+		if oldMatch != newMatch || !reflect.DeepEqual(oldStatus, newStatus) {
 			res = append(res, &faults.Items[i])
 		}
 	}
