@@ -313,6 +313,9 @@ func isInpercentRange(value float64) bool {
 // It considers the start time, end time, days of the week, days of the month, and months.
 // The function returns true if the current time is within the effective time range, otherwise false.
 func isEffectiveTimeRange(timeRange *ctrlmeshproto.EffectiveTimeRange) bool {
+	if timeRange.StartTime == "" || timeRange.EndTime == "" {
+		return true
+	}
 	location, err := time.LoadLocation("UTC")
 	if err != nil {
 		return false

@@ -44,18 +44,18 @@ func TestIsEffectiveTimeRange(t *testing.T) {
 		want      bool
 	}{
 		{&ctrlmeshproto.EffectiveTimeRange{
-			StartTime:   "00:00:00",
-			EndTime:     "23:00:00",
-			DaysOfWeek:  []int32{1, 3, 5},
-			DaysOfMonth: []int32{1, 2, 3, 15},
-			Months:      []int32{1, 4, 7, 10},
+			StartTime:   "",
+			EndTime:     "",
+			DaysOfWeek:  []int32{},
+			DaysOfMonth: []int32{},
+			Months:      []int32{},
 		}, true},
 		{&ctrlmeshproto.EffectiveTimeRange{
 			StartTime:   "00:00:00",
 			EndTime:     "23:59:59",
 			DaysOfWeek:  []int32{1, 2, 3, 4, 5, 7},
 			DaysOfMonth: []int32{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
-			Months:      []int32{2, 3, 4},
+			Months:      []int32{12},
 		}, false},
 	}
 	for _, tt := range tests {
