@@ -81,8 +81,8 @@ var faultInjection = &ctrlmeshv1alpha1.FaultInjection{
 					Percent:    "100",
 					FixedDelay: "20s",
 				},
-				Match: &ctrlmeshv1alpha1.HTTPMatchRequest{
-					RelatedResources: []*ctrlmeshv1alpha1.ResourceMatch{
+				Match: &ctrlmeshv1alpha1.Match{
+					Resources: []*ctrlmeshv1alpha1.ResourceMatch{
 						{
 							ApiGroups: []string{
 								"",
@@ -143,8 +143,8 @@ func TestFaultInjection(t *testing.T) {
 			Percent:    "100",
 			HttpStatus: 404,
 		},
-		Match: &ctrlmeshv1alpha1.HTTPMatchRequest{
-			RelatedResources: []*ctrlmeshv1alpha1.ResourceMatch{
+		Match: &ctrlmeshv1alpha1.Match{
+			Resources: []*ctrlmeshv1alpha1.ResourceMatch{
 				{
 					ApiGroups: []string{
 						"",
@@ -160,7 +160,7 @@ func TestFaultInjection(t *testing.T) {
 					},
 				},
 			},
-			RestRules: []*ctrlmeshv1alpha1.MultiRestRule{
+			HttpMatch: []*ctrlmeshv1alpha1.HttpMatch{
 				{
 					URL:    []string{"aaa.aaa.aaa"},
 					Method: []string{"GET"},
@@ -180,6 +180,9 @@ func TestFaultInjection(t *testing.T) {
 	}, 5*time.Second, 1*time.Second).Should(gomega.BeTrue())
 
 	g.Expect(faultManager.FaultInjectionRest("aaa.aaa.aaa", "GET").Abort).Should(gomega.BeTrue())
+	g.Expect(faultManager.FaultInjectionRest("aaa.aaa.bbb", "GET").Abort).Should(gomega.BeFalse())
+	g.Expect(faultManager.FaultInjectionResource("default", "", "Pod", "delete").Abort).Should(gomega.BeTrue())
+	g.Expect(faultManager.FaultInjectionResource("default", "", "Pod", "create").Abort).Should(gomega.BeFalse())
 	if cb.Labels == nil {
 		cb.Labels = map[string]string{}
 	}

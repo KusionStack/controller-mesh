@@ -20,10 +20,11 @@ import (
 	"strconv"
 	"time"
 
+	"google.golang.org/protobuf/types/known/durationpb"
+
 	ctrlmeshproto "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/proto"
 	ctrlmeshv1alpha1 "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/v1alpha1"
 	"github.com/KusionStack/controller-mesh/pkg/utils"
-	"google.golang.org/protobuf/types/known/durationpb"
 )
 
 func ConvertFaultInjection(faultInjection *ctrlmeshv1alpha1.FaultInjection) *ctrlmeshproto.FaultInjection {
@@ -84,33 +85,31 @@ func ConvertHTTPFaultInjection(faultInjection *ctrlmeshv1alpha1.HTTPFaultInjecti
 	return protoFaultInjection
 }
 
-func ConvertHTTPMatch(match *ctrlmeshv1alpha1.HTTPMatchRequest) *ctrlmeshproto.HTTPMatchRequest {
-	httpMatchRequest := &ctrlmeshproto.HTTPMatchRequest{
-		Name: match.Name,
-	}
-	if match.RestRules != nil {
-		httpMatchRequest.RestRules = make([]*ctrlmeshproto.MultiRestRule, len(match.RestRules))
-		for i, restRule := range match.RestRules {
-			httpMatchRequest.RestRules[i] = &ctrlmeshproto.MultiRestRule{}
+func ConvertHTTPMatch(match *ctrlmeshv1alpha1.Match) *ctrlmeshproto.Match {
+	Match := &ctrlmeshproto.Match{}
+	if match.HttpMatch != nil {
+		Match.HttpMatch = make([]*ctrlmeshproto.HttpMatch, len(match.HttpMatch))
+		for i, restRule := range match.HttpMatch {
+			Match.HttpMatch[i] = &ctrlmeshproto.HttpMatch{}
 			if restRule.URL != nil {
-				httpMatchRequest.RestRules[i].Url = make([]string, len(restRule.URL))
-				copy(httpMatchRequest.RestRules[i].Url, restRule.URL)
+				Match.HttpMatch[i].Url = make([]string, len(restRule.URL))
+				copy(Match.HttpMatch[i].Url, restRule.URL)
 			}
 			if restRule.Method != nil {
-				httpMatchRequest.RestRules[i].Method = make([]string, len(restRule.Method))
-				copy(httpMatchRequest.RestRules[i].Method, restRule.Method)
+				Match.HttpMatch[i].Method = make([]string, len(restRule.Method))
+				copy(Match.HttpMatch[i].Method, restRule.Method)
 			}
 		}
 	}
-	if match.RelatedResources != nil {
-		httpMatchRequest.RelatedResources = make([]*ctrlmeshproto.ResourceMatch, len(match.RelatedResources))
-		for i, relatedResource := range match.RelatedResources {
+	if match.Resources != nil {
+		Match.Resources = make([]*ctrlmeshproto.ResourceMatch, len(match.Resources))
+		for i, relatedResource := range match.Resources {
 
-			httpMatchRequest.RelatedResources[i] = ConvertRelatedResources(relatedResource)
+			Match.Resources[i] = ConvertRelatedResources(relatedResource)
 		}
 
 	}
-	return httpMatchRequest
+	return Match
 }
 
 func ConvertEffectiveTime(timeRange *ctrlmeshv1alpha1.EffectiveTimeRange) *ctrlmeshproto.EffectiveTimeRange {

@@ -21,7 +21,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"os"
 	"time"
 
 	"connectrpc.com/connect"
@@ -49,9 +48,6 @@ import (
 )
 
 var (
-	PodName      = os.Getenv(constants.EnvPodName)
-	PodNamespace = os.Getenv(constants.EnvPodNamespace)
-
 	defaultRequeueTime   = 60 * time.Second
 	concurrentReconciles = flag.Int("ctrlmesh-inject-workers", 3, "Max concurrent workers for CtrlMesh Server controller.")
 )

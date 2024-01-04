@@ -51,23 +51,21 @@ type ResourceMatch struct {
 	Verbs      []string `json:"verbs,omitempty"`
 }
 
-// MultiRestRule specifies the criteria for matching HTTP requests to RESTful resources
+// HttpMatch specifies the criteria for matching HTTP requests to RESTful resources
 // as part of HTTP FaultInjection. Each rule can target one or more URLs and HTTP methods.
-type MultiRestRule struct {
+type HttpMatch struct {
 	// URL gives the location of the rest request, in standard URL form (`scheme://host:port/path`)
 	URL []string `json:"url"`
 	// Method specifies the http method of the request, like: PUT, POST, GET, DELETE.
 	Method []string `json:"method"`
 }
 
-// HTTPMatchRequest defines a set of rules and criteria for matching incoming HTTP requests.
+// Match defines a set of rules and criteria for matching incoming HTTP requests.
 // It associates a name with the set of criteria and can relate to additional resources that are relevant
 // to the request matching, enabling complex and granular control over request matching in HTTP FaultInjection.
-type HTTPMatchRequest struct {
-	Name             string           `json:"name,omitempty"`
-	RelatedResources []*ResourceMatch `json:"relatedResources,omitempty"`
-
-	RestRules []*MultiRestRule `json:"restRules,omitempty"`
+type Match struct {
+	Resources []*ResourceMatch `json:"resources,omitempty"`
+	HttpMatch []*HttpMatch     `json:"httpMatch,omitempty"`
 }
 
 // HTTPFaultInjection can be used to specify one or more faults to inject
@@ -84,7 +82,7 @@ type HTTPFaultInjection struct {
 
 	// Match specifies a set of criterion to be met in order for the
 	// rule to be applied to the HTTP request.
-	Match *HTTPMatchRequest `json:"match,omitempty"`
+	Match *Match `json:"match,omitempty"`
 	// Effective time of fault injection
 	EffectiveTime *EffectiveTimeRange `json:"effectiveTime,omitempty"`
 }

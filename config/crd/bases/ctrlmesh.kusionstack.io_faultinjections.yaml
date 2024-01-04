@@ -108,9 +108,30 @@ spec:
                       description: Match specifies a set of criterion to be met in
                         order for the rule to be applied to the HTTP request.
                       properties:
-                        name:
-                          type: string
-                        relatedResources:
+                        httpMatch:
+                          items:
+                            description: HttpMatch specifies the criteria for matching
+                              HTTP requests to RESTful resources as part of HTTP FaultInjection.
+                              Each rule can target one or more URLs and HTTP methods.
+                            properties:
+                              method:
+                                description: 'Method specifies the http method of
+                                  the request, like: PUT, POST, GET, DELETE.'
+                                items:
+                                  type: string
+                                type: array
+                              url:
+                                description: URL gives the location of the rest request,
+                                  in standard URL form (`scheme://host:port/path`)
+                                items:
+                                  type: string
+                                type: array
+                            required:
+                            - method
+                            - url
+                            type: object
+                          type: array
+                        resources:
                           items:
                             properties:
                               apiGroups:
@@ -129,30 +150,6 @@ spec:
                                 items:
                                   type: string
                                 type: array
-                            type: object
-                          type: array
-                        restRules:
-                          items:
-                            description: MultiRestRule specifies the criteria for
-                              matching HTTP requests to RESTful resources as part
-                              of HTTP FaultInjection. Each rule can target one or
-                              more URLs and HTTP methods.
-                            properties:
-                              method:
-                                description: 'Method specifies the http method of
-                                  the request, like: PUT, POST, GET, DELETE.'
-                                items:
-                                  type: string
-                                type: array
-                              url:
-                                description: URL gives the location of the rest request,
-                                  in standard URL form (`scheme://host:port/path`)
-                                items:
-                                  type: string
-                                type: array
-                            required:
-                            - method
-                            - url
                             type: object
                           type: array
                       type: object

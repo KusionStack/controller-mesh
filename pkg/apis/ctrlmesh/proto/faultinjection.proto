@@ -40,7 +40,7 @@ message HTTPFaultInjection {
   // service, giving the impression that the upstream service is faulty.
   Abort abort = 2;
 
-  HTTPMatchRequest match = 3;
+  Match match = 3;
 
   string Name = 4;
 
@@ -105,26 +105,20 @@ message EffectiveTimeRange {
 
 
 
-message MultiRestRule {
+message HttpMatch {
   repeated string url = 1;
   repeated string method = 2;
 }
 
-message HTTPMatchRequest {
-  // The name assigned to a match. The match's name will be
-  // concatenated with the parent route's name and will be logged in
-  // the access logs for requests matching this route.
-  string name = 1;
-
-  //
-  repeated ResourceMatch relatedResources = 2;
-  repeated MultiRestRule restRules = 3;
+message Match {
+  repeated ResourceMatch resources = 1;
+  repeated HttpMatch httpMatch = 2;
 }
 
 // Describes how to match K8s resources.
 //
 // ```yaml
-//  relatedResources:
+//  resources:
 //  - apiGroups:
 //    - ""
 //    namespaces:

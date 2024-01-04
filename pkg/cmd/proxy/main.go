@@ -41,6 +41,7 @@ import (
 	"github.com/KusionStack/controller-mesh/pkg/proxy/circuitbreaker"
 	"github.com/KusionStack/controller-mesh/pkg/proxy/faultinjection"
 	"github.com/KusionStack/controller-mesh/pkg/proxy/grpcserver"
+	tproxy "github.com/KusionStack/controller-mesh/pkg/proxy/http"
 	protomanager "github.com/KusionStack/controller-mesh/pkg/proxy/proto"
 	"github.com/KusionStack/controller-mesh/pkg/utils"
 )
@@ -124,15 +125,8 @@ func main() {
 		}
 	}
 
-	// start iptable proxy
 	{
-		tproxy, err := faultinjection.NewTProxy(*proxyIptablePort, faultInjectionMgr)
-		if err != nil {
-			klog.Fatalf("failed to create http-tproxy: %s", err)
-			return
-		}
-		// start proxies
-		go tproxy.Start()
+		go tproxy.NewTProxy(*proxyIptablePort, faultInjectionMgr).Start()
 	}
 
 	serveHTTP(ctx, readyHandler)

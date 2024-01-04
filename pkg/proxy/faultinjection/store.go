@@ -66,7 +66,7 @@ type store struct {
 	// indices: resource indices and rest indices
 	indices indices
 
-	faultinjectionLease *lease
+	faultInjectionLease *lease
 
 	ctx context.Context
 }
@@ -75,26 +75,26 @@ func newFaultInjectionStore(ctx context.Context) *store {
 	s := &store{
 		rules:               make(map[string]*ctrlmeshproto.HTTPFaultInjection),
 		indices:             indices{},
-		faultinjectionLease: newFaultInjectionLease(ctx),
+		faultInjectionLease: newFaultInjectionLease(ctx),
 		ctx:                 ctx,
 	}
 	return s
 }
 
 // createOrUpdateRule stores new rules (or updates existing rules) in local store
-func (s *store) createOrUpdateRule(key string, faultinjection *ctrlmeshproto.HTTPFaultInjection) {
+func (s *store) createOrUpdateRule(key string, faultInjection *ctrlmeshproto.HTTPFaultInjection) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	oldOne, ok := s.rules[key]
 	if !ok {
 		// all new, just assign rules and states, and update indices
-		s.rules[key] = faultinjection
-		s.updateIndices(nil, faultinjection, key)
+		s.rules[key] = faultInjection
+		s.updateIndices(nil, faultInjection, key)
 	} else {
 		// there is an old one, assign the new rule, update indices
-		s.rules[key] = faultinjection.DeepCopy()
-		s.updateIndices(oldOne, faultinjection, key)
+		s.rules[key] = faultInjection.DeepCopy()
+		s.updateIndices(oldOne, faultInjection, key)
 	}
 }
 
@@ -184,7 +184,7 @@ func indexForRest(URL, method string) string {
 
 func indexFuncForResource(faultinjection *ctrlmeshproto.HTTPFaultInjection) []string {
 	var result []string
-	for _, rule := range faultinjection.Match.RelatedResources {
+	for _, rule := range faultinjection.Match.Resources {
 		for _, namespace := range rule.Namespaces {
 			for _, apiGroup := range rule.ApiGroups {
 				for _, resource := range rule.Resources {
@@ -198,9 +198,9 @@ func indexFuncForResource(faultinjection *ctrlmeshproto.HTTPFaultInjection) []st
 	return result
 }
 
-func indexFuncForRest(faultinjection *ctrlmeshproto.HTTPFaultInjection) []string {
+func indexFuncForRest(faultInjection *ctrlmeshproto.HTTPFaultInjection) []string {
 	var result []string
-	for _, rest := range faultinjection.Match.RestRules {
+	for _, rest := range faultInjection.Match.HttpMatch {
 		for _, url := range rest.Url {
 			for _, method := range rest.Method {
 				result = append(result, indexForRest(url, method))

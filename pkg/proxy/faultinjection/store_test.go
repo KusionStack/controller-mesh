@@ -48,9 +48,8 @@ func TestFaultInjectionStore(t *testing.T) {
 			HttpStatus: 497,
 			Percent:    "50",
 		},
-		Match: &ctrlmeshv1alpha1.HTTPMatchRequest{
-			Name: "test-deletePod",
-			RelatedResources: []*ctrlmeshv1alpha1.ResourceMatch{
+		Match: &ctrlmeshv1alpha1.Match{
+			Resources: []*ctrlmeshv1alpha1.ResourceMatch{
 				{
 					Namespaces: []string{"*"},
 					ApiGroups:  []string{""},
@@ -79,9 +78,8 @@ func TestFaultInjectionStore(t *testing.T) {
 			Percent:    "32",
 			FixedDelay: "10ms",
 		},
-		Match: &ctrlmeshv1alpha1.HTTPMatchRequest{
-			Name: "test-deletePod",
-			RestRules: []*ctrlmeshv1alpha1.MultiRestRule{
+		Match: &ctrlmeshv1alpha1.Match{
+			HttpMatch: []*ctrlmeshv1alpha1.HttpMatch{
 				{
 					URL:    []string{"https://localhost:80/createDomain"},
 					Method: []string{"POST"},
@@ -120,9 +118,8 @@ func TestLimiterPriority(t *testing.T) {
 			HttpStatus: 497,
 			Percent:    "0",
 		},
-		Match: &ctrlmeshv1alpha1.HTTPMatchRequest{
-			Name: "test-deletePod",
-			RelatedResources: []*ctrlmeshv1alpha1.ResourceMatch{
+		Match: &ctrlmeshv1alpha1.Match{
+			Resources: []*ctrlmeshv1alpha1.ResourceMatch{
 				{
 					Namespaces: []string{"*"},
 					ApiGroups:  []string{"*"},
@@ -154,9 +151,8 @@ func TestLimiterPriority(t *testing.T) {
 			HttpStatus: 497,
 			Percent:    "100",
 		},
-		Match: &ctrlmeshv1alpha1.HTTPMatchRequest{
-			Name: "test-deletePod",
-			RelatedResources: []*ctrlmeshv1alpha1.ResourceMatch{
+		Match: &ctrlmeshv1alpha1.Match{
+			Resources: []*ctrlmeshv1alpha1.ResourceMatch{
 				{
 					Namespaces: []string{"*"},
 					ApiGroups:  []string{"*"},
@@ -184,9 +180,8 @@ func TestLimiterPriority(t *testing.T) {
 			HttpStatus: 497,
 			Percent:    "100",
 		},
-		Match: &ctrlmeshv1alpha1.HTTPMatchRequest{
-			Name: "test-deletePod",
-			RelatedResources: []*ctrlmeshv1alpha1.ResourceMatch{
+		Match: &ctrlmeshv1alpha1.Match{
+			Resources: []*ctrlmeshv1alpha1.ResourceMatch{
 				{
 					Namespaces: []string{"*"},
 					ApiGroups:  []string{""},
@@ -212,9 +207,8 @@ func TestLimiterPriority(t *testing.T) {
 			HttpStatus: 497,
 			Percent:    "100",
 		},
-		Match: &ctrlmeshv1alpha1.HTTPMatchRequest{
-			Name: "test-deletePod",
-			RelatedResources: []*ctrlmeshv1alpha1.ResourceMatch{
+		Match: &ctrlmeshv1alpha1.Match{
+			Resources: []*ctrlmeshv1alpha1.ResourceMatch{
 				{
 					Namespaces: []string{"default"},
 					ApiGroups:  []string{""},
@@ -279,9 +273,8 @@ func TestRestLimiterPriority(t *testing.T) {
 			HttpStatus: 497,
 			Percent:    "100",
 		},
-		Match: &ctrlmeshv1alpha1.HTTPMatchRequest{
-			Name: "rest-priority",
-			RestRules: []*ctrlmeshv1alpha1.MultiRestRule{
+		Match: &ctrlmeshv1alpha1.Match{
+			HttpMatch: []*ctrlmeshv1alpha1.HttpMatch{
 				{
 					URL:    []string{"https://www.cnblogs.com/*"},
 					Method: []string{"GET"},
@@ -310,9 +303,8 @@ func TestRestLimiterPriority(t *testing.T) {
 			HttpStatus: 497,
 			Percent:    "100",
 		},
-		Match: &ctrlmeshv1alpha1.HTTPMatchRequest{
-			Name: "rest1-priority",
-			RestRules: []*ctrlmeshv1alpha1.MultiRestRule{
+		Match: &ctrlmeshv1alpha1.Match{
+			HttpMatch: []*ctrlmeshv1alpha1.HttpMatch{
 				{
 					URL:    []string{"https://www.cnblogs.com/f-ck-need-u/*"},
 					Method: []string{"GET"},
@@ -336,9 +328,8 @@ func TestRestLimiterPriority(t *testing.T) {
 			HttpStatus: 497,
 			Percent:    "100",
 		},
-		Match: &ctrlmeshv1alpha1.HTTPMatchRequest{
-			Name: "rest2-priority",
-			RestRules: []*ctrlmeshv1alpha1.MultiRestRule{
+		Match: &ctrlmeshv1alpha1.Match{
+			HttpMatch: []*ctrlmeshv1alpha1.HttpMatch{
 				{
 					URL:    []string{"https://www.cnblogs.com/f-ck-need-u/p/*"},
 					Method: []string{"GET"},
@@ -363,9 +354,8 @@ func TestRestLimiterPriority(t *testing.T) {
 			HttpStatus: 497,
 			Percent:    "100",
 		},
-		Match: &ctrlmeshv1alpha1.HTTPMatchRequest{
-			Name: "rest3-priority",
-			RestRules: []*ctrlmeshv1alpha1.MultiRestRule{
+		Match: &ctrlmeshv1alpha1.Match{
+			HttpMatch: []*ctrlmeshv1alpha1.HttpMatch{
 				{
 					URL:    []string{"https://www.cnblogs.com/f-ck-need-u/p/9854932.html"},
 					Method: []string{"GET"},

@@ -34,9 +34,8 @@ import (
 
 	// pkgfi "github.com/KusionStack/controller-mesh/circuitbreaker"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	ctrlmeshproto "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/proto"
+	"github.com/KusionStack/controller-mesh/pkg/utils"
 )
 
 const timeLayout = "15:04:05"
@@ -250,7 +249,7 @@ func withFaultInjection(injector FaultInjector, handler http.Handler) http.Handl
 		result := injector.FaultInjectionResource(requestInfo.Namespace, requestInfo.APIGroup, requestInfo.Resource, requestInfo.Verb)
 
 		if result.Abort {
-			apiErr := httpToAPIError(int(result.ErrCode), result.Message)
+			apiErr := utils.HttpToAPIError(int(result.ErrCode), req.Method, result.Message)
 			if apiErr.Code != http.StatusOK {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(int(apiErr.Code))
@@ -395,83 +394,6 @@ func isEffectiveTimeRange(timeRange *ctrlmeshproto.EffectiveTimeRange) bool {
 
 	// If all checks pass, the current time is within the effective time range
 	return true
-}
-
-// httpToAPIError convert http error to kubernetes api error
-func httpToAPIError(code int, serverMessage string) *metav1.Status {
-	status := &metav1.Status{
-		Status:  metav1.StatusFailure,
-		Code:    int32(code),
-		Reason:  metav1.StatusReason(fmt.Sprintf("HTTP %d", code)),
-		Message: serverMessage,
-	}
-	var (
-		reason  metav1.StatusReason
-		message string
-	)
-	switch code {
-	case http.StatusOK:
-		reason = ""
-		message = "code is 200"
-		status.Status = metav1.StatusSuccess
-	case http.StatusConflict:
-
-		reason = metav1.StatusReasonConflict
-
-		message = "the server reported a conflict"
-	case http.StatusNotFound:
-		reason = metav1.StatusReasonNotFound
-		message = "the server could not find the requested resource"
-	case http.StatusBadRequest:
-		reason = metav1.StatusReasonBadRequest
-		message = "the server rejected our request for an unknown reason"
-	case http.StatusUnauthorized:
-		reason = metav1.StatusReasonUnauthorized
-		message = "the server has asked for the client to provide credentials"
-	case http.StatusForbidden:
-		reason = metav1.StatusReasonForbidden
-		// the server message has details about who is trying to perform what action.  Keep its message.
-		message = serverMessage
-	case http.StatusNotAcceptable:
-		reason = metav1.StatusReasonNotAcceptable
-		// the server message has details about what types are acceptable
-		if len(serverMessage) == 0 || serverMessage == "unknown" {
-			message = "the server was unable to respond with a content type that the client supports"
-		} else {
-			message = serverMessage
-		}
-	case http.StatusUnsupportedMediaType:
-		reason = metav1.StatusReasonUnsupportedMediaType
-		// the server message has details about what types are acceptable
-		message = serverMessage
-	case http.StatusMethodNotAllowed:
-		reason = metav1.StatusReasonMethodNotAllowed
-		message = "the server does not allow this method on the requested resource"
-	case http.StatusUnprocessableEntity:
-		reason = metav1.StatusReasonInvalid
-		message = "the server rejected our request due to an error in our request"
-	case http.StatusServiceUnavailable:
-		reason = metav1.StatusReasonServiceUnavailable
-		message = "the server is currently unable to handle the request"
-	case http.StatusGatewayTimeout:
-		reason = metav1.StatusReasonTimeout
-		message = "the server was unable to return a response in the time allotted, but may still be processing the request"
-	case http.StatusTooManyRequests:
-		reason = metav1.StatusReasonTooManyRequests
-		message = "the server has received too many requests and has asked us to try again later"
-	default:
-		// if code >= 500 {
-		// 	reason = metav1.StatusReasonInternalError
-		// 	message = fmt.Sprintf("an error on the server (%q) has prevented the request from succeeding", serverMessage)
-		// }
-		status.Status = metav1.StatusSuccess
-		reason = "code is not allowed"
-		message = "code is not allowed"
-		status.Code = http.StatusOK
-	}
-	status.Reason = reason
-	status.Message = message
-	return status
 }
 
 // RegisterRules register a fault injection to the local store
