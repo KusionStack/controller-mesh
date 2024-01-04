@@ -35,7 +35,7 @@ import (
 )
 
 var (
-	grpcServerPort = constants.ProxyGRPCServerPort
+	GrpcServerPort = constants.ProxyGRPCServerPort
 )
 
 func init() {
@@ -43,7 +43,7 @@ func init() {
 	if envConfig != "" {
 		p, err := strconv.Atoi(envConfig)
 		if err != nil {
-			grpcServerPort = p
+			GrpcServerPort = p
 		}
 	}
 }
@@ -59,7 +59,7 @@ func (s *GrpcServer) Start(ctx context.Context) {
 	s.mux = http.NewServeMux()
 	s.mux.Handle(protoconnect.NewThrottlingHandler(&grpcThrottlingHandler{mgr: s.BreakerMgr}, connect.WithSendMaxBytes(1024*1024*64)))
 	s.mux.Handle(protoconnect.NewFaultInjectHandler(&grpcFaultInjectHandler{mgr: s.FaultInjectionMgr}, connect.WithSendMaxBytes(1024*1024*64)))
-	addr := fmt.Sprintf(":%d", grpcServerPort)
+	addr := fmt.Sprintf(":%d", GrpcServerPort)
 	go func() {
 		// Use h2c so we can serve HTTP/2 without TLS.
 		if err := http.ListenAndServe(addr, h2c.NewHandler(s.mux, &http2.Server{})); err != nil {

@@ -127,7 +127,7 @@ func matchChangedFaults(c client.Reader, old, new *v1.Pod) ([]*ctrlmeshv1alpha1.
 		}
 		oldMatch := selector.Matches(labels.Set(old.Labels))
 		newMatch := selector.Matches(labels.Set(new.Labels))
-		if oldMatch == newMatch { // REMOVE: 为什么不是同时为true
+		if oldMatch != newMatch {
 			res = append(res, &faults.Items[i])
 		}
 	}

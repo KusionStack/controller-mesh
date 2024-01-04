@@ -36,7 +36,7 @@ import (
 func TestServer(t *testing.T) {
 	g := gomega.NewGomegaWithT(t)
 	ctx := context.TODO()
-	grpcServerPort = 8889
+	GrpcServerPort = 8889
 	breakerMgr := circuitbreaker.NewManager(ctx)
 	proxyServer := &GrpcServer{BreakerMgr: breakerMgr}
 	go proxyServer.Start(ctx)

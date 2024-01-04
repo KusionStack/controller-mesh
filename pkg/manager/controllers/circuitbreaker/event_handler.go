@@ -126,7 +126,7 @@ func matchChangedBreakers(c client.Reader, old, new *v1.Pod) ([]*ctrlmeshv1alpha
 		}
 		oldMatch := selector.Matches(labels.Set(old.Labels))
 		newMatch := selector.Matches(labels.Set(new.Labels))
-		if oldMatch == newMatch {
+		if oldMatch != newMatch {
 			res = append(res, &breakers.Items[i])
 		}
 	}

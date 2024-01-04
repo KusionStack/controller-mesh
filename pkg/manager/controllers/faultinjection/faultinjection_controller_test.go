@@ -107,6 +107,7 @@ var faultInjection = &ctrlmeshv1alpha1.FaultInjection{
 func TestFaultInjection(t *testing.T) {
 	g := gomega.NewGomegaWithT(t)
 	defer Stop()
+	grpcserver.GrpcServerPort = 5455
 	RunMockServer()
 	testPod := mockPod.DeepCopy()
 	testFaultInjection := faultInjection.DeepCopy()
@@ -198,7 +199,6 @@ func TestFaultInjection(t *testing.T) {
 		return c.Get(ctx, types.NamespacedName{Name: "testfi", Namespace: "default"}, cb)
 	}, 5*time.Second, 1*time.Second).Should(gomega.HaveOccurred())
 	fmt.Println("test finished")
-
 }
 
 var faultManager faultinjection.ManagerInterface
