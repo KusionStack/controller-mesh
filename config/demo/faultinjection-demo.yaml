@@ -1,0 +1,29 @@
+apiVersion: ctrlmesh.kusionstack.io/v1alpha1
+kind: FaultInjection
+metadata:
+  name: fault-injection-demo
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: foo
+  httpFault:
+    - delay:
+        fixedDelay: 5s
+        percent: 10
+      match:
+        - method: POST
+          url: https://*.com/*/trafficOff
+    - abort:
+        httpStatus: 500
+        percent: 100
+      match:
+        relatedResources:
+          - apiGroups:
+              - ""
+            namespaces:
+              - '*'
+            resources:
+              - pods
+            verbs:
+              - delete

@@ -40,6 +40,7 @@ import (
 	"github.com/KusionStack/controller-mesh/pkg/client"
 	"github.com/KusionStack/controller-mesh/pkg/grpcregistry"
 	"github.com/KusionStack/controller-mesh/pkg/manager/controllers/circuitbreaker"
+	"github.com/KusionStack/controller-mesh/pkg/manager/controllers/faultinjection"
 	"github.com/KusionStack/controller-mesh/pkg/manager/controllers/managerstate"
 	"github.com/KusionStack/controller-mesh/pkg/manager/controllers/patchrunnable"
 	"github.com/KusionStack/controller-mesh/pkg/manager/controllers/shardingconfigserver"
@@ -160,6 +161,12 @@ func main() {
 			Client: mgr.GetClient(),
 		}).SetupWithManager(mgr); err != nil {
 			setupLog.Error(err, "unable to create controller", "controller", "CircuitBreaker")
+			os.Exit(1)
+		}
+		if err = (&faultinjection.FaultInjectionReconciler{
+			Client: mgr.GetClient(),
+		}).SetupWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create controller", "controller", "FaultInjection")
 			os.Exit(1)
 		}
 		if *enablePatchRunnable {

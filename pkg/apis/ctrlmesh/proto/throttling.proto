@@ -2,11 +2,10 @@ syntax = "proto3";
 option go_package = "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/proto";
 package proto;
 
+
 import "k8s.io/apimachinery/pkg/apis/meta/v1/generated.proto";
 
-service Throttling {
-  rpc SendConfig(CircuitBreaker) returns (ConfigResp);
-}
+service Throttling { rpc SendConfig(CircuitBreaker) returns (ConfigResp); }
 
 message CircuitBreaker {
   Option option = 1;
@@ -16,11 +15,10 @@ message CircuitBreaker {
   string name = 5;
 
   enum Option {
-    CREATE = 0;
-    DELETE = 1;
-    UPDATE = 2;
-    CHECK = 3;
-    RECOVER = 4;
+    DELETE = 0;
+    UPDATE = 1;
+    CHECK = 2;
+    RECOVER = 3;
   }
 }
 
@@ -76,8 +74,8 @@ message RateLimiting {
     TRIGGER_POLICY_FORCE_CLOSED = 3;
   }
   message RecoverPolicy {
-      RecoverType type = 1;
-      string sleepingWindowSize = 2;
+    RecoverType type = 1;
+    string sleepingWindowSize = 2;
   }
 
   enum RecoverType {
@@ -99,7 +97,7 @@ message RestRules {
 }
 
 message Bucket {
-  uint32 burst  = 1;
+  uint32 burst = 1;
   string interval = 2;
   uint32 Limit = 3;
 }

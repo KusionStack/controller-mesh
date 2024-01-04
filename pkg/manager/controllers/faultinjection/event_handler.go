@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package circuitbreaker
+package faultinjection
 
 import (
 	"context"
@@ -45,12 +45,12 @@ func (h *podEventHandler) Create(e event.CreateEvent, q workqueue.RateLimitingIn
 	if !isProxyAvailable(pod) {
 		return
 	}
-	breakers, err := effectiveBreakers(h.reader, pod)
+	faults, err := effectiveFaults(h.reader, pod)
 	if err != nil {
 		klog.Errorf("fail to get effective CircuitBreakers by pod %s/%s, %v", pod.Namespace, pod.Name, err)
 		return
 	}
-	add(q, breakers)
+	add(q, faults)
 }
 
 func (h *podEventHandler) Update(e event.UpdateEvent, q workqueue.RateLimitingInterface) {
@@ -63,7 +63,7 @@ func (h *podEventHandler) Update(e event.UpdateEvent, q workqueue.RateLimitingIn
 		return
 	}
 	if !isProxyAvailable(oldPod) {
-		breakers, err := effectiveBreakers(h.reader, newPod)
+		breakers, err := effectiveFaults(h.reader, newPod)
 		if err != nil {
 			klog.Errorf("fail to get effective CircuitBreakers by pod %s/%s, %v", newPod.Namespace, newPod.Name, err)
 			return
@@ -71,13 +71,12 @@ func (h *podEventHandler) Update(e event.UpdateEvent, q workqueue.RateLimitingIn
 		add(q, breakers)
 		return
 	}
-	// all available
-	breakers, err := matchChangedBreakers(h.reader, oldPod, newPod)
+	faults, err := matchChangedFaults(h.reader, oldPod, newPod)
 	if err != nil {
 		klog.Errorf("fail to get effective CircuitBreakers by pod %s/%s, %v", newPod.Namespace, newPod.Name, err)
 		return
 	}
-	add(q, breakers)
+	add(q, faults)
 }
 
 func (h *podEventHandler) Delete(e event.DeleteEvent, q workqueue.RateLimitingInterface) {
@@ -87,6 +86,7 @@ func (h *podEventHandler) Delete(e event.DeleteEvent, q workqueue.RateLimitingIn
 func (h *podEventHandler) Generic(e event.GenericEvent, q workqueue.RateLimitingInterface) {
 }
 
+// sidecarInjected check whether has proxy container
 func sidecarInjected(po *v1.Pod) bool {
 	for _, c := range po.Spec.Containers {
 		if c.Name == constants.ProxyContainerName {
@@ -96,7 +96,7 @@ func sidecarInjected(po *v1.Pod) bool {
 	return false
 }
 
-func add(q workqueue.RateLimitingInterface, items []*ctrlmeshv1alpha1.CircuitBreaker) {
+func add(q workqueue.RateLimitingInterface, items []*ctrlmeshv1alpha1.FaultInjection) {
 	for _, item := range items {
 		q.Add(reconcile.Request{NamespacedName: types.NamespacedName{
 			Namespace: item.GetNamespace(),
@@ -105,31 +105,31 @@ func add(q workqueue.RateLimitingInterface, items []*ctrlmeshv1alpha1.CircuitBre
 	}
 }
 
-func effectiveBreakers(c client.Reader, po *v1.Pod) ([]*ctrlmeshv1alpha1.CircuitBreaker, error) {
-	var res []*ctrlmeshv1alpha1.CircuitBreaker
-	breakers := &ctrlmeshv1alpha1.CircuitBreakerList{}
-	if err := c.List(context.TODO(), breakers); err != nil {
+func effectiveFaults(c client.Reader, po *v1.Pod) ([]*ctrlmeshv1alpha1.FaultInjection, error) {
+	var res []*ctrlmeshv1alpha1.FaultInjection
+	faults := &ctrlmeshv1alpha1.FaultInjectionList{}
+	if err := c.List(context.TODO(), faults); err != nil {
 		return nil, err
 	}
-	for i, b := range breakers.Items {
+	for i, b := range faults.Items {
 		selector, err := metav1.LabelSelectorAsSelector(b.Spec.Selector)
 		if err != nil {
 			return nil, err
 		}
 		if selector.Matches(labels.Set(po.Labels)) {
-			res = append(res, &breakers.Items[i])
+			res = append(res, &faults.Items[i])
 		}
 	}
 	return res, nil
 }
 
-func matchChangedBreakers(c client.Reader, old, new *v1.Pod) ([]*ctrlmeshv1alpha1.CircuitBreaker, error) {
-	var res []*ctrlmeshv1alpha1.CircuitBreaker
-	breakers := &ctrlmeshv1alpha1.CircuitBreakerList{}
-	if err := c.List(context.TODO(), breakers); err != nil {
+func matchChangedFaults(c client.Reader, old, new *v1.Pod) ([]*ctrlmeshv1alpha1.FaultInjection, error) {
+	var res []*ctrlmeshv1alpha1.FaultInjection
+	faults := &ctrlmeshv1alpha1.FaultInjectionList{}
+	if err := c.List(context.TODO(), faults); err != nil {
 		return nil, err
 	}
-	for i, b := range breakers.Items {
+	for i, b := range faults.Items {
 		selector, err := metav1.LabelSelectorAsSelector(b.Spec.Selector)
 		if err != nil {
 			return nil, err
@@ -137,7 +137,7 @@ func matchChangedBreakers(c client.Reader, old, new *v1.Pod) ([]*ctrlmeshv1alpha
 		oldMatch := selector.Matches(labels.Set(old.Labels))
 		newMatch := selector.Matches(labels.Set(new.Labels))
 		if oldMatch != newMatch {
-			res = append(res, &breakers.Items[i])
+			res = append(res, &faults.Items[i])
 		}
 	}
 	return res, nil

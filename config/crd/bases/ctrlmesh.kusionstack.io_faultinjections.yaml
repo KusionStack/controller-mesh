@@ -1,0 +1,235 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.10.0
+  creationTimestamp: null
+  name: faultinjections.ctrlmesh.kusionstack.io
+spec:
+  group: ctrlmesh.kusionstack.io
+  names:
+    kind: FaultInjection
+    listKind: FaultInjectionList
+    plural: faultinjections
+    shortNames:
+    - fj
+    singular: faultinjection
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            properties:
+              disabled:
+                type: boolean
+              httpFault:
+                items:
+                  description: HTTPFaultInjection can be used to specify one or more
+                    faults to inject while forwarding HTTP requests to the destination
+                    specified in a route.
+                  properties:
+                    abort:
+                      description: Abort Http request attempts and return error codes
+                        back to downstream service, giving the impression that the
+                        upstream service is faulty.
+                      properties:
+                        httpStatus:
+                          description: HttpStatus is used to indicate the HTTP status
+                            code to return to the caller.
+                          type: integer
+                        percent:
+                          description: Percent of requests to be aborted with the
+                            error code provided. If not specified, no request will
+                            be aborted.
+                          type: string
+                      type: object
+                    delay:
+                      description: Delay requests before forwarding, emulating various
+                        failures such as network issues, overloaded upstream service,
+                        etc.
+                      properties:
+                        fixedDelay:
+                          description: FixedDelay is used to indicate the amount of
+                            delay in seconds.
+                          type: string
+                        percent:
+                          description: Percent of requests on which the delay will
+                            be injected. If left unspecified, no request will be delayed
+                          type: string
+                      type: object
+                    effectiveTime:
+                      description: Effective time of fault injection
+                      properties:
+                        daysOfMonth:
+                          description: DaysOfMonth specifies on which days of the
+                            month the fault injection configuration is effective.
+                            For example, 1 represents the first day of the month,
+                            and so on.
+                          items:
+                            type: integer
+                          type: array
+                        daysOfWeek:
+                          description: DaysOfWeek specifies on which days of the week
+                            the fault injection configuration is effective. 0 represents
+                            Sunday, 1 represents Monday, and so on.
+                          items:
+                            type: integer
+                          type: array
+                        endTime:
+                          description: EndTime is the ending time of fault injection.
+                          type: string
+                        months:
+                          description: Months specifies in which months of the year
+                            the fault injection configuration is effective. 1 represents
+                            January, 2 represents February, and so on.
+                          items:
+                            type: integer
+                          type: array
+                        startTime:
+                          description: StartTime is the starting time of fault injection.
+                          type: string
+                      type: object
+                    match:
+                      description: Match specifies a set of criterion to be met in
+                        order for the rule to be applied to the HTTP request.
+                      properties:
+                        httpMatch:
+                          items:
+                            description: HttpMatch specifies the criteria for matching
+                              HTTP requests to RESTful resources as part of HTTP FaultInjection.
+                              Each rule can target one or more URLs and HTTP methods.
+                            properties:
+                              method:
+                                description: 'Method specifies the http method of
+                                  the request, like: PUT, POST, GET, DELETE.'
+                                items:
+                                  type: string
+                                type: array
+                              url:
+                                description: URL gives the location of the rest request,
+                                  in standard URL form (`scheme://host:port/path`)
+                                items:
+                                  type: string
+                                type: array
+                            required:
+                            - method
+                            - url
+                            type: object
+                          type: array
+                        resources:
+                          items:
+                            properties:
+                              apiGroups:
+                                items:
+                                  type: string
+                                type: array
+                              namespaces:
+                                items:
+                                  type: string
+                                type: array
+                              resources:
+                                items:
+                                  type: string
+                                type: array
+                              verbs:
+                                items:
+                                  type: string
+                                type: array
+                            type: object
+                          type: array
+                      type: object
+                    name:
+                      description: Name is the name of the policy
+                      type: string
+                  type: object
+                type: array
+              selector:
+                description: Selector is a label query over pods of this configuration.
+                properties:
+                  matchExpressions:
+                    description: matchExpressions is a list of label selector requirements.
+                      The requirements are ANDed.
+                    items:
+                      description: A label selector requirement is a selector that
+                        contains values, a key, and an operator that relates the key
+                        and values.
+                      properties:
+                        key:
+                          description: key is the label key that the selector applies
+                            to.
+                          type: string
+                        operator:
+                          description: operator represents a key's relationship to
+                            a set of values. Valid operators are In, NotIn, Exists
+                            and DoesNotExist.
+                          type: string
+                        values:
+                          description: values is an array of string values. If the
+                            operator is In or NotIn, the values array must be non-empty.
+                            If the operator is Exists or DoesNotExist, the values
+                            array must be empty. This array is replaced during a strategic
+                            merge patch.
+                          items:
+                            type: string
+                          type: array
+                      required:
+                      - key
+                      - operator
+                      type: object
+                    type: array
+                  matchLabels:
+                    additionalProperties:
+                      type: string
+                    description: matchLabels is a map of {key,value} pairs. A single
+                      {key,value} in the matchLabels map is equivalent to an element
+                      of matchExpressions, whose key field is "key", the operator
+                      is "In", and the values array contains only "value". The requirements
+                      are ANDed.
+                    type: object
+                type: object
+                x-kubernetes-map-type: atomic
+            type: object
+          status:
+            properties:
+              currentSpecHash:
+                type: string
+              lastUpdatedTime:
+                format: date-time
+                type: string
+              observedGeneration:
+                format: int64
+                type: integer
+              targetStatus:
+                items:
+                  properties:
+                    configHash:
+                      type: string
+                    message:
+                      type: string
+                    podIP:
+                      type: string
+                    podName:
+                      type: string
+                  type: object
+                type: array
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

@@ -35,10 +35,13 @@ import (
 
 	"github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/constants"
 	"github.com/KusionStack/controller-mesh/pkg/client"
+
 	proxyapiserver "github.com/KusionStack/controller-mesh/pkg/proxy/apiserver"
 	proxycache "github.com/KusionStack/controller-mesh/pkg/proxy/cache"
 	"github.com/KusionStack/controller-mesh/pkg/proxy/circuitbreaker"
+	"github.com/KusionStack/controller-mesh/pkg/proxy/faultinjection"
 	"github.com/KusionStack/controller-mesh/pkg/proxy/grpcserver"
+	tproxy "github.com/KusionStack/controller-mesh/pkg/proxy/http"
 	protomanager "github.com/KusionStack/controller-mesh/pkg/proxy/proto"
 	"github.com/KusionStack/controller-mesh/pkg/utils"
 )
@@ -51,6 +54,8 @@ var (
 	leaderElectionName = flag.String(constants.ProxyLeaderElectionNameFlag, "", "The name of leader election.")
 	webhookServePort   = flag.Int(constants.ProxyWebhookServePortFlag, 0, "Port that the real webhook binds, 0 means no proxy for webhook.")
 	webhookCertDir     = flag.String(constants.ProxyWebhookCertDirFlag, "", "The directory where the webhook certs generated or mounted.")
+
+	proxyIptablePort = flag.Int(constants.ProxyIptablesFlag, constants.ProxyIptablesPort, "port that http-tproxy listens on")
 )
 
 func main() {
@@ -76,7 +81,11 @@ func main() {
 	proxyClient := protomanager.NewGrpcClient(managerStateCache)
 
 	breakerMgr := circuitbreaker.NewManager(ctx)
-	proxyServer := grpcserver.GrpcServer{BreakerMgr: breakerMgr}
+	faultInjectionMgr := faultinjection.NewManager(ctx)
+	proxyServer := grpcserver.GrpcServer{
+		BreakerMgr:        breakerMgr,
+		FaultInjectionMgr: faultInjectionMgr,
+	}
 	go proxyServer.Start(ctx)
 
 	if err := proxyClient.Start(ctx); err != nil {
@@ -99,7 +108,9 @@ func main() {
 		opts.LeaderElectionName = *leaderElectionName
 		opts.SpecManager = proxyClient.GetSpecManager()
 		opts.BreakerWrapperFunc = breakerMgr.HandlerWrapper()
+		opts.FaultInjectionWrapperFunc = faultInjectionMgr.HandlerWrapper()
 		errs := opts.Validate()
+		ctrl.Log.Info("starting proxy")
 		if len(errs) > 0 {
 			klog.Fatalf("Failed to validate apiserver-proxy options %s: %v", utils.DumpJSON(opts), errs)
 		}
@@ -112,6 +123,10 @@ func main() {
 		if err != nil {
 			klog.Fatalf("Failed to start apiserver proxy: %v", err)
 		}
+	}
+
+	{
+		go tproxy.NewTProxy(*proxyIptablePort, faultInjectionMgr).Start()
 	}
 
 	serveHTTP(ctx, readyHandler)

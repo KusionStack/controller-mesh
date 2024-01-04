@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package circuitbreaker
+package faultinjection
 
 import (
 	"context"
@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"sync"
 	"testing"
+	"time"
 
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -39,6 +40,8 @@ var (
 	env *envtest.Environment
 	mgr manager.Manager
 	c   client.Client
+
+	request chan struct{}
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -66,7 +69,8 @@ func TestMain(m *testing.M) {
 			MetricsBindAddress: "0",
 		})
 
-		if err = (&CircuitBreakerReconciler{
+		request = make(chan struct{}, 5)
+		if err = (&FaultInjectionReconciler{
 			Client: &warpClient{
 				Client: mgr.GetClient(),
 			},
@@ -81,6 +85,7 @@ func TestMain(m *testing.M) {
 			panic(err)
 		}
 	}()
+	<-time.After(time.Second * 3)
 	code := m.Run()
 	env.Stop()
 	os.Exit(code)

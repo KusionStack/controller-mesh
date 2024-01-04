@@ -19,6 +19,7 @@ package grpcserver
 import (
 	"context"
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -35,14 +36,22 @@ import (
 
 func TestServer(t *testing.T) {
 	g := gomega.NewGomegaWithT(t)
-	ctx := context.TODO()
-	grpcServerPort = 8889
+	ctx, cancel := context.WithCancel(context.TODO())
+	wg := sync.WaitGroup{}
+	defer func() {
+		cancel()
+		wg.Wait()
+	}()
 	breakerMgr := circuitbreaker.NewManager(ctx)
 	proxyServer := &GrpcServer{BreakerMgr: breakerMgr}
-	go proxyServer.Start(ctx)
+	wg.Add(1)
+	go func() {
+		proxyServer.Start(ctx)
+		wg.Done()
+	}()
 	<-time.After(2 * time.Second)
 	fmt.Println(proto.TrafficInterceptRule_NORMAL.String())
-	grpcClient := protoconnect.NewThrottlingClient(proto.DefaultHttpClient, "http://127.0.0.1:8889")
+	grpcClient := protoconnect.NewThrottlingClient(proto.DefaultHttpClient, "http://127.0.0.1:5453")
 
 	cb := &ctrlmeshv1alpha1.CircuitBreaker{
 		ObjectMeta: metav1.ObjectMeta{

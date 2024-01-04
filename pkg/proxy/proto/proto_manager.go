@@ -27,6 +27,7 @@ import (
 	"k8s.io/klog/v2"
 
 	"github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/constants"
+	ctrlmeshconv "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/conv"
 	ctrlmeshproto "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/proto"
 	"github.com/KusionStack/controller-mesh/pkg/utils"
 )
@@ -46,8 +47,8 @@ type SpecManager struct {
 	storage           *storage
 	reportTriggerChan chan struct{}
 
-	expectedSpec *ctrlmeshproto.InternalSpec
-	currentSpec  *ctrlmeshproto.InternalSpec
+	expectedSpec *ctrlmeshconv.InternalSpec
+	currentSpec  *ctrlmeshconv.InternalSpec
 	unloadReason string
 
 	leaderElectionState *ctrlmeshproto.LeaderElectionState
@@ -68,7 +69,7 @@ func newSpecManager(reportTriggerChan chan struct{}) (*SpecManager, error) {
 	}
 	if currentSpec != nil {
 		klog.Infof("Loaded currentSpec from storage: %v", utils.DumpJSON(currentSpec))
-		sm.currentSpec = ctrlmeshproto.ConvertProtoSpecToInternal(currentSpec)
+		sm.currentSpec = ctrlmeshconv.ConvertProtoSpecToInternal(currentSpec)
 	}
 	if expectedSpec != nil {
 		klog.Infof("Loaded expectedSpec from storage: %v", utils.DumpJSON(expectedSpec))
@@ -88,7 +89,7 @@ func (sm *SpecManager) UpdateLeaderElection(le *ctrlmeshproto.LeaderElectionStat
 }
 
 func (sm *SpecManager) UpdateSpec(spec *ctrlmeshproto.ProxySpec) {
-	sm.expectedSpec = ctrlmeshproto.ConvertProtoSpecToInternal(spec)
+	sm.expectedSpec = ctrlmeshconv.ConvertProtoSpecToInternal(spec)
 	if err := sm.storage.writeExpectedSpec(sm.expectedSpec.ProxySpec); err != nil {
 		panic(fmt.Errorf("failed to write expected spec for %v: %v", utils.DumpJSON(sm.expectedSpec.ProxySpec), err))
 	}
@@ -121,7 +122,7 @@ func (sm *SpecManager) GetStatus() *ctrlmeshproto.ProxyStatus {
 	}
 }
 
-func (sm *SpecManager) AcquireSpec() *ctrlmeshproto.InternalSpec {
+func (sm *SpecManager) AcquireSpec() *ctrlmeshconv.InternalSpec {
 	sm.RLock()
 	return sm.currentSpec
 }
