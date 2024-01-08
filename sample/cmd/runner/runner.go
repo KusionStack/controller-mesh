@@ -20,11 +20,13 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -50,7 +52,7 @@ type runner struct {
 	client.Client
 }
 
-// +kubebuilder:rbac:groups=,resources=namespaces,verbs=get;list;watch;create;update;patch
+// +kubebuilder:rbac:groups="",resources=namespaces,verbs=get;list;watch;create;update;patch
 
 func (r *runner) Start(ctx context.Context) error {
 	for {
@@ -70,10 +72,13 @@ func (r *runner) holdTestResources(ctx context.Context) error {
 	if err := r.List(ctx, nss); err != nil {
 		return err
 	}
-	var holdNs []string
+	holdNs := sets.NewString()
 	for i := range nss.Items {
 		ns := &nss.Items[i]
-		holdNs = append(holdNs, ns.Name)
+		if strings.HasPrefix(ns.Name, "kube-") {
+			continue
+		}
+		holdNs.Insert(ns.Name)
 		if err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 			if err := r.Get(ctx, types.NamespacedName{Name: nss.Items[i].Name}, ns); err != nil {
 				if errors.IsNotFound(err) {
@@ -93,6 +98,6 @@ func (r *runner) holdTestResources(ctx context.Context) error {
 			return err
 		}
 	}
-	klog.Infof("hold namespaces %v", holdNs)
+	klog.Infof("hold namespaces %v", holdNs.List())
 	return nil
 }
