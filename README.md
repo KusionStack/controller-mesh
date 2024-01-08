@@ -18,7 +18,7 @@ More info about KusionStack ControllerMesh  👉 [Doc.](https://kusionstack.io/d
 
 <p align="center"><img width="800" src="./docs/img/mesh-arch-2.png"/></p>
 
-Visit [Quick Start](docs/getting-started.md) or [Installation](docs/installation.md).
+Visit [Try a Sample](https://www.kusionstack.io/docs/ctrlmesh/started/try) or [Installation](https://www.kusionstack.io/docs/ctrlmesh/started/install).
 ## Principles
 
 Generally, a `ctrlmesh-proxy` container will be injected into each operator Pod that has configured in ShardingConfigs.
