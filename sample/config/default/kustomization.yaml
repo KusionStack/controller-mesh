@@ -1,12 +1,12 @@
 # Adds namespace to all resources.
-namespace: sample-system
+namespace: kusionstack-sample
 
 # Value of this field is prepended to the
 # names of all resources, e.g. a deployment named
 # "wordpress" becomes "alices-wordpress".
 # Note that it should also match with the prefix (text before '-') of the namespace
 # field above.
-namePrefix: sample-
+namePrefix: kusionstack-
 
 # Labels to add to all resources and selectors.
 #labels:
@@ -15,7 +15,6 @@ namePrefix: sample-
 #    someName: someValue
 
 resources:
-- ../crd
 - ../rbac
 - ../manager
 # [WEBHOOK] To enable webhook, uncomment all the sections with [WEBHOOK] prefix including the one in
@@ -26,11 +25,11 @@ resources:
 # [PROMETHEUS] To enable prometheus monitor, uncomment all sections with 'PROMETHEUS'.
 #- ../prometheus
 
-patchesStrategicMerge:
+#patchesStrategicMerge:
 # Protect the /metrics endpoint by putting it behind auth.
 # If you want your controller-manager to expose the /metrics
 # endpoint w/o any authn/z, please comment the following line.
-- manager_auth_proxy_patch.yaml
+#- manager_auth_proxy_patch.yaml
 
 
 
