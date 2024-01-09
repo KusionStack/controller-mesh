@@ -1,9 +1,10 @@
 resources:
-- namespace.yaml
-- manager-deploy-v0.yaml
+- manager-deploy-v1.yaml
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 images:
 - name: controller
   newName: kusionstack/sample-operator
   newTag: v0.0.2
+namespace: kusionstack-sample
+namePrefix: kusionstack-

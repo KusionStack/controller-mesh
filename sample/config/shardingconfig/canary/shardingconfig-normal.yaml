@@ -1,0 +1,26 @@
+apiVersion: ctrlmesh.kusionstack.io/v1alpha1
+kind: ShardingConfig
+metadata:
+  name: sample-operator-1-normal
+  namespace: kusionstack-sample
+spec:
+  controller:
+    leaderElectionName: sample-operator-leader
+  limits:
+  - relateResources:
+    - apiGroups:
+      - '*'
+      resources:
+      - configmaps
+      - pods
+      - namespaces
+    selector:
+      matchExpressions:
+      - key: ctrlmesh.kusionstack.io/namespace
+        operator: NotIn
+        values:
+        - foo-1
+        - foo-2
+  selector:       # select v0 pods
+    matchLabels:
+      controller-version: v0

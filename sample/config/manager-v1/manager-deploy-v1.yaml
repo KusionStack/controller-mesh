@@ -1,0 +1,57 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sample-operator-v1
+  namespace: system
+  labels:
+    controller-version: v1
+    control-plane: controller-manager
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  selector:
+    matchLabels:
+      control-plane: controller-manager
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        ctrlmesh.kusionstack.io/enable-proxy: "true"
+        ctrlmesh.kusionstack.io/watching: "true"
+        control-plane: controller-manager
+        controller-version: v1
+    spec:
+      containers:
+      - command:
+        - /manager
+        args:
+        - --leader-elect=true
+        - --leader-election-name=sample-operator-leader
+        image: controller:latest
+        name: manager
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8081
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8081
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          limits:
+            cpu: 500m
+            memory: 128Mi
+          requests:
+            cpu: 10m
+            memory: 64Mi
+      serviceAccountName: kusionstack-controller-manager
+      terminationGracePeriodSeconds: 10

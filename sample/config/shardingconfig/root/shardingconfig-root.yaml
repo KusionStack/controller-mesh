@@ -1,0 +1,27 @@
+apiVersion: ctrlmesh.kusionstack.io/v1alpha1
+kind: ShardingConfig
+metadata:
+  name: sharding-root
+  namespace: system
+spec:
+  root:
+    prefix: sample-operator
+    targetStatefulSet: kusionstack-operating
+    canary:
+      replicas: 1
+      inNamespaces:
+      - foo-1
+      - foo-2
+    auto:
+      everyShardReplicas: 2
+      shardingSize: 2
+    resourceSelector:
+    - relateResources:
+      - apiGroups:
+        - '*'
+        resources:
+        - configmaps
+        - pods
+        - namespaces
+  controller:
+    leaderElectionName: sample-operator-leader
