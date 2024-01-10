@@ -26,6 +26,7 @@ import (
 
 	meshhttp "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/http"
 	ctrlmeshproto "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/proto"
+	"github.com/KusionStack/controller-mesh/pkg/proxy/circuitbreaker"
 	"github.com/KusionStack/controller-mesh/pkg/proxy/faultinjection"
 )
 
@@ -52,6 +53,7 @@ func TestTProxy(t *testing.T) {
 
 func StartProxy() {
 	faultInjectionMgr := faultinjection.NewManager(context.TODO())
+	circuitInjectionMgr := circuitbreaker.NewManager(context.TODO())
 	_, err := faultInjectionMgr.Sync(&ctrlmeshproto.FaultInjection{
 		Option:     ctrlmeshproto.FaultInjection_UPDATE,
 		ConfigHash: "123",
@@ -119,6 +121,6 @@ func StartProxy() {
 		},
 	})
 	utilruntime.Must(err)
-	tProxy := NewTProxy(15002, faultInjectionMgr)
+	tProxy := NewTProxy(15002, faultInjectionMgr, circuitInjectionMgr)
 	tProxy.Start()
 }

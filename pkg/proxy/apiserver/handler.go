@@ -148,8 +148,8 @@ func getReqInfoStr(r *apirequest.RequestInfo) string {
 func (h *handler) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	startTime := time.Now()
 	requestInfo, ok := apirequest.RequestInfoFrom(r.Context())
-	klog.Infof("handle http req %s", r.URL.String())
-	klog.Infof(getReqInfoStr(requestInfo))
+	// klog.Infof("handle http req %s", r.URL.String())
+	// klog.Infof(getReqInfoStr(requestInfo))
 	if !ok {
 		klog.Errorf("%s %s %s, no request info in context", r.Method, r.Header.Get("Content-Type"), r.URL)
 		http.Error(rw, "no request info in context", http.StatusBadRequest)
@@ -216,7 +216,7 @@ func (h *handler) getURL(r *http.Request) *url.URL {
 	u, _ := url.Parse(fmt.Sprintf("https://%s", r.Host))
 	if !enableIpTable {
 		u, _ = url.Parse(fmt.Sprintf(h.cfg.Host))
-		klog.Infof("disable IPTABLE, proxy apiServer with real host %s", u.String())
+		// klog.Infof("disable IPTABLE, proxy apiServer with real host %s", u.String())
 		r.Host = ""
 	}
 	return u

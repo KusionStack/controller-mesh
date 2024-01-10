@@ -19,6 +19,7 @@ package http
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 
 	"net/http"
 	"net/url"
@@ -27,14 +28,17 @@ import (
 	"k8s.io/klog/v2"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
+	"github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/constants"
 	meshhttp "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/http"
+	"github.com/KusionStack/controller-mesh/pkg/proxy/circuitbreaker"
 	"github.com/KusionStack/controller-mesh/pkg/proxy/faultinjection"
 	"github.com/KusionStack/controller-mesh/pkg/utils"
 	utilshttp "github.com/KusionStack/controller-mesh/pkg/utils/http"
 )
 
 var (
-	logger = logf.Log.WithName("http-proxy")
+	enableRestBreaker = os.Getenv(constants.EnvEnableRestCircuitBreaker) == "true"
+	logger            = logf.Log.WithName("http-proxy")
 )
 
 type ITProxy interface {
@@ -42,14 +46,16 @@ type ITProxy interface {
 }
 
 type tproxy struct {
-	port          int
-	FaultInjector faultinjection.ManagerInterface
+	port            int
+	FaultInjector   faultinjection.ManagerInterface
+	CircuitInjector circuitbreaker.ManagerInterface
 }
 
-func NewTProxy(port int, faultInjector faultinjection.ManagerInterface) ITProxy {
+func NewTProxy(port int, faultInjector faultinjection.ManagerInterface, circuitInjector circuitbreaker.ManagerInterface) ITProxy {
 	return &tproxy{
-		port:          port,
-		FaultInjector: faultInjector,
+		port:            port,
+		FaultInjector:   faultInjector,
+		CircuitInjector: circuitInjector,
 	}
 }
 
@@ -59,7 +65,7 @@ func (t *tproxy) Start() {
 		Addr:    fmt.Sprintf(":%d", t.port),
 		Handler: http.HandlerFunc(t.handleHTTP),
 	}
-	logger.Info("%s", server.ListenAndServe())
+	klog.Infof("%s", server.ListenAndServe())
 }
 
 func (t *tproxy) handleHTTP(resp http.ResponseWriter, req *http.Request) {
@@ -76,9 +82,10 @@ func (t *tproxy) handleHTTP(resp http.ResponseWriter, req *http.Request) {
 			return
 		}
 		realEndPointUrl = epUrl
-		logger.Info("receive", "proxy-host", realEndPointUrl.Host, "proxy-method", req.Method, "Mesh-Real-Endpoint", realEp)
+		klog.Infof("receive, proxy-host: %s, proxy-method: %s, Mesh-Real-Endpoint: %s", realEndPointUrl.Host, req.Method, realEp)
 	}
-	logger.Info("handel http request", "url", realEndPointUrl.String())
+	klog.Infof("handel http request, url: %s ", realEndPointUrl.String())
+	// faultinjection
 	result := t.FaultInjector.FaultInjectionRest(req.Header.Get(meshhttp.HeaderMeshRealEndpoint), req.Method)
 	if result.Abort {
 		apiErr := utils.HttpToAPIError(int(result.ErrCode), req.Method, result.Message)
@@ -87,9 +94,34 @@ func (t *tproxy) handleHTTP(resp http.ResponseWriter, req *http.Request) {
 		if err := json.NewEncoder(resp).Encode(apiErr); err != nil {
 			http.Error(resp, fmt.Sprintf("fail to inject fault %v", err), http.StatusInternalServerError)
 		}
-		logger.Info("faultInjection rule", "rule", fmt.Sprintf("fault injection, %s, %s,%d", result.Reason, result.Message, result.ErrCode))
+		klog.Infof("faultInjection rule, rule: %s", fmt.Sprintf("fault injection, %s, %s,%d", result.Reason, result.Message, result.ErrCode))
 		return
 	}
+
+	// circuitbreaker
+	if enableRestBreaker {
+		// check request is in the whitelist
+		klog.Infof("start checktrafficrule %s", realEndPointUrl.Host)
+		result := t.CircuitInjector.ValidateTrafficIntercept(realEndPointUrl.Host, req.Method)
+		if !result.Allowed {
+			klog.Infof("ErrorTProxy: %s %s  ValidateTrafficIntercept NOPASSED ,checkresult:\t%s", realEndPointUrl.Host, req.Method, result.Reason)
+			http.Error(resp, fmt.Sprintf("Forbidden by  ValidateTrafficIntercept breaker, %s, %s", result.Message, result.Reason), http.StatusForbidden)
+			return
+		}
+	}
+
+	// ValidateTrafficIntercept check pass or enableRestBreaker is false  run  http proxy
+	klog.Infof("TProxy: %s %s ValidateTrafficIntercept check PASSED or enableRestBreaker is false", realEndPointUrl.Host, req.Method)
+
+	// ValidateRest check
+	klog.Infof("start ValidateRest checkrule %s %s", realEndPointUrl.Host, req.Method)
+	validateresult := t.CircuitInjector.ValidateRest(req.Header.Get("Mesh-Real-Endpoint"), req.Method)
+	if !validateresult.Allowed {
+		klog.Infof("ErrorTProxy: %s %s  ValidateRest NOPASSED ,checkresult:%t, validateresultReason:%s", req.Header.Get("Mesh-Real-Endpoint"), req.Method, validateresult.Allowed, validateresult.Reason)
+		http.Error(resp, fmt.Sprintf("Forbidden by circuit ValidateRest breaker, %s, %s", validateresult.Message, validateresult.Reason), http.StatusForbidden)
+		return
+	}
+	klog.Infof("TProxy: %s %s ValidateRest check PASSED", realEndPointUrl.Host, req.Method)
 
 	// modify request
 	director := func(target *http.Request) {
