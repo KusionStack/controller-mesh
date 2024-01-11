@@ -26,6 +26,9 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -99,7 +102,9 @@ func (r *ShardingConfigReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		}
 		return reconcile.Result{}, err
 	}
-
+	if err = r.clearOldPods(ctx, shardingConfig.Namespace); err != nil {
+		return reconcile.Result{}, err
+	}
 	allPods, err := r.getPodsForShardingConfig(ctx, shardingConfig)
 	if err != nil {
 		return reconcile.Result{}, err
@@ -278,6 +283,42 @@ func (r *ShardingConfigReconciler) getPodsForShardingConfig(ctx context.Context,
 	}
 	sort.SliceStable(pods, func(i, j int) bool { return pods[i].Name < pods[j].Name })
 	return pods, nil
+}
+
+func (r *ShardingConfigReconciler) clearOldPods(ctx context.Context, namespace string) error {
+	podList := v1.PodList{}
+	if err := r.List(ctx, &podList, client.InNamespace(namespace), client.HasLabels{ctrlmeshv1alpha1.ShardingConfigInjectedKey}); err != nil {
+		return err
+	}
+	for i := range podList.Items {
+		po := &podList.Items[i]
+		if po.DeletionTimestamp != nil {
+			continue
+		}
+		shardName := po.Labels[ctrlmeshv1alpha1.ShardingConfigInjectedKey]
+		if shardName == "" {
+			continue
+		}
+		shard := &ctrlmeshv1alpha1.ShardingConfig{}
+		if err := r.Get(ctx, types.NamespacedName{Namespace: namespace, Name: shardName}, shard); err != nil {
+			if !errors.IsNotFound(err) {
+				return err
+			}
+			err = r.Delete(ctx, po)
+			if !errors.IsNotFound(err) {
+				return err
+			}
+			continue
+		}
+		selector, _ := metav1.LabelSelectorAsSelector(shard.Spec.Selector)
+		if !selector.Matches(labels.Set(po.Labels)) {
+			err := r.Delete(ctx, po)
+			if !errors.IsNotFound(err) {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
