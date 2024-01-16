@@ -126,7 +126,7 @@ func main() {
 	}
 
 	{
-		go tproxy.NewTProxy(*proxyIptablePort, faultInjectionMgr).Start()
+		go tproxy.NewTProxy(*proxyIptablePort, faultInjectionMgr, breakerMgr).Start()
 	}
 
 	serveHTTP(ctx, readyHandler)

@@ -51,7 +51,6 @@ import (
 var (
 	upgradeSubresources = sets.NewString("exec", "attach")
 	enableIpTable       = os.Getenv(constants.EnvIPTable) == "true"
-	enableWebhookProxy  = os.Getenv(constants.EnvEnableWebHookProxy) == "true"
 
 	disableCircuitBreaker = os.Getenv(constants.EnvDisableCircuitBreaker) == "true"
 	disableFaultInjection = os.Getenv(constants.EnvDisableCircuitBreaker) == "true"
@@ -141,15 +140,9 @@ type handler struct {
 	electionHandler leaderelection.Handler
 }
 
-func getReqInfoStr(r *apirequest.RequestInfo) string {
-	return fmt.Sprintf("RequestInfo: { Path: %s, APIGroup: %s, Resource: %s, Subresource: %s, Verb: %s, Namespace: %s, Name: %s, APIVersion: %s }", r.Path, r.APIGroup, r.Resource, r.Subresource, r.Verb, r.Namespace, r.Name, r.APIVersion)
-}
-
 func (h *handler) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	startTime := time.Now()
 	requestInfo, ok := apirequest.RequestInfoFrom(r.Context())
-	klog.Infof("handle http req %s", r.URL.String())
-	klog.Infof(getReqInfoStr(requestInfo))
 	if !ok {
 		klog.Errorf("%s %s %s, no request info in context", r.Method, r.Header.Get("Content-Type"), r.URL)
 		http.Error(rw, "no request info in context", http.StatusBadRequest)
@@ -216,7 +209,6 @@ func (h *handler) getURL(r *http.Request) *url.URL {
 	u, _ := url.Parse(fmt.Sprintf("https://%s", r.Host))
 	if !enableIpTable {
 		u, _ = url.Parse(fmt.Sprintf(h.cfg.Host))
-		klog.Infof("disable IPTABLE, proxy apiServer with real host %s", u.String())
 		r.Host = ""
 	}
 	return u

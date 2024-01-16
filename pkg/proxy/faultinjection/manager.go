@@ -278,7 +278,7 @@ func (m *manager) doFaultInjection(faultInjections []*ctrlmeshproto.HTTPFaultInj
 			if isInpercentRange(faultInjections[idx].Delay.Percent) {
 				delay := faultInjections[idx].Delay.GetFixedDelay()
 				delayDuration := delay.AsDuration()
-				fmt.Println("Delaying for ", delayDuration)
+				logger.Info("Delaying time ", "for", delayDuration)
 				time.Sleep(delayDuration)
 			}
 		}
