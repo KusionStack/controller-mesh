@@ -53,7 +53,7 @@ var (
 	enableIpTable       = os.Getenv(constants.EnvIPTable) == "true"
 
 	disableCircuitBreaker = os.Getenv(constants.EnvDisableCircuitBreaker) == "true"
-	disableFaultInjection = os.Getenv(constants.EnvDisableCircuitBreaker) == "true"
+	enableFaultInjection = os.Getenv(constants.EnvEnableFaultInjection) == "true"
 )
 
 type Proxy struct {
@@ -91,7 +91,7 @@ func NewProxy(opts *Options) (*Proxy, error) {
 	if opts.BreakerWrapperFunc != nil && !disableCircuitBreaker {
 		handler = opts.BreakerWrapperFunc(handler)
 	}
-	if opts.FaultInjectionWrapperFunc != nil && !disableFaultInjection {
+	if opts.FaultInjectionWrapperFunc != nil && enableFaultInjection {
 		handler = opts.FaultInjectionWrapperFunc(handler)
 	}
 	handler = genericfilters.WithWaitGroup(handler, opts.LongRunningFunc, opts.HandlerChainWaitGroup)

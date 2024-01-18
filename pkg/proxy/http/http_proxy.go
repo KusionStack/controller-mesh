@@ -37,8 +37,10 @@ import (
 )
 
 var (
-	enableRestBreaker = os.Getenv(constants.EnvEnableRestCircuitBreaker) == "true"
-	logger            = logf.Log.WithName("http-proxy")
+	enableRestBreaker        = os.Getenv(constants.EnvEnableRestCircuitBreaker) == "true"
+	enableRestFaultInjection = os.Getenv(constants.EnvEnableRestFaultInjection) == "true"
+
+	logger = logf.Log.WithName("http-proxy")
 )
 
 type ITProxy interface {
@@ -86,16 +88,20 @@ func (t *tproxy) handleHTTP(resp http.ResponseWriter, req *http.Request) {
 	}
 	klog.Infof("handel http request, url: %s ", realEndPointUrl.String())
 	// faultinjection
-	result := t.FaultInjector.FaultInjectionRest(req.Header.Get(meshhttp.HeaderMeshRealEndpoint), req.Method)
-	if result.Abort {
-		apiErr := utils.HttpToAPIError(int(result.ErrCode), req.Method, result.Message)
-		resp.Header().Set("Content-Type", "application/json")
-		resp.WriteHeader(int(apiErr.Code))
-		if err := json.NewEncoder(resp).Encode(apiErr); err != nil {
-			http.Error(resp, fmt.Sprintf("fail to inject fault %v", err), http.StatusInternalServerError)
+	if enableRestFaultInjection {
+		result := t.FaultInjector.FaultInjectionRest(req.Header.Get(meshhttp.HeaderMeshRealEndpoint), req.Method)
+		if result.Abort {
+			apiErr := utils.HttpToAPIError(int(result.ErrCode), req.Method, result.Message)
+			if apiErr.Code != http.StatusOK {
+				resp.Header().Set("Content-Type", "application/json")
+				resp.WriteHeader(int(apiErr.Code))
+				if err := json.NewEncoder(resp).Encode(apiErr); err != nil {
+					http.Error(resp, fmt.Sprintf("fail to inject fault %v", err), http.StatusInternalServerError)
+				}
+				klog.Infof("faultInjection rule, rule: %s", fmt.Sprintf("fault injection, %s, %s,%d", result.Reason, result.Message, result.ErrCode))
+				return
+			}
 		}
-		klog.Infof("faultInjection rule, rule: %s", fmt.Sprintf("fault injection, %s, %s,%d", result.Reason, result.Message, result.ErrCode))
-		return
 	}
 
 	// circuitbreaker

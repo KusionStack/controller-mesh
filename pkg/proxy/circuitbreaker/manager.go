@@ -79,6 +79,9 @@ func (m *manager) Sync(config *ctrlmeshproto.CircuitBreaker) (*ctrlmeshproto.Con
 				LimitingSnapshot: m.snapshot(config.Name),
 			}, nil
 		} else {
+			if ok{
+				m.unregisterRules(cb.Name)
+			}
 			m.breakerMap[config.Name] = config
 			m.registerRules(config)
 			var msg string
@@ -163,9 +166,6 @@ type ValidateResult struct {
 // RegisterRules register a circuit breaker to the local limiter store
 func (m *manager) registerRules(cb *ctrlmeshproto.CircuitBreaker) {
 	logger.Info("register rule", "circuit-breaker", cb.Name)
-	if _, ok := m.breakerMap[cb.Name]; ok {
-		m.unregisterRules(cb.Name)
-	}
 
 	for _, limiting := range cb.RateLimitings {
 		key := fmt.Sprintf("%s:%s", cb.Name, limiting.Name)
