@@ -79,7 +79,7 @@ func (m *manager) Sync(config *ctrlmeshproto.CircuitBreaker) (*ctrlmeshproto.Con
 				LimitingSnapshot: m.snapshot(config.Name),
 			}, nil
 		} else {
-			if ok{
+			if ok {
 				m.unregisterRules(cb.Name)
 			}
 			m.breakerMap[config.Name] = config

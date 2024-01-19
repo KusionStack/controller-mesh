@@ -53,7 +53,7 @@ var (
 	enableIpTable       = os.Getenv(constants.EnvIPTable) == "true"
 
 	disableCircuitBreaker = os.Getenv(constants.EnvDisableCircuitBreaker) == "true"
-	enableFaultInjection = os.Getenv(constants.EnvEnableFaultInjection) == "true"
+	enableFaultInjection  = os.Getenv(constants.EnvEnableFaultInjection) == "true"
 )
 
 type Proxy struct {

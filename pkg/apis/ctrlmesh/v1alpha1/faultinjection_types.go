@@ -20,12 +20,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type StringMatch struct {
-	MatchType StringMatchType `json:"matchType,omitempty"`
-	Value     string          `json:"value,omitempty"`
-}
-
 type StringMatchType string
+
+const (
+	StringMatchTypeNormal StringMatchType = "Normal"
+	StringMatchTypeRegexp StringMatchType = "Regexp"
+)
 
 type HTTPFaultInjectionDelay struct {
 	// FixedDelay is used to indicate the amount of delay in seconds.
@@ -60,12 +60,22 @@ type HttpMatch struct {
 	Method []string `json:"method"`
 }
 
+type StringMatch struct {
+	MatchType StringMatchType `json:"matchType,omitempty"`
+	// Content is the content of the fault injection rule
+	Contents []string `json:"contents"`
+	// Method specifies the http method of the request, like: PUT, POST, GET, DELETE.
+	Methods []string `json:"methods"`
+}
+
 // Match defines a set of rules and criteria for matching incoming HTTP requests.
 // It associates a name with the set of criteria and can relate to additional resources that are relevant
 // to the request matching, enabling complex and granular control over request matching in HTTP FaultInjection.
 type Match struct {
 	Resources []*ResourceMatch `json:"resources,omitempty"`
 	HttpMatch []*HttpMatch     `json:"httpMatch,omitempty"`
+	// ContentMatch
+	ContentMatch []*StringMatch `json:"contentMatch,omitempty"`
 }
 
 // HTTPFaultInjection can be used to specify one or more faults to inject

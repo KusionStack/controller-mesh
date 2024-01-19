@@ -55,7 +55,7 @@ message HTTPFaultInjection {
     oneof http_delay_type {
       // Add a fixed delay before forwarding the request. Format:
       // 1h/1m/1s/1ms. MUST be >=1ms.
-      google.protobuf.Duration fixed_delay = 2[(google.api.field_behavior) = REQUIRED];
+      google.protobuf.Duration fixed_delay = 2 [ (google.api.field_behavior) = REQUIRED ];
 
       // google.protobuf.Duration exponential_delay = 3 ;
     }
@@ -82,37 +82,51 @@ message HTTPFaultInjection {
   }
 }
 
-// EffectiveTimeRange specifies the effective time range for fault injection configuration.
+// EffectiveTimeRange specifies the effective time range for fault injection
+// configuration.
 message EffectiveTimeRange {
-  // StartTime is the time when the fault injection configuration starts to take effect.
+  // StartTime is the time when the fault injection configuration starts to take
+  // effect.
   string start_time = 1;
 
-  // EndTime is the time when the fault injection configuration ceases to be effective.
+  // EndTime is the time when the fault injection configuration ceases to be
+  // effective.
   string end_time = 2;
 
-  // DaysOfWeek specifies which days of the week the fault injection configuration is effective.
-  // 0 represents Sunday, 1 represents Monday, and so on.
+  // DaysOfWeek specifies which days of the week the fault injection
+  // configuration is effective. 0 represents Sunday, 1 represents Monday, and
+  // so on.
   repeated int32 days_of_week = 3;
 
-  // DaysOfMonth specifies on which days of the month the fault injection configuration is effective.
-  // For example, 1 represents the first day of the month, and so on.
+  // DaysOfMonth specifies on which days of the month the fault injection
+  // configuration is effective. For example, 1 represents the first day of the
+  // month, and so on.
   repeated int32 days_of_month = 4;
 
-  // Months specifies which months of the year the fault injection configuration is effective.
-  // 1 represents January, 2 represents February, and so on.
+  // Months specifies which months of the year the fault injection configuration
+  // is effective. 1 represents January, 2 represents February, and so on.
   repeated int32 months = 5;
-}
-
-
-
-message HttpMatch {
-  repeated string url = 1;
-  repeated string method = 2;
 }
 
 message Match {
   repeated ResourceMatch resources = 1;
   repeated HttpMatch httpMatch = 2;
+  repeated StringMatch stringMatch = 3;
+}
+
+message StringMatch {
+  StringMatchType matchType = 1;
+  repeated string contents = 2;
+  repeated string methods = 3;
+  enum StringMatchType {
+    NORMAL = 0;
+    REGEXP = 1;
+  }
+}
+
+message HttpMatch {
+  repeated string url = 1;
+  repeated string method = 2;
 }
 
 // Describes how to match K8s resources.

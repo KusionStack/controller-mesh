@@ -57,6 +57,7 @@ type FaultInjectionResult struct {
 
 type FaultInjector interface {
 	FaultInjectionRest(URL string, method string) (result *FaultInjectionResult)
+	FaultInjectionNormalOrRegexp(URL string, method string) (result *FaultInjectionResult)
 	FaultInjectionResource(namespace, apiGroup, resource, verb string) (result *FaultInjectionResult)
 	HandlerWrapper() func(http.Handler) http.Handler
 }
@@ -87,7 +88,7 @@ func (m *manager) Sync(config *ctrlmeshproto.FaultInjection) (*ctrlmeshproto.Fau
 				Message: fmt.Sprintf("faultInjection spec hash not updated, hash %s", fi.ConfigHash),
 			}, nil
 		} else {
-			if ok{
+			if ok {
 				m.unregisterRules(fi.Name)
 			}
 			m.faultInjectionMap[config.Name] = config
@@ -149,15 +150,47 @@ func (m *manager) HandlerWrapper() func(http.Handler) http.Handler {
 	}
 }
 
+func (m *manager) FaultInjectionNormalOrRegexp(URL string, method string) (result *FaultInjectionResult) {
+	// regexp and normal
+	now := time.Now()
+	indexes := m.faultInjectionStore.normalIndexes[indexForRest(URL, method)]
+	if indexes == nil {
+		indexes = m.faultInjectionStore.normalIndexes[indexForRest(URL, "*")]
+	}
+	for key := range indexes {
+		faultInjection := m.faultInjectionStore.rules[key]
+		if faultInjection != nil {
+			result = m.doFaultInjection([]*ctrlmeshproto.HTTPFaultInjection{faultInjection})
+			klog.Infof("validate rest, URL: %s, method:%s, result: %v, cost time: %v ", URL, method, result, time.Since(now).String())
+			return result
+		}
+	}
+
+	for key, regs := range m.faultInjectionStore.regexpIndexes {
+		for _, reg := range regs {
+			if reg.method == method && reg.reg.MatchString(URL) {
+				faultInjection := m.faultInjectionStore.rules[key]
+				if faultInjection != nil {
+					result = m.doFaultInjection([]*ctrlmeshproto.HTTPFaultInjection{faultInjection})
+					klog.Infof("validate rest, URL: %s, method:%s, result: %v, cost time: %v ", URL, method, result, time.Since(now).String())
+					return result
+				}
+			}
+		}
+	}
+	result = &FaultInjectionResult{Abort: false, Reason: "No rule match"}
+	return result
+}
+
 func (m *manager) FaultInjectionRest(URL string, method string) (result *FaultInjectionResult) {
 	now := time.Now()
 	urls := generateWildcardUrls(URL, method)
 	for _, url := range urls {
-		faultInjections, states := m.faultInjectionStore.byIndex(IndexRest, url)
+		faultInjections, _ := m.faultInjectionStore.byIndex(IndexRest, url)
 		if len(faultInjections) == 0 {
 			continue
 		}
-		result = m.doFaultInjection(faultInjections, states)
+		result = m.doFaultInjection(faultInjections)
 		klog.Infof("validate rest, URL: %s, method:%s, result: %v, cost time: %v ", URL, method, result, time.Since(now).String())
 		return result
 	}
@@ -189,11 +222,11 @@ func (m *manager) FaultInjectionResource(namespace, apiGroup, resource, verb str
 	now := time.Now()
 	seeds := generateWildcardSeeds(namespace, apiGroup, resource, verb)
 	for _, seed := range seeds {
-		faultInjections, states := m.faultInjectionStore.byIndex(IndexResource, seed)
+		faultInjections, _ := m.faultInjectionStore.byIndex(IndexResource, seed)
 		if len(faultInjections) == 0 {
 			continue
 		}
-		result = m.doFaultInjection(faultInjections, states)
+		result = m.doFaultInjection(faultInjections)
 		klog.Infof("validate resource, namespace: %s, apiGroup: %s, resource: %s, verb: %s, result: %v, cost time: %v, ", namespace, apiGroup, resource, verb, result, time.Since(now).String())
 		return result
 	}
@@ -262,7 +295,7 @@ func withFaultInjection(injector FaultInjector, handler http.Handler) http.Handl
 	})
 }
 
-func (m *manager) doFaultInjection(faultInjections []*ctrlmeshproto.HTTPFaultInjection, states []*state) *FaultInjectionResult {
+func (m *manager) doFaultInjection(faultInjections []*ctrlmeshproto.HTTPFaultInjection) *FaultInjectionResult {
 	result := &FaultInjectionResult{
 		Abort:  false,
 		Reason: "Default allow",
@@ -288,6 +321,7 @@ func (m *manager) doFaultInjection(faultInjections []*ctrlmeshproto.HTTPFaultInj
 				result.Reason = "FaultInjectionTriggered"
 				result.Message = fmt.Sprintf("the fault injection is triggered. Limiting rule name: %s", faultInjections[idx].Name)
 				result.ErrCode = faultInjections[idx].Abort.GetHttpStatus()
+				return result
 			}
 
 		}

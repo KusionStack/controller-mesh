@@ -104,10 +104,14 @@ func ConvertHTTPMatch(match *ctrlmeshv1alpha1.Match) *ctrlmeshproto.Match {
 	if match.Resources != nil {
 		Match.Resources = make([]*ctrlmeshproto.ResourceMatch, len(match.Resources))
 		for i, relatedResource := range match.Resources {
-
 			Match.Resources[i] = ConvertRelatedResources(relatedResource)
 		}
-
+	}
+	if match.ContentMatch != nil {
+		Match.StringMatch = make([]*ctrlmeshproto.StringMatch, len(match.ContentMatch))
+		for i, stringMatch := range match.ContentMatch {
+			Match.StringMatch[i] = ConvertStringMatch(stringMatch)
+		}
 	}
 	return Match
 }
@@ -159,4 +163,26 @@ func ConvertRelatedResources(resourceRule *ctrlmeshv1alpha1.ResourceMatch) *ctrl
 		copy(protoResourceRule.Namespaces, resourceRule.Namespaces)
 	}
 	return protoResourceRule
+}
+
+func ConvertStringMatch(stringMatch *ctrlmeshv1alpha1.StringMatch) *ctrlmeshproto.StringMatch {
+	res := &ctrlmeshproto.StringMatch{}
+	if stringMatch != nil {
+		if stringMatch.MatchType == ctrlmeshv1alpha1.StringMatchTypeNormal {
+			res.MatchType = ctrlmeshproto.StringMatch_NORMAL
+		} else if stringMatch.MatchType == ctrlmeshv1alpha1.StringMatchTypeRegexp {
+			res.MatchType = ctrlmeshproto.StringMatch_REGEXP
+		} else {
+			return res
+		}
+		if stringMatch.Contents != nil {
+			res.Contents = make([]string, len(stringMatch.Contents))
+			copy(res.Contents, stringMatch.Contents)
+		}
+		if stringMatch.Methods != nil {
+			res.Methods = make([]string, len(stringMatch.Methods))
+			copy(res.Methods, stringMatch.Methods)
+		}
+	}
+	return res
 }

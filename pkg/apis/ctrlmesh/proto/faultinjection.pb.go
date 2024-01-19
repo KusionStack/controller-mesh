@@ -77,6 +77,52 @@ func (FaultInjection_Option) EnumDescriptor() ([]byte, []int) {
 	return file_pkg_apis_ctrlmesh_proto_faultinjection_proto_rawDescGZIP(), []int{1, 0}
 }
 
+type StringMatch_StringMatchType int32
+
+const (
+	StringMatch_NORMAL StringMatch_StringMatchType = 0
+	StringMatch_REGEXP StringMatch_StringMatchType = 1
+)
+
+// Enum value maps for StringMatch_StringMatchType.
+var (
+	StringMatch_StringMatchType_name = map[int32]string{
+		0: "NORMAL",
+		1: "REGEXP",
+	}
+	StringMatch_StringMatchType_value = map[string]int32{
+		"NORMAL": 0,
+		"REGEXP": 1,
+	}
+)
+
+func (x StringMatch_StringMatchType) Enum() *StringMatch_StringMatchType {
+	p := new(StringMatch_StringMatchType)
+	*p = x
+	return p
+}
+
+func (x StringMatch_StringMatchType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (StringMatch_StringMatchType) Descriptor() protoreflect.EnumDescriptor {
+	return file_pkg_apis_ctrlmesh_proto_faultinjection_proto_enumTypes[1].Descriptor()
+}
+
+func (StringMatch_StringMatchType) Type() protoreflect.EnumType {
+	return &file_pkg_apis_ctrlmesh_proto_faultinjection_proto_enumTypes[1]
+}
+
+func (x StringMatch_StringMatchType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use StringMatch_StringMatchType.Descriptor instead.
+func (StringMatch_StringMatchType) EnumDescriptor() ([]byte, []int) {
+	return file_pkg_apis_ctrlmesh_proto_faultinjection_proto_rawDescGZIP(), []int{5, 0}
+}
+
 type FaultInjectConfigResp struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -286,24 +332,29 @@ func (x *HTTPFaultInjection) GetEffectiveTime() *EffectiveTimeRange {
 	return nil
 }
 
-// EffectiveTimeRange specifies the effective time range for fault injection configuration.
+// EffectiveTimeRange specifies the effective time range for fault injection
+// configuration.
 type EffectiveTimeRange struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// StartTime is the time when the fault injection configuration starts to take effect.
+	// StartTime is the time when the fault injection configuration starts to take
+	// effect.
 	StartTime string `protobuf:"bytes,1,opt,name=start_time,json=startTime,proto3" json:"start_time,omitempty"`
-	// EndTime is the time when the fault injection configuration ceases to be effective.
+	// EndTime is the time when the fault injection configuration ceases to be
+	// effective.
 	EndTime string `protobuf:"bytes,2,opt,name=end_time,json=endTime,proto3" json:"end_time,omitempty"`
-	// DaysOfWeek specifies which days of the week the fault injection configuration is effective.
-	// 0 represents Sunday, 1 represents Monday, and so on.
+	// DaysOfWeek specifies which days of the week the fault injection
+	// configuration is effective. 0 represents Sunday, 1 represents Monday, and
+	// so on.
 	DaysOfWeek []int32 `protobuf:"varint,3,rep,packed,name=days_of_week,json=daysOfWeek,proto3" json:"days_of_week,omitempty"`
-	// DaysOfMonth specifies on which days of the month the fault injection configuration is effective.
-	// For example, 1 represents the first day of the month, and so on.
+	// DaysOfMonth specifies on which days of the month the fault injection
+	// configuration is effective. For example, 1 represents the first day of the
+	// month, and so on.
 	DaysOfMonth []int32 `protobuf:"varint,4,rep,packed,name=days_of_month,json=daysOfMonth,proto3" json:"days_of_month,omitempty"`
-	// Months specifies which months of the year the fault injection configuration is effective.
-	// 1 represents January, 2 represents February, and so on.
+	// Months specifies which months of the year the fault injection configuration
+	// is effective. 1 represents January, 2 represents February, and so on.
 	Months []int32 `protobuf:"varint,5,rep,packed,name=months,proto3" json:"months,omitempty"`
 }
 
@@ -374,74 +425,20 @@ func (x *EffectiveTimeRange) GetMonths() []int32 {
 	return nil
 }
 
-type HttpMatch struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	Url    []string `protobuf:"bytes,1,rep,name=url,proto3" json:"url,omitempty"`
-	Method []string `protobuf:"bytes,2,rep,name=method,proto3" json:"method,omitempty"`
-}
-
-func (x *HttpMatch) Reset() {
-	*x = HttpMatch{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_pkg_apis_ctrlmesh_proto_faultinjection_proto_msgTypes[4]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *HttpMatch) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*HttpMatch) ProtoMessage() {}
-
-func (x *HttpMatch) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_apis_ctrlmesh_proto_faultinjection_proto_msgTypes[4]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use HttpMatch.ProtoReflect.Descriptor instead.
-func (*HttpMatch) Descriptor() ([]byte, []int) {
-	return file_pkg_apis_ctrlmesh_proto_faultinjection_proto_rawDescGZIP(), []int{4}
-}
-
-func (x *HttpMatch) GetUrl() []string {
-	if x != nil {
-		return x.Url
-	}
-	return nil
-}
-
-func (x *HttpMatch) GetMethod() []string {
-	if x != nil {
-		return x.Method
-	}
-	return nil
-}
-
 type Match struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Resources []*ResourceMatch `protobuf:"bytes,1,rep,name=resources,proto3" json:"resources,omitempty"`
-	HttpMatch []*HttpMatch     `protobuf:"bytes,2,rep,name=httpMatch,proto3" json:"httpMatch,omitempty"`
+	Resources   []*ResourceMatch `protobuf:"bytes,1,rep,name=resources,proto3" json:"resources,omitempty"`
+	HttpMatch   []*HttpMatch     `protobuf:"bytes,2,rep,name=httpMatch,proto3" json:"httpMatch,omitempty"`
+	StringMatch []*StringMatch   `protobuf:"bytes,3,rep,name=stringMatch,proto3" json:"stringMatch,omitempty"`
 }
 
 func (x *Match) Reset() {
 	*x = Match{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_pkg_apis_ctrlmesh_proto_faultinjection_proto_msgTypes[5]
+		mi := &file_pkg_apis_ctrlmesh_proto_faultinjection_proto_msgTypes[4]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -454,7 +451,7 @@ func (x *Match) String() string {
 func (*Match) ProtoMessage() {}
 
 func (x *Match) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_apis_ctrlmesh_proto_faultinjection_proto_msgTypes[5]
+	mi := &file_pkg_apis_ctrlmesh_proto_faultinjection_proto_msgTypes[4]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -467,7 +464,7 @@ func (x *Match) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Match.ProtoReflect.Descriptor instead.
 func (*Match) Descriptor() ([]byte, []int) {
-	return file_pkg_apis_ctrlmesh_proto_faultinjection_proto_rawDescGZIP(), []int{5}
+	return file_pkg_apis_ctrlmesh_proto_faultinjection_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *Match) GetResources() []*ResourceMatch {
@@ -480,6 +477,131 @@ func (x *Match) GetResources() []*ResourceMatch {
 func (x *Match) GetHttpMatch() []*HttpMatch {
 	if x != nil {
 		return x.HttpMatch
+	}
+	return nil
+}
+
+func (x *Match) GetStringMatch() []*StringMatch {
+	if x != nil {
+		return x.StringMatch
+	}
+	return nil
+}
+
+type StringMatch struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	MatchType StringMatch_StringMatchType `protobuf:"varint,1,opt,name=matchType,proto3,enum=proto.StringMatch_StringMatchType" json:"matchType,omitempty"`
+	Contents  []string                    `protobuf:"bytes,2,rep,name=contents,proto3" json:"contents,omitempty"`
+	Methods   []string                    `protobuf:"bytes,3,rep,name=methods,proto3" json:"methods,omitempty"`
+}
+
+func (x *StringMatch) Reset() {
+	*x = StringMatch{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_pkg_apis_ctrlmesh_proto_faultinjection_proto_msgTypes[5]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *StringMatch) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StringMatch) ProtoMessage() {}
+
+func (x *StringMatch) ProtoReflect() protoreflect.Message {
+	mi := &file_pkg_apis_ctrlmesh_proto_faultinjection_proto_msgTypes[5]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StringMatch.ProtoReflect.Descriptor instead.
+func (*StringMatch) Descriptor() ([]byte, []int) {
+	return file_pkg_apis_ctrlmesh_proto_faultinjection_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *StringMatch) GetMatchType() StringMatch_StringMatchType {
+	if x != nil {
+		return x.MatchType
+	}
+	return StringMatch_NORMAL
+}
+
+func (x *StringMatch) GetContents() []string {
+	if x != nil {
+		return x.Contents
+	}
+	return nil
+}
+
+func (x *StringMatch) GetMethods() []string {
+	if x != nil {
+		return x.Methods
+	}
+	return nil
+}
+
+type HttpMatch struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Url    []string `protobuf:"bytes,1,rep,name=url,proto3" json:"url,omitempty"`
+	Method []string `protobuf:"bytes,2,rep,name=method,proto3" json:"method,omitempty"`
+}
+
+func (x *HttpMatch) Reset() {
+	*x = HttpMatch{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_pkg_apis_ctrlmesh_proto_faultinjection_proto_msgTypes[6]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *HttpMatch) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*HttpMatch) ProtoMessage() {}
+
+func (x *HttpMatch) ProtoReflect() protoreflect.Message {
+	mi := &file_pkg_apis_ctrlmesh_proto_faultinjection_proto_msgTypes[6]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use HttpMatch.ProtoReflect.Descriptor instead.
+func (*HttpMatch) Descriptor() ([]byte, []int) {
+	return file_pkg_apis_ctrlmesh_proto_faultinjection_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *HttpMatch) GetUrl() []string {
+	if x != nil {
+		return x.Url
+	}
+	return nil
+}
+
+func (x *HttpMatch) GetMethod() []string {
+	if x != nil {
+		return x.Method
 	}
 	return nil
 }
@@ -521,7 +643,7 @@ type ResourceMatch struct {
 func (x *ResourceMatch) Reset() {
 	*x = ResourceMatch{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_pkg_apis_ctrlmesh_proto_faultinjection_proto_msgTypes[6]
+		mi := &file_pkg_apis_ctrlmesh_proto_faultinjection_proto_msgTypes[7]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -534,7 +656,7 @@ func (x *ResourceMatch) String() string {
 func (*ResourceMatch) ProtoMessage() {}
 
 func (x *ResourceMatch) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_apis_ctrlmesh_proto_faultinjection_proto_msgTypes[6]
+	mi := &file_pkg_apis_ctrlmesh_proto_faultinjection_proto_msgTypes[7]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -547,7 +669,7 @@ func (x *ResourceMatch) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResourceMatch.ProtoReflect.Descriptor instead.
 func (*ResourceMatch) Descriptor() ([]byte, []int) {
-	return file_pkg_apis_ctrlmesh_proto_faultinjection_proto_rawDescGZIP(), []int{6}
+	return file_pkg_apis_ctrlmesh_proto_faultinjection_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *ResourceMatch) GetApiGroups() []string {
@@ -596,7 +718,7 @@ type HTTPFaultInjection_Delay struct {
 func (x *HTTPFaultInjection_Delay) Reset() {
 	*x = HTTPFaultInjection_Delay{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_pkg_apis_ctrlmesh_proto_faultinjection_proto_msgTypes[7]
+		mi := &file_pkg_apis_ctrlmesh_proto_faultinjection_proto_msgTypes[8]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -609,7 +731,7 @@ func (x *HTTPFaultInjection_Delay) String() string {
 func (*HTTPFaultInjection_Delay) ProtoMessage() {}
 
 func (x *HTTPFaultInjection_Delay) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_apis_ctrlmesh_proto_faultinjection_proto_msgTypes[7]
+	mi := &file_pkg_apis_ctrlmesh_proto_faultinjection_proto_msgTypes[8]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -675,7 +797,7 @@ type HTTPFaultInjection_Abort struct {
 func (x *HTTPFaultInjection_Abort) Reset() {
 	*x = HTTPFaultInjection_Abort{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_pkg_apis_ctrlmesh_proto_faultinjection_proto_msgTypes[8]
+		mi := &file_pkg_apis_ctrlmesh_proto_faultinjection_proto_msgTypes[9]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -688,7 +810,7 @@ func (x *HTTPFaultInjection_Abort) String() string {
 func (*HTTPFaultInjection_Abort) ProtoMessage() {}
 
 func (x *HTTPFaultInjection_Abort) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_apis_ctrlmesh_proto_faultinjection_proto_msgTypes[8]
+	mi := &file_pkg_apis_ctrlmesh_proto_faultinjection_proto_msgTypes[9]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -851,35 +973,49 @@ var file_pkg_apis_ctrlmesh_proto_faultinjection_proto_rawDesc = []byte{
 	0x6d, 0x6f, 0x6e, 0x74, 0x68, 0x18, 0x04, 0x20, 0x03, 0x28, 0x05, 0x52, 0x0b, 0x64, 0x61, 0x79,
 	0x73, 0x4f, 0x66, 0x4d, 0x6f, 0x6e, 0x74, 0x68, 0x12, 0x16, 0x0a, 0x06, 0x6d, 0x6f, 0x6e, 0x74,
 	0x68, 0x73, 0x18, 0x05, 0x20, 0x03, 0x28, 0x05, 0x52, 0x06, 0x6d, 0x6f, 0x6e, 0x74, 0x68, 0x73,
-	0x22, 0x35, 0x0a, 0x09, 0x48, 0x74, 0x74, 0x70, 0x4d, 0x61, 0x74, 0x63, 0x68, 0x12, 0x10, 0x0a,
-	0x03, 0x75, 0x72, 0x6c, 0x18, 0x01, 0x20, 0x03, 0x28, 0x09, 0x52, 0x03, 0x75, 0x72, 0x6c, 0x12,
-	0x16, 0x0a, 0x06, 0x6d, 0x65, 0x74, 0x68, 0x6f, 0x64, 0x18, 0x02, 0x20, 0x03, 0x28, 0x09, 0x52,
-	0x06, 0x6d, 0x65, 0x74, 0x68, 0x6f, 0x64, 0x22, 0x6b, 0x0a, 0x05, 0x4d, 0x61, 0x74, 0x63, 0x68,
-	0x12, 0x32, 0x0a, 0x09, 0x72, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x73, 0x18, 0x01, 0x20,
-	0x03, 0x28, 0x0b, 0x32, 0x14, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x52, 0x65, 0x73, 0x6f,
-	0x75, 0x72, 0x63, 0x65, 0x4d, 0x61, 0x74, 0x63, 0x68, 0x52, 0x09, 0x72, 0x65, 0x73, 0x6f, 0x75,
-	0x72, 0x63, 0x65, 0x73, 0x12, 0x2e, 0x0a, 0x09, 0x68, 0x74, 0x74, 0x70, 0x4d, 0x61, 0x74, 0x63,
-	0x68, 0x18, 0x02, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x10, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e,
-	0x48, 0x74, 0x74, 0x70, 0x4d, 0x61, 0x74, 0x63, 0x68, 0x52, 0x09, 0x68, 0x74, 0x74, 0x70, 0x4d,
-	0x61, 0x74, 0x63, 0x68, 0x22, 0x81, 0x01, 0x0a, 0x0d, 0x52, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63,
-	0x65, 0x4d, 0x61, 0x74, 0x63, 0x68, 0x12, 0x1c, 0x0a, 0x09, 0x61, 0x70, 0x69, 0x47, 0x72, 0x6f,
-	0x75, 0x70, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x09, 0x52, 0x09, 0x61, 0x70, 0x69, 0x47, 0x72,
-	0x6f, 0x75, 0x70, 0x73, 0x12, 0x1e, 0x0a, 0x0a, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63,
-	0x65, 0x73, 0x18, 0x03, 0x20, 0x03, 0x28, 0x09, 0x52, 0x0a, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70,
-	0x61, 0x63, 0x65, 0x73, 0x12, 0x1c, 0x0a, 0x09, 0x72, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65,
-	0x73, 0x18, 0x04, 0x20, 0x03, 0x28, 0x09, 0x52, 0x09, 0x72, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63,
-	0x65, 0x73, 0x12, 0x14, 0x0a, 0x05, 0x76, 0x65, 0x72, 0x62, 0x73, 0x18, 0x05, 0x20, 0x03, 0x28,
-	0x09, 0x52, 0x05, 0x76, 0x65, 0x72, 0x62, 0x73, 0x32, 0x50, 0x0a, 0x0b, 0x46, 0x61, 0x75, 0x6c,
-	0x74, 0x49, 0x6e, 0x6a, 0x65, 0x63, 0x74, 0x12, 0x41, 0x0a, 0x0a, 0x53, 0x65, 0x6e, 0x64, 0x43,
-	0x6f, 0x6e, 0x66, 0x69, 0x67, 0x12, 0x15, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x46, 0x61,
-	0x75, 0x6c, 0x74, 0x49, 0x6e, 0x6a, 0x65, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x1a, 0x1c, 0x2e, 0x70,
-	0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x46, 0x61, 0x75, 0x6c, 0x74, 0x49, 0x6e, 0x6a, 0x65, 0x63, 0x74,
-	0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x52, 0x65, 0x73, 0x70, 0x42, 0x40, 0x5a, 0x3e, 0x67, 0x69,
-	0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x4b, 0x75, 0x73, 0x69, 0x6f, 0x6e, 0x53,
-	0x74, 0x61, 0x63, 0x6b, 0x2f, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2d,
-	0x6d, 0x65, 0x73, 0x68, 0x2f, 0x70, 0x6b, 0x67, 0x2f, 0x61, 0x70, 0x69, 0x73, 0x2f, 0x63, 0x74,
-	0x72, 0x6c, 0x6d, 0x65, 0x73, 0x68, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x06, 0x70, 0x72,
-	0x6f, 0x74, 0x6f, 0x33,
+	0x22, 0xa1, 0x01, 0x0a, 0x05, 0x4d, 0x61, 0x74, 0x63, 0x68, 0x12, 0x32, 0x0a, 0x09, 0x72, 0x65,
+	0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x14, 0x2e,
+	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x52, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x4d, 0x61,
+	0x74, 0x63, 0x68, 0x52, 0x09, 0x72, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x73, 0x12, 0x2e,
+	0x0a, 0x09, 0x68, 0x74, 0x74, 0x70, 0x4d, 0x61, 0x74, 0x63, 0x68, 0x18, 0x02, 0x20, 0x03, 0x28,
+	0x0b, 0x32, 0x10, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x48, 0x74, 0x74, 0x70, 0x4d, 0x61,
+	0x74, 0x63, 0x68, 0x52, 0x09, 0x68, 0x74, 0x74, 0x70, 0x4d, 0x61, 0x74, 0x63, 0x68, 0x12, 0x34,
+	0x0a, 0x0b, 0x73, 0x74, 0x72, 0x69, 0x6e, 0x67, 0x4d, 0x61, 0x74, 0x63, 0x68, 0x18, 0x03, 0x20,
+	0x03, 0x28, 0x0b, 0x32, 0x12, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x53, 0x74, 0x72, 0x69,
+	0x6e, 0x67, 0x4d, 0x61, 0x74, 0x63, 0x68, 0x52, 0x0b, 0x73, 0x74, 0x72, 0x69, 0x6e, 0x67, 0x4d,
+	0x61, 0x74, 0x63, 0x68, 0x22, 0xb0, 0x01, 0x0a, 0x0b, 0x53, 0x74, 0x72, 0x69, 0x6e, 0x67, 0x4d,
+	0x61, 0x74, 0x63, 0x68, 0x12, 0x40, 0x0a, 0x09, 0x6d, 0x61, 0x74, 0x63, 0x68, 0x54, 0x79, 0x70,
+	0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0e, 0x32, 0x22, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e,
+	0x53, 0x74, 0x72, 0x69, 0x6e, 0x67, 0x4d, 0x61, 0x74, 0x63, 0x68, 0x2e, 0x53, 0x74, 0x72, 0x69,
+	0x6e, 0x67, 0x4d, 0x61, 0x74, 0x63, 0x68, 0x54, 0x79, 0x70, 0x65, 0x52, 0x09, 0x6d, 0x61, 0x74,
+	0x63, 0x68, 0x54, 0x79, 0x70, 0x65, 0x12, 0x1a, 0x0a, 0x08, 0x63, 0x6f, 0x6e, 0x74, 0x65, 0x6e,
+	0x74, 0x73, 0x18, 0x02, 0x20, 0x03, 0x28, 0x09, 0x52, 0x08, 0x63, 0x6f, 0x6e, 0x74, 0x65, 0x6e,
+	0x74, 0x73, 0x12, 0x18, 0x0a, 0x07, 0x6d, 0x65, 0x74, 0x68, 0x6f, 0x64, 0x73, 0x18, 0x03, 0x20,
+	0x03, 0x28, 0x09, 0x52, 0x07, 0x6d, 0x65, 0x74, 0x68, 0x6f, 0x64, 0x73, 0x22, 0x29, 0x0a, 0x0f,
+	0x53, 0x74, 0x72, 0x69, 0x6e, 0x67, 0x4d, 0x61, 0x74, 0x63, 0x68, 0x54, 0x79, 0x70, 0x65, 0x12,
+	0x0a, 0x0a, 0x06, 0x4e, 0x4f, 0x52, 0x4d, 0x41, 0x4c, 0x10, 0x00, 0x12, 0x0a, 0x0a, 0x06, 0x52,
+	0x45, 0x47, 0x45, 0x58, 0x50, 0x10, 0x01, 0x22, 0x35, 0x0a, 0x09, 0x48, 0x74, 0x74, 0x70, 0x4d,
+	0x61, 0x74, 0x63, 0x68, 0x12, 0x10, 0x0a, 0x03, 0x75, 0x72, 0x6c, 0x18, 0x01, 0x20, 0x03, 0x28,
+	0x09, 0x52, 0x03, 0x75, 0x72, 0x6c, 0x12, 0x16, 0x0a, 0x06, 0x6d, 0x65, 0x74, 0x68, 0x6f, 0x64,
+	0x18, 0x02, 0x20, 0x03, 0x28, 0x09, 0x52, 0x06, 0x6d, 0x65, 0x74, 0x68, 0x6f, 0x64, 0x22, 0x81,
+	0x01, 0x0a, 0x0d, 0x52, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x4d, 0x61, 0x74, 0x63, 0x68,
+	0x12, 0x1c, 0x0a, 0x09, 0x61, 0x70, 0x69, 0x47, 0x72, 0x6f, 0x75, 0x70, 0x73, 0x18, 0x01, 0x20,
+	0x03, 0x28, 0x09, 0x52, 0x09, 0x61, 0x70, 0x69, 0x47, 0x72, 0x6f, 0x75, 0x70, 0x73, 0x12, 0x1e,
+	0x0a, 0x0a, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x73, 0x18, 0x03, 0x20, 0x03,
+	0x28, 0x09, 0x52, 0x0a, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x73, 0x12, 0x1c,
+	0x0a, 0x09, 0x72, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x73, 0x18, 0x04, 0x20, 0x03, 0x28,
+	0x09, 0x52, 0x09, 0x72, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x73, 0x12, 0x14, 0x0a, 0x05,
+	0x76, 0x65, 0x72, 0x62, 0x73, 0x18, 0x05, 0x20, 0x03, 0x28, 0x09, 0x52, 0x05, 0x76, 0x65, 0x72,
+	0x62, 0x73, 0x32, 0x50, 0x0a, 0x0b, 0x46, 0x61, 0x75, 0x6c, 0x74, 0x49, 0x6e, 0x6a, 0x65, 0x63,
+	0x74, 0x12, 0x41, 0x0a, 0x0a, 0x53, 0x65, 0x6e, 0x64, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x12,
+	0x15, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x46, 0x61, 0x75, 0x6c, 0x74, 0x49, 0x6e, 0x6a,
+	0x65, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x1a, 0x1c, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x46,
+	0x61, 0x75, 0x6c, 0x74, 0x49, 0x6e, 0x6a, 0x65, 0x63, 0x74, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67,
+	0x52, 0x65, 0x73, 0x70, 0x42, 0x40, 0x5a, 0x3e, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63,
+	0x6f, 0x6d, 0x2f, 0x4b, 0x75, 0x73, 0x69, 0x6f, 0x6e, 0x53, 0x74, 0x61, 0x63, 0x6b, 0x2f, 0x63,
+	0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2d, 0x6d, 0x65, 0x73, 0x68, 0x2f, 0x70,
+	0x6b, 0x67, 0x2f, 0x61, 0x70, 0x69, 0x73, 0x2f, 0x63, 0x74, 0x72, 0x6c, 0x6d, 0x65, 0x73, 0x68,
+	0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -894,38 +1030,42 @@ func file_pkg_apis_ctrlmesh_proto_faultinjection_proto_rawDescGZIP() []byte {
 	return file_pkg_apis_ctrlmesh_proto_faultinjection_proto_rawDescData
 }
 
-var file_pkg_apis_ctrlmesh_proto_faultinjection_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_pkg_apis_ctrlmesh_proto_faultinjection_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_pkg_apis_ctrlmesh_proto_faultinjection_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_pkg_apis_ctrlmesh_proto_faultinjection_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_pkg_apis_ctrlmesh_proto_faultinjection_proto_goTypes = []interface{}{
 	(FaultInjection_Option)(0),       // 0: proto.FaultInjection.Option
-	(*FaultInjectConfigResp)(nil),    // 1: proto.FaultInjectConfigResp
-	(*FaultInjection)(nil),           // 2: proto.FaultInjection
-	(*HTTPFaultInjection)(nil),       // 3: proto.HTTPFaultInjection
-	(*EffectiveTimeRange)(nil),       // 4: proto.EffectiveTimeRange
-	(*HttpMatch)(nil),                // 5: proto.HttpMatch
+	(StringMatch_StringMatchType)(0), // 1: proto.StringMatch.StringMatchType
+	(*FaultInjectConfigResp)(nil),    // 2: proto.FaultInjectConfigResp
+	(*FaultInjection)(nil),           // 3: proto.FaultInjection
+	(*HTTPFaultInjection)(nil),       // 4: proto.HTTPFaultInjection
+	(*EffectiveTimeRange)(nil),       // 5: proto.EffectiveTimeRange
 	(*Match)(nil),                    // 6: proto.Match
-	(*ResourceMatch)(nil),            // 7: proto.ResourceMatch
-	(*HTTPFaultInjection_Delay)(nil), // 8: proto.HTTPFaultInjection.Delay
-	(*HTTPFaultInjection_Abort)(nil), // 9: proto.HTTPFaultInjection.Abort
-	(*durationpb.Duration)(nil),      // 10: google.protobuf.Duration
+	(*StringMatch)(nil),              // 7: proto.StringMatch
+	(*HttpMatch)(nil),                // 8: proto.HttpMatch
+	(*ResourceMatch)(nil),            // 9: proto.ResourceMatch
+	(*HTTPFaultInjection_Delay)(nil), // 10: proto.HTTPFaultInjection.Delay
+	(*HTTPFaultInjection_Abort)(nil), // 11: proto.HTTPFaultInjection.Abort
+	(*durationpb.Duration)(nil),      // 12: google.protobuf.Duration
 }
 var file_pkg_apis_ctrlmesh_proto_faultinjection_proto_depIdxs = []int32{
-	3,  // 0: proto.FaultInjection.httpFaultInjections:type_name -> proto.HTTPFaultInjection
+	4,  // 0: proto.FaultInjection.httpFaultInjections:type_name -> proto.HTTPFaultInjection
 	0,  // 1: proto.FaultInjection.option:type_name -> proto.FaultInjection.Option
-	8,  // 2: proto.HTTPFaultInjection.delay:type_name -> proto.HTTPFaultInjection.Delay
-	9,  // 3: proto.HTTPFaultInjection.abort:type_name -> proto.HTTPFaultInjection.Abort
+	10, // 2: proto.HTTPFaultInjection.delay:type_name -> proto.HTTPFaultInjection.Delay
+	11, // 3: proto.HTTPFaultInjection.abort:type_name -> proto.HTTPFaultInjection.Abort
 	6,  // 4: proto.HTTPFaultInjection.match:type_name -> proto.Match
-	4,  // 5: proto.HTTPFaultInjection.effective_time:type_name -> proto.EffectiveTimeRange
-	7,  // 6: proto.Match.resources:type_name -> proto.ResourceMatch
-	5,  // 7: proto.Match.httpMatch:type_name -> proto.HttpMatch
-	10, // 8: proto.HTTPFaultInjection.Delay.fixed_delay:type_name -> google.protobuf.Duration
-	2,  // 9: proto.FaultInject.SendConfig:input_type -> proto.FaultInjection
-	1,  // 10: proto.FaultInject.SendConfig:output_type -> proto.FaultInjectConfigResp
-	10, // [10:11] is the sub-list for method output_type
-	9,  // [9:10] is the sub-list for method input_type
-	9,  // [9:9] is the sub-list for extension type_name
-	9,  // [9:9] is the sub-list for extension extendee
-	0,  // [0:9] is the sub-list for field type_name
+	5,  // 5: proto.HTTPFaultInjection.effective_time:type_name -> proto.EffectiveTimeRange
+	9,  // 6: proto.Match.resources:type_name -> proto.ResourceMatch
+	8,  // 7: proto.Match.httpMatch:type_name -> proto.HttpMatch
+	7,  // 8: proto.Match.stringMatch:type_name -> proto.StringMatch
+	1,  // 9: proto.StringMatch.matchType:type_name -> proto.StringMatch.StringMatchType
+	12, // 10: proto.HTTPFaultInjection.Delay.fixed_delay:type_name -> google.protobuf.Duration
+	3,  // 11: proto.FaultInject.SendConfig:input_type -> proto.FaultInjection
+	2,  // 12: proto.FaultInject.SendConfig:output_type -> proto.FaultInjectConfigResp
+	12, // [12:13] is the sub-list for method output_type
+	11, // [11:12] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_pkg_apis_ctrlmesh_proto_faultinjection_proto_init() }
@@ -983,18 +1123,6 @@ func file_pkg_apis_ctrlmesh_proto_faultinjection_proto_init() {
 			}
 		}
 		file_pkg_apis_ctrlmesh_proto_faultinjection_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*HttpMatch); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_pkg_apis_ctrlmesh_proto_faultinjection_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*Match); i {
 			case 0:
 				return &v.state
@@ -1006,8 +1134,20 @@ func file_pkg_apis_ctrlmesh_proto_faultinjection_proto_init() {
 				return nil
 			}
 		}
+		file_pkg_apis_ctrlmesh_proto_faultinjection_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*StringMatch); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
 		file_pkg_apis_ctrlmesh_proto_faultinjection_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ResourceMatch); i {
+			switch v := v.(*HttpMatch); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1019,7 +1159,7 @@ func file_pkg_apis_ctrlmesh_proto_faultinjection_proto_init() {
 			}
 		}
 		file_pkg_apis_ctrlmesh_proto_faultinjection_proto_msgTypes[7].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*HTTPFaultInjection_Delay); i {
+			switch v := v.(*ResourceMatch); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1031,6 +1171,18 @@ func file_pkg_apis_ctrlmesh_proto_faultinjection_proto_init() {
 			}
 		}
 		file_pkg_apis_ctrlmesh_proto_faultinjection_proto_msgTypes[8].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*HTTPFaultInjection_Delay); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_pkg_apis_ctrlmesh_proto_faultinjection_proto_msgTypes[9].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*HTTPFaultInjection_Abort); i {
 			case 0:
 				return &v.state
@@ -1043,10 +1195,10 @@ func file_pkg_apis_ctrlmesh_proto_faultinjection_proto_init() {
 			}
 		}
 	}
-	file_pkg_apis_ctrlmesh_proto_faultinjection_proto_msgTypes[7].OneofWrappers = []interface{}{
+	file_pkg_apis_ctrlmesh_proto_faultinjection_proto_msgTypes[8].OneofWrappers = []interface{}{
 		(*HTTPFaultInjection_Delay_FixedDelay)(nil),
 	}
-	file_pkg_apis_ctrlmesh_proto_faultinjection_proto_msgTypes[8].OneofWrappers = []interface{}{
+	file_pkg_apis_ctrlmesh_proto_faultinjection_proto_msgTypes[9].OneofWrappers = []interface{}{
 		(*HTTPFaultInjection_Abort_HttpStatus)(nil),
 		(*HTTPFaultInjection_Abort_GrpcStatus)(nil),
 		(*HTTPFaultInjection_Abort_Http2Error)(nil),
@@ -1056,8 +1208,8 @@ func file_pkg_apis_ctrlmesh_proto_faultinjection_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_pkg_apis_ctrlmesh_proto_faultinjection_proto_rawDesc,
-			NumEnums:      1,
-			NumMessages:   9,
+			NumEnums:      2,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

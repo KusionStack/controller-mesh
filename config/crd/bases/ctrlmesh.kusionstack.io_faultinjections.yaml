@@ -108,6 +108,29 @@ spec:
                       description: Match specifies a set of criterion to be met in
                         order for the rule to be applied to the HTTP request.
                       properties:
+                        contentMatch:
+                          description: ContentMatch
+                          items:
+                            properties:
+                              contents:
+                                description: Content is the content of the fault injection
+                                  rule
+                                items:
+                                  type: string
+                                type: array
+                              matchType:
+                                type: string
+                              methods:
+                                description: 'Method specifies the http method of
+                                  the request, like: PUT, POST, GET, DELETE.'
+                                items:
+                                  type: string
+                                type: array
+                            required:
+                            - contents
+                            - methods
+                            type: object
+                          type: array
                         httpMatch:
                           items:
                             description: HttpMatch specifies the criteria for matching

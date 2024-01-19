@@ -48,10 +48,10 @@ func (b *BreakerPredicate) Update(e event.UpdateEvent) bool {
 	newValue, newExists := "", false
 
 	if oldCB.Labels != nil {
-		oldValue, oldExists = oldCB.Labels[ctrlmesh.CtrlmeshFaultInjectionDisableKey]
+		oldValue, oldExists = oldCB.Labels[ctrlmesh.CtrlmeshCircuitBreakerDisableKey]
 	}
 	if newCB.Labels != nil {
-		newValue, newExists = newCB.Labels[ctrlmesh.CtrlmeshFaultInjectionDisableKey]
+		newValue, newExists = newCB.Labels[ctrlmesh.CtrlmeshCircuitBreakerDisableKey]
 	}
 
 	if (oldExists != newExists) || (oldExists && newExists && oldValue != newValue) {
