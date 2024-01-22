@@ -67,7 +67,7 @@ func main() {
 			constants.EnvPodNamespace, os.Getenv(constants.EnvPodNamespace), constants.EnvPodName, os.Getenv(constants.EnvPodName))
 	}
 	cfg := ctrl.GetConfigOrDie()
-
+	cfg.UserAgent = "ctrlmesh"
 	if err := client.NewRegistry(cfg); err != nil {
 		klog.Fatalf("Failed to new client registry: %v", err)
 	}
