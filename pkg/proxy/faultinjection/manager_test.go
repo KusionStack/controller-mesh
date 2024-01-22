@@ -17,6 +17,7 @@ limitations under the License.
 package faultinjection
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"testing"
@@ -26,15 +27,275 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	ctrlmeshproto "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/proto"
+	"github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/utils/conv"
+	ctrlmeshv1alpha1 "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/v1alpha1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func init() {
 	logf.SetLogger(zap.New(zap.WriteTo(os.Stdout), zap.UseDevMode(true)))
 }
 
-func TestRestTrafficIntercept(t *testing.T) {
+func TestStringMatch(t *testing.T) {
 	fmt.Println("TestRestTrafficIntercept")
 
+	fi1 := &ctrlmeshv1alpha1.FaultInjection{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "testName1",
+			Namespace: "default",
+			Annotations: map[string]string{
+				"test": "test",
+			},
+			Labels: map[string]string{},
+		},
+		Spec: ctrlmeshv1alpha1.FaultInjectionSpec{
+
+			HTTPFaultInjections: []*ctrlmeshv1alpha1.HTTPFaultInjection{
+				{
+					Name: "deletePod",
+					Abort: &ctrlmeshv1alpha1.HTTPFaultInjectionAbort{
+						HttpStatus: 409,
+						Percent:    "100",
+					},
+					Match: &ctrlmeshv1alpha1.Match{
+						Resources: []*ctrlmeshv1alpha1.ResourceMatch{
+							{
+								ApiGroups:  []string{"*"},
+								Namespaces: []string{"*"},
+								Verbs:      []string{"delete"},
+								Resources:  []string{"pod"},
+							},
+						},
+						ContentMatch: []*ctrlmeshv1alpha1.StringMatch{
+							{
+								MatchType: ctrlmeshv1alpha1.StringMatchTypeNormal,
+								Contents:  []string{"www.hello.com", "www.testa.com"},
+								Methods:   []string{"POST", "GET"},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	g := gomega.NewGomegaWithT(t)
+	mgr := NewManager(context.TODO())
+	protoFault := conv.ConvertFaultInjection(fi1)
+	protoFault.Option = ctrlmeshproto.FaultInjection_UPDATE
+	_, err := mgr.Sync(protoFault)
+	g.Expect(err).Should(gomega.BeNil())
+
+	// test limit delete pod
+
+	result := mgr.FaultInjectionNormalOrRegexp("www.hello.com", "POST")
+	g.Expect(result.Abort).To(gomega.BeTrue())
+	result = mgr.FaultInjectionNormalOrRegexp("www.hello.com", "GET")
+	g.Expect(result.Abort).To(gomega.BeTrue())
+	result = mgr.FaultInjectionNormalOrRegexp("www.hello.com", "DELETE")
+	g.Expect(result.Abort).To(gomega.BeFalse())
+	result = mgr.FaultInjectionNormalOrRegexp("www.testa.com", "GET")
+	g.Expect(result.Abort).To(gomega.BeTrue())
+	result = mgr.FaultInjectionNormalOrRegexp("www.testa.com", "POST")
+	g.Expect(result.Abort).To(gomega.BeTrue())
+	result = mgr.FaultInjectionNormalOrRegexp("www.testa.com", "PUT")
+	g.Expect(result.Abort).To(gomega.BeFalse())
+
+	fi2 := &ctrlmeshv1alpha1.FaultInjection{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "testName2",
+			Namespace: "default",
+			Annotations: map[string]string{
+				"test": "test",
+			},
+			Labels: map[string]string{},
+		},
+		Spec: ctrlmeshv1alpha1.FaultInjectionSpec{
+			HTTPFaultInjections: []*ctrlmeshv1alpha1.HTTPFaultInjection{
+				{
+					Name: "rule2",
+					Abort: &ctrlmeshv1alpha1.HTTPFaultInjectionAbort{
+						HttpStatus: 409,
+						Percent:    "100",
+					},
+					Match: &ctrlmeshv1alpha1.Match{
+						Resources: []*ctrlmeshv1alpha1.ResourceMatch{
+							{
+								ApiGroups:  []string{"*"},
+								Namespaces: []string{"*"},
+								Verbs:      []string{"delete"},
+								Resources:  []string{"pod"},
+							},
+						},
+						ContentMatch: []*ctrlmeshv1alpha1.StringMatch{
+							{
+								MatchType: ctrlmeshv1alpha1.StringMatchTypeNormal,
+								Contents:  []string{"www.hello.com", "www.testa.com"},
+								Methods:   []string{"*", "GET"},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	protoFault2 := conv.ConvertFaultInjection(fi2)
+	protoFault2.Option = ctrlmeshproto.FaultInjection_UPDATE
+	_, err = mgr.Sync(protoFault2)
+	g.Expect(err).Should(gomega.BeNil())
+
+	result = mgr.FaultInjectionNormalOrRegexp("www.hello.com", "GET")
+	g.Expect(result.Abort).To(gomega.BeTrue())
+	result = mgr.FaultInjectionNormalOrRegexp("www.hello.com", "DELETE")
+	g.Expect(result.Abort).To(gomega.BeTrue())
+	result = mgr.FaultInjectionNormalOrRegexp("www.testa.com", "DELETE")
+	g.Expect(result.Abort).To(gomega.BeTrue())
+	result = mgr.FaultInjectionNormalOrRegexp("www.testa.com1", "DELETE")
+	g.Expect(result.Abort).To(gomega.BeFalse())
+
+	fi3 := &ctrlmeshv1alpha1.FaultInjection{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "testName3",
+			Namespace: "default",
+			Annotations: map[string]string{
+				"test": "test",
+			},
+			Labels: map[string]string{},
+		},
+		Spec: ctrlmeshv1alpha1.FaultInjectionSpec{
+			HTTPFaultInjections: []*ctrlmeshv1alpha1.HTTPFaultInjection{
+				{
+					Name: "rule3",
+					Abort: &ctrlmeshv1alpha1.HTTPFaultInjectionAbort{
+						HttpStatus: 409,
+						Percent:    "100",
+					},
+					Match: &ctrlmeshv1alpha1.Match{
+						Resources: []*ctrlmeshv1alpha1.ResourceMatch{
+							{
+								ApiGroups:  []string{"*"},
+								Namespaces: []string{"*"},
+								Verbs:      []string{"delete"},
+								Resources:  []string{"pod"},
+							},
+						},
+						ContentMatch: []*ctrlmeshv1alpha1.StringMatch{
+							{
+								MatchType: ctrlmeshv1alpha1.StringMatchTypeNormal,
+								Contents:  []string{"www.hello.com", "www.testa.com"},
+								Methods:   []string{"DELETE"},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	protoFault3 := conv.ConvertFaultInjection(fi3)
+	protoFault3.Option = ctrlmeshproto.FaultInjection_UPDATE
+	_, err = mgr.Sync(protoFault3)
+	g.Expect(err).Should(gomega.BeNil())
+	result = mgr.FaultInjectionNormalOrRegexp("www.hello.com", "DELETE")
+	g.Expect(result.Abort).To(gomega.BeTrue())
+	result = mgr.FaultInjectionNormalOrRegexp("www.testa.com", "DELETE")
+	g.Expect(result.Abort).To(gomega.BeTrue())
+
+	fi4 := &ctrlmeshv1alpha1.FaultInjection{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "testName4",
+			Namespace: "default",
+			Annotations: map[string]string{
+				"test": "test",
+			},
+			Labels: map[string]string{},
+		},
+		Spec: ctrlmeshv1alpha1.FaultInjectionSpec{
+			HTTPFaultInjections: []*ctrlmeshv1alpha1.HTTPFaultInjection{
+				{
+					Name: "rule4",
+					Abort: &ctrlmeshv1alpha1.HTTPFaultInjectionAbort{
+						HttpStatus: 409,
+						Percent:    "100",
+					},
+					Match: &ctrlmeshv1alpha1.Match{
+						Resources: []*ctrlmeshv1alpha1.ResourceMatch{
+							{
+								ApiGroups:  []string{"*"},
+								Namespaces: []string{"*"},
+								Verbs:      []string{"delete"},
+								Resources:  []string{"pod"},
+							},
+						},
+						ContentMatch: []*ctrlmeshv1alpha1.StringMatch{
+							{
+								MatchType: ctrlmeshv1alpha1.StringMatchTypeRegexp,
+								Contents:  []string{"(ali[a-z]+)"},
+								Methods:   []string{"DELETE"},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	protoFault4 := conv.ConvertFaultInjection(fi4)
+	_, err = mgr.Sync(protoFault4)
+	g.Expect(err).Should(gomega.BeNil())
+
+	result = mgr.FaultInjectionNormalOrRegexp("alia", "DELETE")
+	g.Expect(result.Abort).To(gomega.BeTrue())
+	result = mgr.FaultInjectionNormalOrRegexp("www.alibab.com", "DELETE")
+	g.Expect(result.Abort).To(gomega.BeTrue())
+	g.Expect(result.Reason).To(gomega.BeEquivalentTo("FaultInjectionTriggered"))
+
+	fi5 := &ctrlmeshv1alpha1.FaultInjection{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "testName5",
+			Namespace: "default",
+			Annotations: map[string]string{
+				"test": "test",
+			},
+			Labels: map[string]string{},
+		},
+		Spec: ctrlmeshv1alpha1.FaultInjectionSpec{
+			HTTPFaultInjections: []*ctrlmeshv1alpha1.HTTPFaultInjection{
+				{
+					Name: "rule5",
+					Abort: &ctrlmeshv1alpha1.HTTPFaultInjectionAbort{
+						HttpStatus: 409,
+						Percent:    "100",
+					},
+					Match: &ctrlmeshv1alpha1.Match{
+						Resources: []*ctrlmeshv1alpha1.ResourceMatch{
+							{
+								ApiGroups:  []string{"*"},
+								Namespaces: []string{"*"},
+								Verbs:      []string{"delete"},
+								Resources:  []string{"pod"},
+							},
+						},
+						ContentMatch: []*ctrlmeshv1alpha1.StringMatch{
+							{
+								MatchType: ctrlmeshv1alpha1.StringMatchTypeRegexp,
+								Contents:  []string{"(bai[a-z]+)"},
+								Methods:   []string{"DELETE"},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	protoFault5 := conv.ConvertFaultInjection(fi5)
+	_, err = mgr.Sync(protoFault5)
+	g.Expect(err).Should(gomega.BeNil())
+
+	result = mgr.FaultInjectionNormalOrRegexp("baid.com", "DELETE")
+	g.Expect(result.Abort).To(gomega.BeTrue())
+	g.Expect(result.Message).To(gomega.ContainSubstring("rule5"))
+	result = mgr.FaultInjectionNormalOrRegexp("www.baida.com", "DELETE")
+	g.Expect(result.Abort).To(gomega.BeTrue())
 }
 
 func TestIsEffectiveTimeRange(t *testing.T) {

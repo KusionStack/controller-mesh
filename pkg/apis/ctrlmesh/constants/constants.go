@@ -63,7 +63,7 @@ const (
 	EnvEnableSim = "ENABLE_SIM"
 
 	EnvDisableCircuitBreaker         = "DISABLE_CIRCUIT_BREAKER"
-	EnvDisableFaultInjection         = "DISABLE_FAULT_INJECTION"
+	EnvEnableFaultInjection          = "ENABLE_FAULT_INJECTION"
 	EnvEnableApiServerCircuitBreaker = "ENABLE_API_SERVER_BREAKER"
 	EnvEnableRestCircuitBreaker      = "ENABLE_REST_BREAKER"
 	EnvEnableRestFaultInjection      = "ENABLE_REST_FAULT_INJECTION"
@@ -77,6 +77,7 @@ func AllProxySyncEnvKey() []string {
 		EnvIPTable,
 		EnvEnableWebHookProxy,
 		EnvDisableCircuitBreaker,
+		EnvEnableFaultInjection,
 		EnvEnableApiServerCircuitBreaker,
 		EnvEnableRestCircuitBreaker,
 		EnvEnableRestFaultInjection,

@@ -19,10 +19,12 @@ package faultinjection
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"sync"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/klog/v2"
 
 	ctrlmeshproto "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/proto"
 )
@@ -58,13 +60,26 @@ func (s *state) read() (lastTime *metav1.Time) {
 	return
 }
 
+// regexpInfo is contain regexp info
+type regexpInfo struct {
+	// reg is after regexp compiled result
+	reg *regexp.Regexp
+
+	// method is represent url request method
+	method string
+}
+
 // faultInjectionStore is a thread-safe local store for faultinjection rules
 type store struct {
 	mu sync.RWMutex
-	// rule cache, key is {cb.namespace}:{cb.name}:{rule.name}
+	// rule cache, key is {fi.namespace}:{fi.name}:{fi.name}
 	rules map[string]*ctrlmeshproto.HTTPFaultInjection
 	// indices: resource indices and rest indices
 	indices indices
+	// normalIndex cache, key is {faultinjection.Content}:{faultinjection.Method}, value is {fi.namespace}:{fi.name}:{rule.name}
+	normalIndexes map[string]sets.Set[string]
+	// regexpIndex cache, key is {fi.namespace}:{fi.name}:{rule.name}, value is regexpInfo
+	regexpIndexes map[string][]*regexpInfo
 
 	faultInjectionLease *lease
 
@@ -77,6 +92,8 @@ func newFaultInjectionStore(ctx context.Context) *store {
 		indices:             indices{},
 		faultInjectionLease: newFaultInjectionLease(ctx),
 		ctx:                 ctx,
+		normalIndexes:       make(map[string]sets.Set[string]),
+		regexpIndexes:       make(map[string][]*regexpInfo),
 	}
 	return s
 }
@@ -152,6 +169,34 @@ func (s *store) updateIndices(oldOne, newOne *ctrlmeshproto.HTTPFaultInjection, 
 			set.Insert(key)
 		}
 	}
+
+	for _, newStringMatch := range newOne.Match.StringMatch {
+		if newStringMatch.MatchType == ctrlmeshproto.StringMatch_NORMAL {
+			for _, content := range newStringMatch.Contents {
+				for _, method := range newStringMatch.Methods {
+					urlMethod := indexForRest(content, method)
+					set := s.normalIndexes[urlMethod]
+					if set == nil {
+						set = sets.New[string]()
+						s.normalIndexes[urlMethod] = set
+					}
+					set.Insert(key)
+				}
+			}
+		} else if newStringMatch.MatchType == ctrlmeshproto.StringMatch_REGEXP {
+			for _, content := range newStringMatch.Contents {
+				if reg, err := regexp.Compile(content); err != nil {
+					klog.Error("Regexp compile with error %v", err)
+				} else {
+					for _, method := range newStringMatch.Methods {
+						s.regexpIndexes[key] = append(s.regexpIndexes[key], &regexpInfo{reg: reg, method: method})
+					}
+				}
+			}
+		}
+
+	}
+
 }
 
 // deleteFromIndices deletes indices of specified keys
@@ -168,6 +213,27 @@ func (s *store) deleteFromIndices(oldOne *ctrlmeshproto.HTTPFaultInjection, key 
 				set.Delete(key)
 				if len(set) == 0 {
 					delete(idx, indexValue)
+				}
+			}
+		}
+	}
+	for _, oldStringMatch := range oldOne.Match.StringMatch {
+		if oldStringMatch.MatchType == ctrlmeshproto.StringMatch_NORMAL {
+			for _, content := range oldStringMatch.Contents {
+				for _, method := range oldStringMatch.Methods {
+					urlMethod := indexForRest(content, method)
+					if s.normalIndexes[urlMethod] != nil {
+						s.normalIndexes[urlMethod].Delete(key)
+						if s.normalIndexes[urlMethod].Len() == 0 {
+							delete(s.normalIndexes, urlMethod)
+						}
+					}
+				}
+			}
+		} else if oldStringMatch.MatchType == ctrlmeshproto.StringMatch_REGEXP {
+			for regKey := range s.regexpIndexes {
+				if regKey == key {
+					delete(s.regexpIndexes, key)
 				}
 			}
 		}

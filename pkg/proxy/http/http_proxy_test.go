@@ -31,6 +31,7 @@ import (
 )
 
 func TestTProxy(t *testing.T) {
+	enableRestFaultInjection = true
 	g := gomega.NewGomegaWithT(t)
 	go StartProxy()
 	time.Sleep(time.Second * 2)
@@ -40,9 +41,9 @@ func TestTProxy(t *testing.T) {
 		t.Error(err)
 	}
 
-	req.Header.Set(meshhttp.HeaderMeshRealEndpoint, "https://www.github.com")
+	req.Header.Set(meshhttp.HeaderMeshRealEndpoint, "https://github.com")
 	resp, err := http.DefaultClient.Do(req)
-	g.Expect(resp.StatusCode).Should(gomega.Equal(http.StatusOK))
+	g.Expect(resp.StatusCode).Should(gomega.Equal(http.StatusForbidden))
 	req.Header.Set(meshhttp.HeaderMeshRealEndpoint, "https://www.gayhub.com/foo")
 	resp, err = http.DefaultClient.Do(req)
 	g.Expect(resp.StatusCode).Should(gomega.Equal(http.StatusBadGateway))
@@ -64,7 +65,7 @@ func StartProxy() {
 					HttpMatch: []*ctrlmeshproto.HttpMatch{
 						{
 							Url: []string{
-								"https://www.github.com",
+								"https://github.com",
 							},
 							Method: []string{
 								"POST",
@@ -75,7 +76,7 @@ func StartProxy() {
 				},
 				Abort: &ctrlmeshproto.HTTPFaultInjection_Abort{
 					Percent:   100,
-					ErrorType: &ctrlmeshproto.HTTPFaultInjection_Abort_HttpStatus{HttpStatus: http.StatusOK},
+					ErrorType: &ctrlmeshproto.HTTPFaultInjection_Abort_HttpStatus{HttpStatus: http.StatusForbidden},
 				},
 			},
 			{

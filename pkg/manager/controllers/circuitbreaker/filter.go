@@ -44,11 +44,18 @@ func (b *BreakerPredicate) Update(e event.UpdateEvent) bool {
 	if newCB.DeletionTimestamp != nil || len(oldCB.Finalizers) != len(newCB.Finalizers) {
 		return true
 	}
+	oldValue, oldExists := "", false
+	newValue, newExists := "", false
+
+	if oldCB.Labels != nil {
+		oldValue, oldExists = oldCB.Labels[ctrlmesh.CtrlmeshCircuitBreakerDisableKey]
+	}
 	if newCB.Labels != nil {
-		_, ok := newCB.Labels[ctrlmesh.CtrlmeshCircuitBreakerDisableKey]
-		if ok {
-			return true
-		}
+		newValue, newExists = newCB.Labels[ctrlmesh.CtrlmeshCircuitBreakerDisableKey]
+	}
+
+	if (oldExists != newExists) || (oldExists && newExists && oldValue != newValue) {
+		return true
 	}
 	oldProtoCB := conv.ConvertCircuitBreaker(oldCB)
 	newProtoCB := conv.ConvertCircuitBreaker(newCB)

@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+
 	"math/rand"
 	"net/http"
 	"net/url"
@@ -30,9 +31,7 @@ import (
 
 	"k8s.io/apiserver/pkg/endpoints/handlers/responsewriters"
 	apirequest "k8s.io/apiserver/pkg/endpoints/request"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
-
-	// pkgfi "github.com/KusionStack/controller-mesh/circuitbreaker"
+	"k8s.io/klog/v2"
 
 	ctrlmeshproto "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/proto"
 	"github.com/KusionStack/controller-mesh/pkg/utils"
@@ -41,7 +40,6 @@ import (
 const timeLayout = "15:04:05"
 
 var (
-	logger  = logf.Log.WithName("fault-injection-manager")
 	randNum = rand.New(rand.NewSource(time.Now().UnixNano()))
 )
 
@@ -59,6 +57,7 @@ type FaultInjectionResult struct {
 
 type FaultInjector interface {
 	FaultInjectionRest(URL string, method string) (result *FaultInjectionResult)
+	FaultInjectionNormalOrRegexp(URL string, method string) (result *FaultInjectionResult)
 	FaultInjectionResource(namespace, apiGroup, resource, verb string) (result *FaultInjectionResult)
 	HandlerWrapper() func(http.Handler) http.Handler
 }
@@ -89,6 +88,9 @@ func (m *manager) Sync(config *ctrlmeshproto.FaultInjection) (*ctrlmeshproto.Fau
 				Message: fmt.Sprintf("faultInjection spec hash not updated, hash %s", fi.ConfigHash),
 			}, nil
 		} else {
+			if ok {
+				m.unregisterRules(fi.Name)
+			}
 			m.faultInjectionMap[config.Name] = config
 			m.registerRules(config)
 			var msg string
@@ -117,16 +119,16 @@ func (m *manager) Sync(config *ctrlmeshproto.FaultInjection) (*ctrlmeshproto.Fau
 			}, nil
 		}
 	case ctrlmeshproto.FaultInjection_CHECK:
-		cb, ok := m.faultInjectionMap[config.Name]
+		fi, ok := m.faultInjectionMap[config.Name]
 		if !ok {
 			return &ctrlmeshproto.FaultInjectConfigResp{
 				Success: false,
-				Message: fmt.Sprintf("fault injection config %s not found", cb.Name),
+				Message: fmt.Sprintf("fault injection config %s not found", fi.Name),
 			}, nil
-		} else if config.ConfigHash != cb.ConfigHash {
+		} else if config.ConfigHash != fi.ConfigHash {
 			return &ctrlmeshproto.FaultInjectConfigResp{
 				Success: false,
-				Message: fmt.Sprintf("unequal fault injection %s hash, old %s, new %s", cb.Name, cb.ConfigHash, config.ConfigHash),
+				Message: fmt.Sprintf("unequal fault injection %s hash, old %s, new %s", fi.Name, fi.ConfigHash, config.ConfigHash),
 			}, nil
 		}
 		return &ctrlmeshproto.FaultInjectConfigResp{
@@ -148,19 +150,48 @@ func (m *manager) HandlerWrapper() func(http.Handler) http.Handler {
 	}
 }
 
+func (m *manager) FaultInjectionNormalOrRegexp(URL string, method string) (result *FaultInjectionResult) {
+	// regexp and normal
+	now := time.Now()
+	indexes := m.faultInjectionStore.normalIndexes[indexForRest(URL, method)]
+	if indexes == nil {
+		indexes = m.faultInjectionStore.normalIndexes[indexForRest(URL, "*")]
+	}
+	for key := range indexes {
+		faultInjection := m.faultInjectionStore.rules[key]
+		if faultInjection != nil {
+			result = m.doFaultInjection([]*ctrlmeshproto.HTTPFaultInjection{faultInjection})
+			klog.Infof("validate rest, URL: %s, method:%s, result: %v, cost time: %v ", URL, method, result, time.Since(now).String())
+			return result
+		}
+	}
+
+	for key, regs := range m.faultInjectionStore.regexpIndexes {
+		for _, reg := range regs {
+			if reg.method == method && reg.reg.MatchString(URL) {
+				faultInjection := m.faultInjectionStore.rules[key]
+				if faultInjection != nil {
+					result = m.doFaultInjection([]*ctrlmeshproto.HTTPFaultInjection{faultInjection})
+					klog.Infof("validate rest, URL: %s, method:%s, result: %v, cost time: %v ", URL, method, result, time.Since(now).String())
+					return result
+				}
+			}
+		}
+	}
+	result = &FaultInjectionResult{Abort: false, Reason: "No rule match"}
+	return result
+}
+
 func (m *manager) FaultInjectionRest(URL string, method string) (result *FaultInjectionResult) {
 	now := time.Now()
-	defer func() {
-		logger.Info("validate rest", "URL", URL, "method", method, "result", result, "cost time", time.Since(now).String())
-	}()
-
 	urls := generateWildcardUrls(URL, method)
 	for _, url := range urls {
-		faultInjections, states := m.faultInjectionStore.byIndex(IndexRest, url)
+		faultInjections, _ := m.faultInjectionStore.byIndex(IndexRest, url)
 		if len(faultInjections) == 0 {
 			continue
 		}
-		result = m.doFaultInjection(faultInjections, states)
+		result = m.doFaultInjection(faultInjections)
+		klog.Infof("validate rest, URL: %s, method:%s, result: %v, cost time: %v ", URL, method, result, time.Since(now).String())
 		return result
 	}
 	result = &FaultInjectionResult{Abort: false, Reason: "No rule match"}
@@ -173,7 +204,7 @@ func generateWildcardUrls(URL string, method string) []string {
 	URL = strings.TrimSuffix(URL, "/")
 	u, err := url.Parse(URL)
 	if err != nil {
-		logger.Error(err, "failed to url", "URL", URL, "method", method)
+		klog.Errorf("failed to url, URL: %s, method: %s,err: %v", URL, method, err)
 		return result
 	}
 	if len(u.Path) > 0 {
@@ -189,16 +220,14 @@ func generateWildcardUrls(URL string, method string) []string {
 
 func (m *manager) FaultInjectionResource(namespace, apiGroup, resource, verb string) (result *FaultInjectionResult) {
 	now := time.Now()
-	defer func() {
-		logger.Info("validate resource", "namespace", namespace, "apiGroup", apiGroup, "resource", resource, "verb", verb, "result", result, "cost time", time.Since(now).String())
-	}()
 	seeds := generateWildcardSeeds(namespace, apiGroup, resource, verb)
 	for _, seed := range seeds {
-		faultInjections, states := m.faultInjectionStore.byIndex(IndexResource, seed)
+		faultInjections, _ := m.faultInjectionStore.byIndex(IndexResource, seed)
 		if len(faultInjections) == 0 {
 			continue
 		}
-		result = m.doFaultInjection(faultInjections, states)
+		result = m.doFaultInjection(faultInjections)
+		klog.Infof("validate resource, namespace: %s, apiGroup: %s, resource: %s, verb: %s, result: %v, cost time: %v, ", namespace, apiGroup, resource, verb, result, time.Since(now).String())
 		return result
 	}
 	result = &FaultInjectionResult{Abort: false, Reason: "No rule match"}
@@ -253,8 +282,12 @@ func withFaultInjection(injector FaultInjector, handler http.Handler) http.Handl
 			if apiErr.Code != http.StatusOK {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(int(apiErr.Code))
-				json.NewEncoder(w).Encode(apiErr)
-				logger.Info("faultinjection rule", fmt.Sprintf("fault injection, %s, %s,%d", result.Reason, result.Message, result.ErrCode))
+				if err := json.NewEncoder(w).Encode(apiErr); err != nil {
+					// Error encoding the JSON response, at this point the headers are already written.
+					klog.Errorf("failed to write api error response: %v", err)
+					return
+				}
+				klog.Infof("faultinjection rule: %s", fmt.Sprintf("fault injection, %s, %s,%d", apiErr.Reason, apiErr.Message, apiErr.Code))
 				return
 			}
 		}
@@ -262,7 +295,7 @@ func withFaultInjection(injector FaultInjector, handler http.Handler) http.Handl
 	})
 }
 
-func (m *manager) doFaultInjection(faultInjections []*ctrlmeshproto.HTTPFaultInjection, states []*state) *FaultInjectionResult {
+func (m *manager) doFaultInjection(faultInjections []*ctrlmeshproto.HTTPFaultInjection) *FaultInjectionResult {
 	result := &FaultInjectionResult{
 		Abort:  false,
 		Reason: "Default allow",
@@ -278,7 +311,7 @@ func (m *manager) doFaultInjection(faultInjections []*ctrlmeshproto.HTTPFaultInj
 			if isInpercentRange(faultInjections[idx].Delay.Percent) {
 				delay := faultInjections[idx].Delay.GetFixedDelay()
 				delayDuration := delay.AsDuration()
-				logger.Info("Delaying time ", "for", delayDuration)
+				klog.Infof("Delaying time: %v ", delayDuration)
 				time.Sleep(delayDuration)
 			}
 		}
@@ -288,6 +321,7 @@ func (m *manager) doFaultInjection(faultInjections []*ctrlmeshproto.HTTPFaultInj
 				result.Reason = "FaultInjectionTriggered"
 				result.Message = fmt.Sprintf("the fault injection is triggered. Limiting rule name: %s", faultInjections[idx].Name)
 				result.ErrCode = faultInjections[idx].Abort.GetHttpStatus()
+				return result
 			}
 
 		}
@@ -398,11 +432,7 @@ func isEffectiveTimeRange(timeRange *ctrlmeshproto.EffectiveTimeRange) bool {
 
 // RegisterRules register a fault injection to the local store
 func (m *manager) registerRules(fi *ctrlmeshproto.FaultInjection) {
-	logger.Info("register rule", "faultInjection", fi.Name)
-	if _, ok := m.faultInjectionMap[fi.Name]; ok {
-		m.unregisterRules(fi.Name)
-	}
-
+	klog.Infof("register rule, faultInjection: %s", fi.Name)
 	for _, faultInjection := range fi.HttpFaultInjections {
 		key := fmt.Sprintf("%s:%s", fi.Name, faultInjection.Name)
 		m.faultInjectionStore.createOrUpdateRule(
@@ -413,7 +443,7 @@ func (m *manager) registerRules(fi *ctrlmeshproto.FaultInjection) {
 
 // UnregisterRules unregister a fault injection to the local store
 func (m *manager) unregisterRules(fiName string) {
-	logger.Info("unregister rule", "faultInjection", fiName)
+	klog.Infof("unregister rule, faultInjection: %s", fiName)
 	fi, ok := m.faultInjectionMap[fiName]
 	if !ok {
 		return
