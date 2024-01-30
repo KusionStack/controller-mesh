@@ -89,8 +89,7 @@ func (t *tproxy) handleHTTP(resp http.ResponseWriter, req *http.Request) {
 	klog.Infof("handel http request, url: %s ", realEndPointUrl.String())
 	// faultinjection
 	if enableRestFaultInjection {
-		klog.Infof("start FaultInjectionRest %s", req.Header.Get(meshhttp.HeaderMeshRealEndpoint))
-		result := t.FaultInjector.FaultInjectionRest(req.Header.Get(meshhttp.HeaderMeshRealEndpoint), req.Method)
+		result := t.FaultInjector.FaultInjectionRest(realEp, req.Method)
 		if result.Abort {
 			apiErr := utils.HttpToAPIError(int(result.ErrCode), req.Method, result.Message)
 			if apiErr.Code != http.StatusOK {
