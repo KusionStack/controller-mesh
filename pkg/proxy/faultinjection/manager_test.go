@@ -19,6 +19,7 @@ package faultinjection
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"os"
 	"testing"
 
@@ -26,10 +27,11 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	ctrlmeshproto "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/proto"
 	"github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/utils/conv"
 	ctrlmeshv1alpha1 "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/v1alpha1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func init() {
@@ -66,11 +68,33 @@ func TestStringMatch(t *testing.T) {
 								Resources:  []string{"pod"},
 							},
 						},
-						ContentMatch: []*ctrlmeshv1alpha1.StringMatch{
+						HttpMatch: []*ctrlmeshv1alpha1.HttpMatch{
 							{
-								MatchType: ctrlmeshv1alpha1.StringMatchTypeNormal,
-								Contents:  []string{"www.hello.com", "www.testa.com"},
-								Methods:   []string{"POST", "GET"},
+								Host: &ctrlmeshv1alpha1.MatchContent{
+									Exact: "test1.com",
+								},
+								Method: "POST",
+							},
+							{
+								Host: &ctrlmeshv1alpha1.MatchContent{
+									Exact: "test2.com",
+								},
+								Path: &ctrlmeshv1alpha1.MatchContent{
+									Exact: "/a/b",
+								},
+							},
+							{
+								Host: &ctrlmeshv1alpha1.MatchContent{
+									Regex: "(test3[a-z]+)",
+								},
+							},
+							{
+								Host: &ctrlmeshv1alpha1.MatchContent{
+									Exact: "test4.com",
+								},
+								Path: &ctrlmeshv1alpha1.MatchContent{
+									Regex: "/abc/",
+								},
 							},
 						},
 					},
@@ -85,217 +109,60 @@ func TestStringMatch(t *testing.T) {
 	_, err := mgr.Sync(protoFault)
 	g.Expect(err).Should(gomega.BeNil())
 
-	// test limit delete pod
+	testUrl, _ := url.Parse("https://test1.com")
+	injector := mgr.GetInjectorByUrl(testUrl, "POST")
+	g.Expect(injector.(*abortWithDelayInjector).Abort).Should(gomega.BeTrue())
 
-	result := mgr.FaultInjectionNormalOrRegexp("www.hello.com", "POST")
-	g.Expect(result.Abort).To(gomega.BeTrue())
-	result = mgr.FaultInjectionNormalOrRegexp("www.hello.com", "GET")
-	g.Expect(result.Abort).To(gomega.BeTrue())
-	result = mgr.FaultInjectionNormalOrRegexp("www.hello.com", "DELETE")
-	g.Expect(result.Abort).To(gomega.BeFalse())
-	result = mgr.FaultInjectionNormalOrRegexp("www.testa.com", "GET")
-	g.Expect(result.Abort).To(gomega.BeTrue())
-	result = mgr.FaultInjectionNormalOrRegexp("www.testa.com", "POST")
-	g.Expect(result.Abort).To(gomega.BeTrue())
-	result = mgr.FaultInjectionNormalOrRegexp("www.testa.com", "PUT")
-	g.Expect(result.Abort).To(gomega.BeFalse())
+	testUrl, _ = url.Parse("https://test1.com")
+	injector = mgr.GetInjectorByUrl(testUrl, "GET")
+	g.Expect(injector.(*abortWithDelayInjector).Abort).Should(gomega.BeFalse())
 
-	fi2 := &ctrlmeshv1alpha1.FaultInjection{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "testName2",
-			Namespace: "default",
-			Annotations: map[string]string{
-				"test": "test",
-			},
-			Labels: map[string]string{},
-		},
-		Spec: ctrlmeshv1alpha1.FaultInjectionSpec{
-			HTTPFaultInjections: []*ctrlmeshv1alpha1.HTTPFaultInjection{
-				{
-					Name: "rule2",
-					Abort: &ctrlmeshv1alpha1.HTTPFaultInjectionAbort{
-						HttpStatus: 409,
-						Percent:    "100",
-					},
-					Match: &ctrlmeshv1alpha1.Match{
-						Resources: []*ctrlmeshv1alpha1.ResourceMatch{
-							{
-								ApiGroups:  []string{"*"},
-								Namespaces: []string{"*"},
-								Verbs:      []string{"delete"},
-								Resources:  []string{"pod"},
-							},
-						},
-						ContentMatch: []*ctrlmeshv1alpha1.StringMatch{
-							{
-								MatchType: ctrlmeshv1alpha1.StringMatchTypeNormal,
-								Contents:  []string{"www.hello.com", "www.testa.com"},
-								Methods:   []string{"*", "GET"},
-							},
-						},
-					},
-				},
-			},
-		},
-	}
+	testUrl, _ = url.Parse("https://test1.com/a")
+	injector = mgr.GetInjectorByUrl(testUrl, "POST")
+	g.Expect(injector.(*abortWithDelayInjector).Abort).Should(gomega.BeTrue())
 
-	protoFault2 := conv.ConvertFaultInjection(fi2)
-	protoFault2.Option = ctrlmeshproto.FaultInjection_UPDATE
-	_, err = mgr.Sync(protoFault2)
-	g.Expect(err).Should(gomega.BeNil())
+	testUrl, _ = url.Parse("https://test2.com/a/b")
+	injector = mgr.GetInjectorByUrl(testUrl, "POST")
+	g.Expect(injector.(*abortWithDelayInjector).Abort).Should(gomega.BeTrue())
 
-	result = mgr.FaultInjectionNormalOrRegexp("www.hello.com", "GET")
-	g.Expect(result.Abort).To(gomega.BeTrue())
-	result = mgr.FaultInjectionNormalOrRegexp("www.hello.com", "DELETE")
-	g.Expect(result.Abort).To(gomega.BeTrue())
-	result = mgr.FaultInjectionNormalOrRegexp("www.testa.com", "DELETE")
-	g.Expect(result.Abort).To(gomega.BeTrue())
-	result = mgr.FaultInjectionNormalOrRegexp("www.testa.com1", "DELETE")
-	g.Expect(result.Abort).To(gomega.BeFalse())
+	testUrl, _ = url.Parse("https://test2.com")
+	injector = mgr.GetInjectorByUrl(testUrl, "POST")
+	g.Expect(injector.(*abortWithDelayInjector).Abort).Should(gomega.BeFalse())
 
-	fi3 := &ctrlmeshv1alpha1.FaultInjection{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "testName3",
-			Namespace: "default",
-			Annotations: map[string]string{
-				"test": "test",
-			},
-			Labels: map[string]string{},
-		},
-		Spec: ctrlmeshv1alpha1.FaultInjectionSpec{
-			HTTPFaultInjections: []*ctrlmeshv1alpha1.HTTPFaultInjection{
-				{
-					Name: "rule3",
-					Abort: &ctrlmeshv1alpha1.HTTPFaultInjectionAbort{
-						HttpStatus: 409,
-						Percent:    "100",
-					},
-					Match: &ctrlmeshv1alpha1.Match{
-						Resources: []*ctrlmeshv1alpha1.ResourceMatch{
-							{
-								ApiGroups:  []string{"*"},
-								Namespaces: []string{"*"},
-								Verbs:      []string{"delete"},
-								Resources:  []string{"pod"},
-							},
-						},
-						ContentMatch: []*ctrlmeshv1alpha1.StringMatch{
-							{
-								MatchType: ctrlmeshv1alpha1.StringMatchTypeNormal,
-								Contents:  []string{"www.hello.com", "www.testa.com"},
-								Methods:   []string{"DELETE"},
-							},
-						},
-					},
-				},
-			},
-		},
-	}
+	testUrl, _ = url.Parse("https://test2.com/a/c")
+	injector = mgr.GetInjectorByUrl(testUrl, "POST")
+	g.Expect(injector.(*abortWithDelayInjector).Abort).Should(gomega.BeFalse())
 
-	protoFault3 := conv.ConvertFaultInjection(fi3)
-	protoFault3.Option = ctrlmeshproto.FaultInjection_UPDATE
-	_, err = mgr.Sync(protoFault3)
-	g.Expect(err).Should(gomega.BeNil())
-	result = mgr.FaultInjectionNormalOrRegexp("www.hello.com", "DELETE")
-	g.Expect(result.Abort).To(gomega.BeTrue())
-	result = mgr.FaultInjectionNormalOrRegexp("www.testa.com", "DELETE")
-	g.Expect(result.Abort).To(gomega.BeTrue())
+	testUrl, _ = url.Parse("https://test3x.com/a/c")
+	injector = mgr.GetInjectorByUrl(testUrl, "POST")
+	g.Expect(injector.(*abortWithDelayInjector).Abort).Should(gomega.BeTrue())
 
-	fi4 := &ctrlmeshv1alpha1.FaultInjection{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "testName4",
-			Namespace: "default",
-			Annotations: map[string]string{
-				"test": "test",
-			},
-			Labels: map[string]string{},
-		},
-		Spec: ctrlmeshv1alpha1.FaultInjectionSpec{
-			HTTPFaultInjections: []*ctrlmeshv1alpha1.HTTPFaultInjection{
-				{
-					Name: "rule4",
-					Abort: &ctrlmeshv1alpha1.HTTPFaultInjectionAbort{
-						HttpStatus: 409,
-						Percent:    "100",
-					},
-					Match: &ctrlmeshv1alpha1.Match{
-						Resources: []*ctrlmeshv1alpha1.ResourceMatch{
-							{
-								ApiGroups:  []string{"*"},
-								Namespaces: []string{"*"},
-								Verbs:      []string{"delete"},
-								Resources:  []string{"pod"},
-							},
-						},
-						ContentMatch: []*ctrlmeshv1alpha1.StringMatch{
-							{
-								MatchType: ctrlmeshv1alpha1.StringMatchTypeRegexp,
-								Contents:  []string{"(ali[a-z]+)"},
-								Methods:   []string{"DELETE"},
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-	protoFault4 := conv.ConvertFaultInjection(fi4)
-	_, err = mgr.Sync(protoFault4)
-	g.Expect(err).Should(gomega.BeNil())
+	testUrl, _ = url.Parse("https://test3.com")
+	injector = mgr.GetInjectorByUrl(testUrl, "POST")
+	g.Expect(injector.(*abortWithDelayInjector).Abort).Should(gomega.BeFalse())
 
-	result = mgr.FaultInjectionNormalOrRegexp("alia", "DELETE")
-	g.Expect(result.Abort).To(gomega.BeTrue())
-	result = mgr.FaultInjectionNormalOrRegexp("www.alibab.com", "DELETE")
-	g.Expect(result.Abort).To(gomega.BeTrue())
-	g.Expect(result.Reason).To(gomega.BeEquivalentTo("FaultInjectionTriggered"))
+	testUrl, _ = url.Parse("https://test4.com/abc/d")
+	injector = mgr.GetInjectorByUrl(testUrl, "POST")
+	g.Expect(injector.(*abortWithDelayInjector).Abort).Should(gomega.BeTrue())
 
-	fi5 := &ctrlmeshv1alpha1.FaultInjection{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "testName5",
-			Namespace: "default",
-			Annotations: map[string]string{
-				"test": "test",
-			},
-			Labels: map[string]string{},
-		},
-		Spec: ctrlmeshv1alpha1.FaultInjectionSpec{
-			HTTPFaultInjections: []*ctrlmeshv1alpha1.HTTPFaultInjection{
-				{
-					Name: "rule5",
-					Abort: &ctrlmeshv1alpha1.HTTPFaultInjectionAbort{
-						HttpStatus: 409,
-						Percent:    "100",
-					},
-					Match: &ctrlmeshv1alpha1.Match{
-						Resources: []*ctrlmeshv1alpha1.ResourceMatch{
-							{
-								ApiGroups:  []string{"*"},
-								Namespaces: []string{"*"},
-								Verbs:      []string{"delete"},
-								Resources:  []string{"pod"},
-							},
-						},
-						ContentMatch: []*ctrlmeshv1alpha1.StringMatch{
-							{
-								MatchType: ctrlmeshv1alpha1.StringMatchTypeRegexp,
-								Contents:  []string{"(bai[a-z]+)"},
-								Methods:   []string{"DELETE"},
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-	protoFault5 := conv.ConvertFaultInjection(fi5)
-	_, err = mgr.Sync(protoFault5)
-	g.Expect(err).Should(gomega.BeNil())
+	protoFault.Option = ctrlmeshproto.FaultInjection_DELETE
+	_, err = mgr.Sync(protoFault)
 
-	result = mgr.FaultInjectionNormalOrRegexp("baid.com", "DELETE")
-	g.Expect(result.Abort).To(gomega.BeTrue())
-	g.Expect(result.Message).To(gomega.ContainSubstring("rule5"))
-	result = mgr.FaultInjectionNormalOrRegexp("www.baida.com", "DELETE")
-	g.Expect(result.Abort).To(gomega.BeTrue())
+	testUrl, _ = url.Parse("https://test1.com/a")
+	injector = mgr.GetInjectorByUrl(testUrl, "POST")
+	g.Expect(injector.(*abortWithDelayInjector).Abort).Should(gomega.BeFalse())
+
+	testUrl, _ = url.Parse("https://test2.com/a/b")
+	injector = mgr.GetInjectorByUrl(testUrl, "POST")
+	g.Expect(injector.(*abortWithDelayInjector).Abort).Should(gomega.BeFalse())
+
+	testUrl, _ = url.Parse("https://test3x.com/a/c")
+	injector = mgr.GetInjectorByUrl(testUrl, "POST")
+	g.Expect(injector.(*abortWithDelayInjector).Abort).Should(gomega.BeFalse())
+
+	testUrl, _ = url.Parse("https://test4.com/abc/d")
+	injector = mgr.GetInjectorByUrl(testUrl, "POST")
+	g.Expect(injector.(*abortWithDelayInjector).Abort).Should(gomega.BeFalse())
 }
 
 func TestIsEffectiveTimeRange(t *testing.T) {

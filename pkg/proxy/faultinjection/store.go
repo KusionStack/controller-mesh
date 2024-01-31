@@ -22,78 +22,28 @@ import (
 	"regexp"
 	"sync"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog/v2"
 
 	ctrlmeshproto "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/proto"
 )
 
-const (
-	IndexResource = "resource"
-	IndexRest     = "rest"
-)
-
-var (
-	indexFunctions = map[string]func(faultinjection *ctrlmeshproto.HTTPFaultInjection) []string{
-		IndexResource: indexFuncForResource,
-		IndexRest:     indexFuncForRest,
-	}
-)
-
-type index map[string]sets.Set[string]
-
-type indices map[string]index
-
-type state struct {
-	mu                 sync.RWMutex
-	key                string
-	lastTransitionTime *metav1.Time
-}
-
-func (s *state) read() (lastTime *metav1.Time) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	if s.lastTransitionTime != nil {
-		lastTime = s.lastTransitionTime.DeepCopy()
-	}
-	return
-}
-
-// regexpInfo is contain regexp info
-type regexpInfo struct {
-	// reg is after regexp compiled result
-	reg *regexp.Regexp
-
-	// method is represent url request method
-	method string
-}
-
 // faultInjectionStore is a thread-safe local store for faultinjection rules
 type store struct {
 	mu sync.RWMutex
-	// rule cache, key is {fi.namespace}:{fi.name}:{fi.name}
-	rules map[string]*ctrlmeshproto.HTTPFaultInjection
-	// indices: resource indices and rest indices
-	indices indices
-	// normalIndex cache, key is {faultinjection.Content}:{faultinjection.Method}, value is {fi.namespace}:{fi.name}:{rule.name}
-	normalIndexes map[string]sets.Set[string]
-	// regexpIndex cache, key is {fi.namespace}:{fi.name}:{rule.name}, value is regexpInfo
-	regexpIndexes map[string][]*regexpInfo
 
-	faultInjectionLease *lease
+	resourcesMatchRules map[string]*ctrlmeshproto.HTTPFaultInjection
+	restMatchRules      map[string]*ctrlmeshproto.HTTPFaultInjection
+	regexMap            map[string]*regexp.Regexp
 
 	ctx context.Context
 }
 
 func newFaultInjectionStore(ctx context.Context) *store {
 	s := &store{
-		rules:               make(map[string]*ctrlmeshproto.HTTPFaultInjection),
-		indices:             indices{},
-		faultInjectionLease: newFaultInjectionLease(ctx),
+		regexMap:            map[string]*regexp.Regexp{},
+		resourcesMatchRules: map[string]*ctrlmeshproto.HTTPFaultInjection{},
+		restMatchRules:      map[string]*ctrlmeshproto.HTTPFaultInjection{},
 		ctx:                 ctx,
-		normalIndexes:       make(map[string]sets.Set[string]),
-		regexpIndexes:       make(map[string][]*regexpInfo),
 	}
 	return s
 }
@@ -102,16 +52,29 @@ func newFaultInjectionStore(ctx context.Context) *store {
 func (s *store) createOrUpdateRule(key string, faultInjection *ctrlmeshproto.HTTPFaultInjection) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-
-	oldOne, ok := s.rules[key]
-	if !ok {
-		// all new, just assign rules and states, and update indices
-		s.rules[key] = faultInjection
-		s.updateIndices(nil, faultInjection, key)
-	} else {
-		// there is an old one, assign the new rule, update indices
-		s.rules[key] = faultInjection.DeepCopy()
-		s.updateIndices(oldOne, faultInjection, key)
+	if len(faultInjection.Match.Resources) > 0 {
+		s.resourcesMatchRules[key] = faultInjection
+	}
+	if len(faultInjection.Match.HttpMatch) > 0 {
+		s.restMatchRules[key] = faultInjection
+		for _, match := range faultInjection.Match.HttpMatch {
+			if match.Path != nil && match.Path.Regex != "" {
+				reg, err := regexp.Compile(match.Path.Regex)
+				if err == nil {
+					s.regexMap[match.Path.Regex] = reg
+				} else {
+					klog.Errorf("fail to compile regexp %s", match.Path.Regex)
+				}
+			}
+			if match.Host != nil && match.Host.Regex != "" {
+				reg, err := regexp.Compile(match.Host.Regex)
+				if err == nil {
+					s.regexMap[match.Host.Regex] = reg
+				} else {
+					klog.Errorf("fail to compile regexp %s", match.Host.Regex)
+				}
+			}
+		}
 	}
 }
 
@@ -119,133 +82,12 @@ func (s *store) createOrUpdateRule(key string, faultInjection *ctrlmeshproto.HTT
 func (s *store) deleteRule(key string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-
-	if obj, ok := s.rules[key]; ok {
-		s.deleteFromIndices(obj, key)
-		delete(s.rules, key)
-	}
-}
-
-// byIndex lists rules by a specific index
-func (s *store) byIndex(indexName, indexedValue string) ([]*ctrlmeshproto.HTTPFaultInjection, []*state) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	indexFunc := indexFunctions[indexName]
-	if indexFunc == nil {
-		return nil, nil
-	}
-	idx := s.indices[indexName]
-	set := idx[indexedValue]
-
-	limitings := make([]*ctrlmeshproto.HTTPFaultInjection, 0, set.Len())
-	states := make([]*state, 0, set.Len())
-	for key := range set {
-		limitings = append(limitings, s.rules[key])
-
-	}
-	return limitings, states
-}
-
-// updateIndices updates current indices of the rules
-func (s *store) updateIndices(oldOne, newOne *ctrlmeshproto.HTTPFaultInjection, key string) {
-	if oldOne != nil {
-		s.deleteFromIndices(oldOne, key)
-	}
-	for name, indexFunc := range indexFunctions {
-		indexValues := indexFunc(newOne)
-		idx := s.indices[name]
-		if idx == nil {
-			idx = index{}
-			s.indices[name] = idx
-		}
-
-		for _, indexValue := range indexValues {
-			set := idx[indexValue]
-			if set == nil {
-				set = sets.New[string]()
-				idx[indexValue] = set
-			}
-			set.Insert(key)
-		}
-	}
-
-	for _, newStringMatch := range newOne.Match.StringMatch {
-		if newStringMatch.MatchType == ctrlmeshproto.StringMatch_NORMAL {
-			for _, content := range newStringMatch.Contents {
-				for _, method := range newStringMatch.Methods {
-					urlMethod := indexForRest(content, method)
-					set := s.normalIndexes[urlMethod]
-					if set == nil {
-						set = sets.New[string]()
-						s.normalIndexes[urlMethod] = set
-					}
-					set.Insert(key)
-				}
-			}
-		} else if newStringMatch.MatchType == ctrlmeshproto.StringMatch_REGEXP {
-			for _, content := range newStringMatch.Contents {
-				if reg, err := regexp.Compile(content); err != nil {
-					klog.Error("Regexp compile with error %v", err)
-				} else {
-					for _, method := range newStringMatch.Methods {
-						s.regexpIndexes[key] = append(s.regexpIndexes[key], &regexpInfo{reg: reg, method: method})
-					}
-				}
-			}
-		}
-
-	}
-
-}
-
-// deleteFromIndices deletes indices of specified keys
-func (s *store) deleteFromIndices(oldOne *ctrlmeshproto.HTTPFaultInjection, key string) {
-	for name, indexFunc := range indexFunctions {
-		indexValues := indexFunc(oldOne)
-		idx := s.indices[name]
-		if idx == nil {
-			continue
-		}
-		for _, indexValue := range indexValues {
-			set := idx[indexValue]
-			if set != nil {
-				set.Delete(key)
-				if len(set) == 0 {
-					delete(idx, indexValue)
-				}
-			}
-		}
-	}
-	for _, oldStringMatch := range oldOne.Match.StringMatch {
-		if oldStringMatch.MatchType == ctrlmeshproto.StringMatch_NORMAL {
-			for _, content := range oldStringMatch.Contents {
-				for _, method := range oldStringMatch.Methods {
-					urlMethod := indexForRest(content, method)
-					if s.normalIndexes[urlMethod] != nil {
-						s.normalIndexes[urlMethod].Delete(key)
-						if s.normalIndexes[urlMethod].Len() == 0 {
-							delete(s.normalIndexes, urlMethod)
-						}
-					}
-				}
-			}
-		} else if oldStringMatch.MatchType == ctrlmeshproto.StringMatch_REGEXP {
-			for regKey := range s.regexpIndexes {
-				if regKey == key {
-					delete(s.regexpIndexes, key)
-				}
-			}
-		}
-	}
+	delete(s.resourcesMatchRules, key)
+	delete(s.restMatchRules, key)
 }
 
 func indexForResource(namespace, apiGroup, resource, verb string) string {
 	return fmt.Sprintf("%s:%s:%s:%s", namespace, apiGroup, resource, verb)
-}
-
-func indexForRest(URL, method string) string {
-	return fmt.Sprintf("%s:%s", URL, method)
 }
 
 func indexFuncForResource(faultinjection *ctrlmeshproto.HTTPFaultInjection) []string {
@@ -258,18 +100,6 @@ func indexFuncForResource(faultinjection *ctrlmeshproto.HTTPFaultInjection) []st
 						result = append(result, indexForResource(namespace, apiGroup, resource, verb))
 					}
 				}
-			}
-		}
-	}
-	return result
-}
-
-func indexFuncForRest(faultInjection *ctrlmeshproto.HTTPFaultInjection) []string {
-	var result []string
-	for _, rest := range faultInjection.Match.HttpMatch {
-		for _, url := range rest.Url {
-			for _, method := range rest.Method {
-				result = append(result, indexForRest(url, method))
 			}
 		}
 	}

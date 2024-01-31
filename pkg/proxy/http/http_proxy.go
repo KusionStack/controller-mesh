@@ -17,7 +17,6 @@ limitations under the License.
 package http
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 
@@ -32,7 +31,6 @@ import (
 	meshhttp "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/http"
 	"github.com/KusionStack/controller-mesh/pkg/proxy/circuitbreaker"
 	"github.com/KusionStack/controller-mesh/pkg/proxy/faultinjection"
-	"github.com/KusionStack/controller-mesh/pkg/utils"
 	utilshttp "github.com/KusionStack/controller-mesh/pkg/utils/http"
 )
 
@@ -89,34 +87,10 @@ func (t *tproxy) handleHTTP(resp http.ResponseWriter, req *http.Request) {
 	klog.Infof("handel http request, url: %s ", realEndPointUrl.String())
 	// faultinjection
 	if enableRestFaultInjection {
-		result := t.FaultInjector.FaultInjectionRest(realEp, req.Method)
-		if result.Abort {
-			apiErr := utils.HttpToAPIError(int(result.ErrCode), req.Method, result.Message)
-			if apiErr.Code != http.StatusOK {
-				resp.Header().Set("Content-Type", "application/json")
-				resp.WriteHeader(int(apiErr.Code))
-				if err := json.NewEncoder(resp).Encode(apiErr); err != nil {
-					http.Error(resp, fmt.Sprintf("fail to inject fault %v", err), http.StatusInternalServerError)
-				}
-				klog.Infof("faultInjection rule, rule: %s", fmt.Sprintf("fault injection, %s, %s,%d", result.Reason, result.Message, result.ErrCode))
-				return
-			}
-		}
-
-		// normal or regex
-		klog.Infof("start FaultInjectionNormalOrRegexp %s", realEndPointUrl.Host)
-		result = t.FaultInjector.FaultInjectionNormalOrRegexp(realEndPointUrl.Host, req.Method)
-		if result.Abort {
-			apiErr := utils.HttpToAPIError(int(result.ErrCode), req.Method, result.Message)
-			if apiErr.Code != http.StatusOK {
-				resp.Header().Set("Content-Type", "application/json")
-				resp.WriteHeader(int(apiErr.Code))
-				if err := json.NewEncoder(resp).Encode(apiErr); err != nil {
-					http.Error(resp, fmt.Sprintf("fail to inject fault %v", err), http.StatusInternalServerError)
-				}
-				klog.Infof("faultInjection normal or regexp rule, rule: %s", fmt.Sprintf("fault injection, %s, %s,%d", result.Reason, result.Message, result.ErrCode))
-				return
-			}
+		injector := t.FaultInjector.GetInjectorByUrl(realEndPointUrl, req.Method)
+		if injector.Do(resp, req) {
+			klog.Infof("fault injected in %s", realEndPointUrl.String())
+			return
 		}
 	}
 

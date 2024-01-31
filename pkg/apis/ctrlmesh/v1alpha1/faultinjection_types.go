@@ -22,11 +22,6 @@ import (
 
 type StringMatchType string
 
-const (
-	StringMatchTypeNormal StringMatchType = "Normal"
-	StringMatchTypeRegexp StringMatchType = "Regexp"
-)
-
 type HTTPFaultInjectionDelay struct {
 	// FixedDelay is used to indicate the amount of delay in seconds.
 	FixedDelay string `json:"fixedDelay,omitempty"`
@@ -54,18 +49,21 @@ type ResourceMatch struct {
 // HttpMatch specifies the criteria for matching HTTP requests to RESTful resources
 // as part of HTTP FaultInjection. Each rule can target one or more URLs and HTTP methods.
 type HttpMatch struct {
-	// URL gives the location of the rest request, in standard URL form (`scheme://host:port/path`)
-	URL []string `json:"url"`
-	// Method specifies the http method of the request, like: PUT, POST, GET, DELETE.
-	Method []string `json:"method"`
+	Host   *MatchContent `json:"host,omitempty"`
+	Path   *MatchContent `json:"path,omitempty"`
+	Method string        `json:"method,omitempty"`
+	//TODO: header match
+	Headers []*HttpHeader `json:"headers,omitempty"`
 }
 
-type StringMatch struct {
-	MatchType StringMatchType `json:"matchType,omitempty"`
-	// Content is the content of the fault injection rule
-	Contents []string `json:"contents"`
-	// Method specifies the http method of the request, like: PUT, POST, GET, DELETE.
-	Methods []string `json:"methods"`
+type MatchContent struct {
+	Exact string `json:"exact,omitempty"`
+	Regex string `json:"regex,omitempty"`
+}
+
+type HttpHeader struct {
+	Name  string `json:"name"`
+	Value string `json:"value,omitempty"`
 }
 
 // Match defines a set of rules and criteria for matching incoming HTTP requests.
@@ -74,8 +72,6 @@ type StringMatch struct {
 type Match struct {
 	Resources []*ResourceMatch `json:"resources,omitempty"`
 	HttpMatch []*HttpMatch     `json:"httpMatch,omitempty"`
-	// ContentMatch
-	ContentMatch []*StringMatch `json:"contentMatch,omitempty"`
 }
 
 // HTTPFaultInjection can be used to specify one or more faults to inject

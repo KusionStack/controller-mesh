@@ -76,7 +76,7 @@ func ConvertHTTPFaultInjection(faultInjection *ctrlmeshv1alpha1.HTTPFaultInjecti
 		}
 	}
 	if faultInjection.Match != nil {
-		protoFaultInjection.Match = ConvertHTTPMatch(faultInjection.Match)
+		protoFaultInjection.Match = ConvertMatch(faultInjection.Match)
 
 	}
 	if faultInjection.EffectiveTime != nil {
@@ -85,35 +85,42 @@ func ConvertHTTPFaultInjection(faultInjection *ctrlmeshv1alpha1.HTTPFaultInjecti
 	return protoFaultInjection
 }
 
-func ConvertHTTPMatch(match *ctrlmeshv1alpha1.Match) *ctrlmeshproto.Match {
-	Match := &ctrlmeshproto.Match{}
+func ConvertMatch(match *ctrlmeshv1alpha1.Match) *ctrlmeshproto.Match {
+	protoMatch := &ctrlmeshproto.Match{}
 	if match.HttpMatch != nil {
-		Match.HttpMatch = make([]*ctrlmeshproto.HttpMatch, len(match.HttpMatch))
-		for i, restRule := range match.HttpMatch {
-			Match.HttpMatch[i] = &ctrlmeshproto.HttpMatch{}
-			if restRule.URL != nil {
-				Match.HttpMatch[i].Url = make([]string, len(restRule.URL))
-				copy(Match.HttpMatch[i].Url, restRule.URL)
+		protoMatch.HttpMatch = make([]*ctrlmeshproto.HttpMatch, len(match.HttpMatch))
+		for i, httpMatch := range match.HttpMatch {
+			temp := &ctrlmeshproto.HttpMatch{
+				Host:   ConvertMatchContent(httpMatch.Host),
+				Path:   ConvertMatchContent(httpMatch.Path),
+				Method: httpMatch.Method,
 			}
-			if restRule.Method != nil {
-				Match.HttpMatch[i].Method = make([]string, len(restRule.Method))
-				copy(Match.HttpMatch[i].Method, restRule.Method)
+			for _, header := range httpMatch.Headers {
+				temp.Headers = append(temp.Headers, &ctrlmeshproto.HttpHeader{
+					Name:  header.Name,
+					Value: header.Name,
+				})
 			}
+			protoMatch.HttpMatch[i] = temp
 		}
 	}
 	if match.Resources != nil {
-		Match.Resources = make([]*ctrlmeshproto.ResourceMatch, len(match.Resources))
+		protoMatch.Resources = make([]*ctrlmeshproto.ResourceMatch, len(match.Resources))
 		for i, relatedResource := range match.Resources {
-			Match.Resources[i] = ConvertRelatedResources(relatedResource)
+			protoMatch.Resources[i] = ConvertRelatedResources(relatedResource)
 		}
 	}
-	if match.ContentMatch != nil {
-		Match.StringMatch = make([]*ctrlmeshproto.StringMatch, len(match.ContentMatch))
-		for i, stringMatch := range match.ContentMatch {
-			Match.StringMatch[i] = ConvertStringMatch(stringMatch)
-		}
+	return protoMatch
+}
+
+func ConvertMatchContent(content *ctrlmeshv1alpha1.MatchContent) *ctrlmeshproto.MatchContent {
+	if content == nil {
+		return nil
 	}
-	return Match
+	return &ctrlmeshproto.MatchContent{
+		Exact: content.Exact,
+		Regex: content.Regex,
+	}
 }
 
 func ConvertEffectiveTime(timeRange *ctrlmeshv1alpha1.EffectiveTimeRange) *ctrlmeshproto.EffectiveTimeRange {
@@ -163,26 +170,4 @@ func ConvertRelatedResources(resourceRule *ctrlmeshv1alpha1.ResourceMatch) *ctrl
 		copy(protoResourceRule.Namespaces, resourceRule.Namespaces)
 	}
 	return protoResourceRule
-}
-
-func ConvertStringMatch(stringMatch *ctrlmeshv1alpha1.StringMatch) *ctrlmeshproto.StringMatch {
-	res := &ctrlmeshproto.StringMatch{}
-	if stringMatch != nil {
-		if stringMatch.MatchType == ctrlmeshv1alpha1.StringMatchTypeNormal {
-			res.MatchType = ctrlmeshproto.StringMatch_NORMAL
-		} else if stringMatch.MatchType == ctrlmeshv1alpha1.StringMatchTypeRegexp {
-			res.MatchType = ctrlmeshproto.StringMatch_REGEXP
-		} else {
-			return res
-		}
-		if stringMatch.Contents != nil {
-			res.Contents = make([]string, len(stringMatch.Contents))
-			copy(res.Contents, stringMatch.Contents)
-		}
-		if stringMatch.Methods != nil {
-			res.Methods = make([]string, len(stringMatch.Methods))
-			copy(res.Methods, stringMatch.Methods)
-		}
-	}
-	return res
 }
