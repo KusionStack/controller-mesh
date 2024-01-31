@@ -50,10 +50,10 @@ func (m *abortWithDelayInjector) Do(w http.ResponseWriter, req *http.Request) bo
 			klog.Errorf("failed to write api error response: %v", err)
 			return true
 		}
-		klog.Infof("abort by faultInjection, %s, %s, %d, with delay %s", apiErr.Reason, apiErr.Message, apiErr.Code, m.delay/time.Second)
+		klog.Infof("abort by faultInjection, %s, %s, %d, with delay %s", apiErr.Reason, apiErr.Message, apiErr.Code, m.delay)
 		return true
 	}
-	klog.Infof("delay by faultInjection, %s", m.delay/time.Second)
+	klog.Infof("delay by faultInjection, %s", m.delay)
 	return false
 }
 
