@@ -111,58 +111,58 @@ func TestStringMatch(t *testing.T) {
 
 	testUrl, _ := url.Parse("https://test1.com")
 	injector := mgr.GetInjectorByUrl(testUrl, "POST")
-	g.Expect(injector.(*abortWithDelayInjector).Abort).Should(gomega.BeTrue())
+	g.Expect(injector.(*abortWithDelayInjector).Abort()).Should(gomega.BeTrue())
 
 	testUrl, _ = url.Parse("https://test1.com")
 	injector = mgr.GetInjectorByUrl(testUrl, "GET")
-	g.Expect(injector.(*abortWithDelayInjector).Abort).Should(gomega.BeFalse())
+	g.Expect(injector.(*abortWithDelayInjector).Abort()).Should(gomega.BeFalse())
 
 	testUrl, _ = url.Parse("https://test1.com/a")
 	injector = mgr.GetInjectorByUrl(testUrl, "POST")
-	g.Expect(injector.(*abortWithDelayInjector).Abort).Should(gomega.BeTrue())
+	g.Expect(injector.(*abortWithDelayInjector).Abort()).Should(gomega.BeTrue())
 
 	testUrl, _ = url.Parse("https://test2.com/a/b")
 	injector = mgr.GetInjectorByUrl(testUrl, "POST")
-	g.Expect(injector.(*abortWithDelayInjector).Abort).Should(gomega.BeTrue())
+	g.Expect(injector.(*abortWithDelayInjector).Abort()).Should(gomega.BeTrue())
 
 	testUrl, _ = url.Parse("https://test2.com")
 	injector = mgr.GetInjectorByUrl(testUrl, "POST")
-	g.Expect(injector.(*abortWithDelayInjector).Abort).Should(gomega.BeFalse())
+	g.Expect(injector.(*abortWithDelayInjector).Abort()).Should(gomega.BeFalse())
 
 	testUrl, _ = url.Parse("https://test2.com/a/c")
 	injector = mgr.GetInjectorByUrl(testUrl, "POST")
-	g.Expect(injector.(*abortWithDelayInjector).Abort).Should(gomega.BeFalse())
+	g.Expect(injector.(*abortWithDelayInjector).Abort()).Should(gomega.BeFalse())
 
 	testUrl, _ = url.Parse("https://test3x.com/a/c")
 	injector = mgr.GetInjectorByUrl(testUrl, "POST")
-	g.Expect(injector.(*abortWithDelayInjector).Abort).Should(gomega.BeTrue())
+	g.Expect(injector.(*abortWithDelayInjector).Abort()).Should(gomega.BeTrue())
 
 	testUrl, _ = url.Parse("https://test3.com")
 	injector = mgr.GetInjectorByUrl(testUrl, "POST")
-	g.Expect(injector.(*abortWithDelayInjector).Abort).Should(gomega.BeFalse())
+	g.Expect(injector.(*abortWithDelayInjector).Abort()).Should(gomega.BeFalse())
 
 	testUrl, _ = url.Parse("https://test4.com/abc/d")
 	injector = mgr.GetInjectorByUrl(testUrl, "POST")
-	g.Expect(injector.(*abortWithDelayInjector).Abort).Should(gomega.BeTrue())
+	g.Expect(injector.(*abortWithDelayInjector).Abort()).Should(gomega.BeTrue())
 
 	protoFault.Option = ctrlmeshproto.FaultInjection_DELETE
 	_, err = mgr.Sync(protoFault)
 
 	testUrl, _ = url.Parse("https://test1.com/a")
 	injector = mgr.GetInjectorByUrl(testUrl, "POST")
-	g.Expect(injector.(*abortWithDelayInjector).Abort).Should(gomega.BeFalse())
+	g.Expect(injector.(*abortWithDelayInjector).Abort()).Should(gomega.BeFalse())
 
 	testUrl, _ = url.Parse("https://test2.com/a/b")
 	injector = mgr.GetInjectorByUrl(testUrl, "POST")
-	g.Expect(injector.(*abortWithDelayInjector).Abort).Should(gomega.BeFalse())
+	g.Expect(injector.(*abortWithDelayInjector).Abort()).Should(gomega.BeFalse())
 
 	testUrl, _ = url.Parse("https://test3x.com/a/c")
 	injector = mgr.GetInjectorByUrl(testUrl, "POST")
-	g.Expect(injector.(*abortWithDelayInjector).Abort).Should(gomega.BeFalse())
+	g.Expect(injector.(*abortWithDelayInjector).Abort()).Should(gomega.BeFalse())
 
 	testUrl, _ = url.Parse("https://test4.com/abc/d")
 	injector = mgr.GetInjectorByUrl(testUrl, "POST")
-	g.Expect(injector.(*abortWithDelayInjector).Abort).Should(gomega.BeFalse())
+	g.Expect(injector.(*abortWithDelayInjector).Abort()).Should(gomega.BeFalse())
 }
 
 func TestIsEffectiveTimeRange(t *testing.T) {

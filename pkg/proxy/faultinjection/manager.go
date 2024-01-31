@@ -201,39 +201,34 @@ func (m *manager) GetInjectorByResource(namespace, apiGroup, resource, verb stri
 
 func (m *manager) resourceMatch(matchs []*ctrlmeshproto.ResourceMatch, namespace, apiGroup, resource, verb string) bool {
 	for _, match := range matchs {
-		for _, val := range match.ApiGroups {
-			if val == "*" {
-				break
-			}
-			if val != apiGroup {
-				continue
-			}
+		if !matchInList(match.ApiGroups, apiGroup) {
+			continue
 		}
-		for _, val := range match.Resources {
-			if val == "*" {
-				break
-			}
-			if val != resource {
-				continue
-			}
+		if !matchInList(match.Resources, resource) {
+			continue
 		}
-		for _, val := range match.Verbs {
-			if val == "*" {
-				break
-			}
-			if val != verb {
-				continue
-			}
+		if !matchInList(match.Verbs, verb) {
+			continue
 		}
-		for _, val := range match.Namespaces {
-			if val == "*" {
-				break
-			}
-			if val != namespace {
-				continue
-			}
+		if !matchInList(match.Namespaces, namespace) {
+			continue
 		}
 		return true
+	}
+	return false
+}
+
+func matchInList(list []string, t string) bool {
+	if len(list) == 0 {
+		return true
+	}
+	for _, v := range list {
+		if v == "*" {
+			return true
+		}
+		if t == v {
+			return true
+		}
 	}
 	return false
 }
@@ -264,7 +259,7 @@ func (m *manager) getInjector(faultInjections []*ctrlmeshproto.HTTPFaultInjectio
 		if faultInjections[idx].Delay != nil && isInPercentRange(faultInjections[idx].Delay.Percent) {
 			injector.AddDelay(faultInjections[idx].Delay.GetFixedDelay().AsDuration())
 		}
-		if !injector.Abort && faultInjections[idx].Abort != nil && isInPercentRange(faultInjections[idx].Abort.Percent) {
+		if !injector.Abort() && faultInjections[idx].Abort != nil && isInPercentRange(faultInjections[idx].Abort.Percent) {
 			injector.AddAbort(int(faultInjections[idx].Abort.GetHttpStatus()),
 				fmt.Sprintf("the fault injection is triggered. Limiting rule name: %s", faultInjections[idx].Name))
 		}

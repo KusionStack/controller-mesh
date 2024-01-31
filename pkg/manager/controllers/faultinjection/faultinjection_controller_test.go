@@ -19,6 +19,7 @@ package faultinjection
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -99,6 +100,7 @@ var faultInjection = &ctrlmeshv1alpha1.FaultInjection{
 						},
 					},
 				},
+				Name: "test-default",
 			},
 		},
 	},
@@ -163,8 +165,10 @@ func TestFaultInjection(t *testing.T) {
 			},
 			HttpMatch: []*ctrlmeshv1alpha1.HttpMatch{
 				{
-					URL:    []string{"aaa.aaa.aaa"},
-					Method: []string{"GET"},
+					Host: &ctrlmeshv1alpha1.MatchContent{
+						Exact: "aaa.aaa.aaa",
+					},
+					Method: "GET",
 				},
 			},
 		},
@@ -180,10 +184,12 @@ func TestFaultInjection(t *testing.T) {
 		return false
 	}, 5*time.Second, 1*time.Second).Should(gomega.BeTrue())
 
-	g.Expect(faultManager.FaultInjectionRest("aaa.aaa.aaa", "GET").Abort).Should(gomega.BeTrue())
-	g.Expect(faultManager.FaultInjectionRest("aaa.aaa.bbb", "GET").Abort).Should(gomega.BeFalse())
-	g.Expect(faultManager.FaultInjectionResource("default", "", "Pod", "delete").Abort).Should(gomega.BeTrue())
-	g.Expect(faultManager.FaultInjectionResource("default", "", "Pod", "create").Abort).Should(gomega.BeFalse())
+	testUrl, _ := url.Parse("https://aaa.aaa.aaa")
+	g.Expect(faultManager.GetInjectorByUrl(testUrl, "GET").Abort()).Should(gomega.BeTrue())
+	testUrl, _ = url.Parse("https://aaa.aaa.bbb")
+	g.Expect(faultManager.GetInjectorByUrl(testUrl, "GET").Abort()).Should(gomega.BeFalse())
+	g.Expect(faultManager.GetInjectorByResource("default", "", "Pod", "delete").Abort()).Should(gomega.BeTrue())
+	g.Expect(faultManager.GetInjectorByResource("default", "", "Pod", "create").Abort()).Should(gomega.BeFalse())
 	if cb.Labels == nil {
 		cb.Labels = map[string]string{}
 	}

@@ -28,10 +28,11 @@ import (
 
 type Injector interface {
 	Do(w http.ResponseWriter, req *http.Request) (abort bool)
+	Abort() bool
 }
 
 type abortWithDelayInjector struct {
-	Abort   bool
+	abort   bool
 	delay   time.Duration
 	code    int
 	message string
@@ -49,10 +50,10 @@ func (m *abortWithDelayInjector) Do(w http.ResponseWriter, req *http.Request) bo
 			klog.Errorf("failed to write api error response: %v", err)
 			return true
 		}
-		klog.Infof("abort by faultInjection, %s, %s, %d, with delay %ss", apiErr.Reason, apiErr.Message, apiErr.Code, m.delay/time.Second)
+		klog.Infof("abort by faultInjection, %s, %s, %d, with delay %s", apiErr.Reason, apiErr.Message, apiErr.Code, m.delay/time.Second)
 		return true
 	}
-	klog.Infof("delay by faultInjection, %ss", m.delay/time.Second)
+	klog.Infof("delay by faultInjection, %s", m.delay/time.Second)
 	return false
 }
 
@@ -61,7 +62,11 @@ func (m *abortWithDelayInjector) AddDelay(d time.Duration) {
 }
 
 func (m *abortWithDelayInjector) AddAbort(code int, message string) {
-	m.Abort = true
+	m.abort = true
 	m.code = code
 	m.message = message
+}
+
+func (m *abortWithDelayInjector) Abort() bool {
+	return m.abort
 }
