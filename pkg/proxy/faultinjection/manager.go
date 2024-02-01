@@ -18,14 +18,12 @@ package faultinjection
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 
 	"math/rand"
 	"net/http"
 	"net/url"
-	"strings"
 	"sync"
 	"time"
 
@@ -34,7 +32,6 @@ import (
 	"k8s.io/klog/v2"
 
 	ctrlmeshproto "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/proto"
-	"github.com/KusionStack/controller-mesh/pkg/utils"
 )
 
 const timeLayout = "15:04:05"
@@ -44,7 +41,7 @@ var (
 )
 
 type ManagerInterface interface {
-	FaultInjector
+	FaultInjectorManager
 	Sync(config *ctrlmeshproto.FaultInjection) (*ctrlmeshproto.FaultInjectConfigResp, error)
 }
 
@@ -55,10 +52,9 @@ type FaultInjectionResult struct {
 	ErrCode int32
 }
 
-type FaultInjector interface {
-	FaultInjectionRest(URL string, method string) (result *FaultInjectionResult)
-	FaultInjectionNormalOrRegexp(URL string, method string) (result *FaultInjectionResult)
-	FaultInjectionResource(namespace, apiGroup, resource, verb string) (result *FaultInjectionResult)
+type FaultInjectorManager interface {
+	GetInjectorByUrl(url *url.URL, method string) Injector
+	GetInjectorByResource(namespace, apiGroup, resource, verb string) Injector
 	HandlerWrapper() func(http.Handler) http.Handler
 }
 
@@ -150,123 +146,94 @@ func (m *manager) HandlerWrapper() func(http.Handler) http.Handler {
 	}
 }
 
-func (m *manager) FaultInjectionNormalOrRegexp(URL string, method string) (result *FaultInjectionResult) {
-	// regexp and normal
-	now := time.Now()
-	indexes := m.faultInjectionStore.normalIndexes[indexForRest(URL, method)]
-	if indexes == nil {
-		indexes = m.faultInjectionStore.normalIndexes[indexForRest(URL, "*")]
-	}
-	for key := range indexes {
-		faultInjection := m.faultInjectionStore.rules[key]
-		if faultInjection != nil {
-			result = m.doFaultInjection([]*ctrlmeshproto.HTTPFaultInjection{faultInjection})
-			klog.Infof("validate rest, URL: %s, method:%s, result: %v, cost time: %v ", URL, method, result, time.Since(now).String())
-			return result
-		}
-	}
-
-	for key, regs := range m.faultInjectionStore.regexpIndexes {
-		for _, reg := range regs {
-			if reg.method == method && reg.reg.MatchString(URL) {
-				faultInjection := m.faultInjectionStore.rules[key]
-				if faultInjection != nil {
-					result = m.doFaultInjection([]*ctrlmeshproto.HTTPFaultInjection{faultInjection})
-					klog.Infof("validate rest, URL: %s, method:%s, result: %v, cost time: %v ", URL, method, result, time.Since(now).String())
-					return result
-				}
-			}
-		}
-	}
-	result = &FaultInjectionResult{Abort: false, Reason: "No rule match"}
-	return result
+func (m *manager) GetInjectorByUrl(url *url.URL, method string) Injector {
+	faultInjections := m.matchHTTPFaultInjection(url, method)
+	return m.getInjector(faultInjections)
 }
 
-func (m *manager) FaultInjectionRest(URL string, method string) (result *FaultInjectionResult) {
-	now := time.Now()
-	urls := generateWildcardUrls(URL, method)
-	for _, url := range urls {
-		faultInjections, _ := m.faultInjectionStore.byIndex(IndexRest, url)
-		if len(faultInjections) == 0 {
+func (m *manager) matchHTTPFaultInjection(url *url.URL, method string) (res []*ctrlmeshproto.HTTPFaultInjection) {
+	for _, rule := range m.faultInjectionStore.restMatchRules {
+		if m.matchRest(rule.Match, url, method) {
+			res = append(res, rule)
+		}
+	}
+	return
+}
+
+func (m *manager) matchRest(match *ctrlmeshproto.Match, url *url.URL, method string) bool {
+	for _, httpMatch := range match.HttpMatch {
+		if httpMatch.Method != "*" && httpMatch.Method != "" && httpMatch.Method != method {
 			continue
 		}
-		result = m.doFaultInjection(faultInjections)
-		klog.Infof("validate rest, URL: %s, method:%s, result: %v, cost time: %v ", URL, method, result, time.Since(now).String())
-		return result
-	}
-	result = &FaultInjectionResult{Abort: false, Reason: "No rule match"}
-	return result
-}
-
-func generateWildcardUrls(URL string, method string) []string {
-	var result []string
-	result = append(result, indexForRest(URL, method))
-	URL = strings.TrimSuffix(URL, "/")
-	u, err := url.Parse(URL)
-	if err != nil {
-		klog.Errorf("failed to url, URL: %s, method: %s,err: %v", URL, method, err)
-		return result
-	}
-	if len(u.Path) > 0 {
-		subPaths := strings.Split(u.Path, "/")
-		for i := len(subPaths) - 1; i > 0; i-- {
-			subPath := u.Scheme + "://" + u.Host + strings.Join(subPaths[:i], "/") + "/*"
-			result = append(result, indexForRest(subPath, method))
-		}
-	}
-
-	return result
-}
-
-func (m *manager) FaultInjectionResource(namespace, apiGroup, resource, verb string) (result *FaultInjectionResult) {
-	now := time.Now()
-	seeds := generateWildcardSeeds(namespace, apiGroup, resource, verb)
-	for _, seed := range seeds {
-		faultInjections, _ := m.faultInjectionStore.byIndex(IndexResource, seed)
-		if len(faultInjections) == 0 {
+		if httpMatch.Host != nil && !m.matchContent(httpMatch.Host, url.Host) {
 			continue
 		}
-		result = m.doFaultInjection(faultInjections)
-		klog.Infof("validate resource, namespace: %s, apiGroup: %s, resource: %s, verb: %s, result: %v, cost time: %v, ", namespace, apiGroup, resource, verb, result, time.Since(now).String())
-		return result
+		if httpMatch.Path != nil && !m.matchContent(httpMatch.Path, url.Path) {
+			continue
+		}
+		return true
 	}
-	result = &FaultInjectionResult{Abort: false, Reason: "No rule match"}
-	return result
+	return false
 }
 
-func generateWildcardSeeds(namespace, apiGroup, resource, verb string) []string {
-	/* priority strategy
-	   1、if wildcard number not equal, less wildcard number priority higher. eg. 0* > 1* > 2* > 3* > 4*
-	   2、if wildcard number equal, the priority order is verb > resource > apiGroup > namespace.
-	      eg. verb exist first match verb, then match resource, after match apiGroup, last match namespace
-	*/
-	result := []string{
-		// zero wildcard
-		indexForResource(namespace, apiGroup, resource, verb),
-		// one wildcard
-		indexForResource("*", apiGroup, resource, verb),
-		indexForResource(namespace, "*", resource, verb),
-		indexForResource(namespace, apiGroup, "*", verb),
-		indexForResource(namespace, apiGroup, resource, "*"),
-		// two wildcard
-		indexForResource("*", "*", resource, verb),
-		indexForResource("*", apiGroup, "*", verb),
-		indexForResource(namespace, "*", "*", verb),
-		indexForResource("*", apiGroup, resource, "*"),
-		indexForResource(namespace, "*", resource, "*"),
-		indexForResource(namespace, apiGroup, "*", "*"),
-		// three wildcard
-		indexForResource("*", "*", "*", verb),
-		indexForResource("*", "*", resource, "*"),
-		indexForResource("*", apiGroup, "*", "*"),
-		indexForResource(namespace, "*", "*", "*"),
-		// four wildcard
-		indexForResource("*", "*", "*", "*"),
+func (m *manager) matchContent(mc *ctrlmeshproto.MatchContent, content string) bool {
+	if mc.Exact != "" {
+		return mc.Exact == content
 	}
-	return result
+	if mc.Regex != "" {
+		regex, ok := m.faultInjectionStore.regexMap[mc.Regex]
+		if ok {
+			return regex.MatchString(content)
+		}
+	}
+	return false
 }
 
-func withFaultInjection(injector FaultInjector, handler http.Handler) http.Handler {
+func (m *manager) GetInjectorByResource(namespace, apiGroup, resource, verb string) Injector {
+	var fjs []*ctrlmeshproto.HTTPFaultInjection
+	for _, rule := range m.faultInjectionStore.resourcesMatchRules {
+		if m.resourceMatch(rule.Match.Resources, namespace, apiGroup, resource, verb) {
+			fjs = append(fjs, rule)
+		}
+	}
+	return m.getInjector(fjs)
+}
+
+func (m *manager) resourceMatch(matchs []*ctrlmeshproto.ResourceMatch, namespace, apiGroup, resource, verb string) bool {
+	for _, match := range matchs {
+		if !matchInList(match.ApiGroups, apiGroup) {
+			continue
+		}
+		if !matchInList(match.Resources, resource) {
+			continue
+		}
+		if !matchInList(match.Verbs, verb) {
+			continue
+		}
+		if !matchInList(match.Namespaces, namespace) {
+			continue
+		}
+		return true
+	}
+	return false
+}
+
+func matchInList(list []string, t string) bool {
+	if len(list) == 0 {
+		return true
+	}
+	for _, v := range list {
+		if v == "*" {
+			return true
+		}
+		if t == v {
+			return true
+		}
+	}
+	return false
+}
+
+func withFaultInjection(injectorManager FaultInjectorManager, handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		ctx := req.Context()
 		requestInfo, ok := apirequest.RequestInfoFrom(ctx)
@@ -275,70 +242,39 @@ func withFaultInjection(injector FaultInjector, handler http.Handler) http.Handl
 			responsewriters.InternalError(w, req, errors.New("no RequestInfo found in the context"))
 			return
 		}
-		result := injector.FaultInjectionResource(requestInfo.Namespace, requestInfo.APIGroup, requestInfo.Resource, requestInfo.Verb)
-
-		if result.Abort {
-			apiErr := utils.HttpToAPIError(int(result.ErrCode), req.Method, result.Message)
-			if apiErr.Code != http.StatusOK {
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(int(apiErr.Code))
-				if err := json.NewEncoder(w).Encode(apiErr); err != nil {
-					// Error encoding the JSON response, at this point the headers are already written.
-					klog.Errorf("failed to write api error response: %v", err)
-					return
-				}
-				klog.Infof("faultinjection rule: %s", fmt.Sprintf("fault injection, %s, %s,%d", apiErr.Reason, apiErr.Message, apiErr.Code))
-				return
-			}
+		injector := injectorManager.GetInjectorByResource(requestInfo.Namespace, requestInfo.APIGroup, requestInfo.Resource, requestInfo.Verb)
+		if !injector.Do(w, req) {
+			handler.ServeHTTP(w, req)
 		}
-		handler.ServeHTTP(w, req)
 	})
 }
 
-func (m *manager) doFaultInjection(faultInjections []*ctrlmeshproto.HTTPFaultInjection) *FaultInjectionResult {
-	result := &FaultInjectionResult{
-		Abort:  false,
-		Reason: "Default allow",
-	}
+func (m *manager) getInjector(faultInjections []*ctrlmeshproto.HTTPFaultInjection) Injector {
+	injector := &abortWithDelayInjector{}
 	for idx := range faultInjections {
-
 		if faultInjections[idx].EffectiveTime != nil && !isEffectiveTimeRange(faultInjections[idx].EffectiveTime) {
-			fmt.Println("effective time is not in range", faultInjections[idx].EffectiveTime)
+			//klog.Infof("FaultInjection %s effective time is not in range, %v", faultInjections[idx].Name, faultInjections[idx].EffectiveTime)
 			continue
 		}
-
-		if faultInjections[idx].Delay != nil {
-			if isInpercentRange(faultInjections[idx].Delay.Percent) {
-				delay := faultInjections[idx].Delay.GetFixedDelay()
-				delayDuration := delay.AsDuration()
-				klog.Infof("Delaying time: %v ", delayDuration)
-				time.Sleep(delayDuration)
-			}
+		if faultInjections[idx].Delay != nil && isInPercentRange(faultInjections[idx].Delay.Percent) {
+			injector.AddDelay(faultInjections[idx].Delay.GetFixedDelay().AsDuration())
 		}
-		if faultInjections[idx].Abort != nil {
-			if isInpercentRange(faultInjections[idx].Abort.Percent) {
-				result.Abort = true
-				result.Reason = "FaultInjectionTriggered"
-				result.Message = fmt.Sprintf("the fault injection is triggered. Limiting rule name: %s", faultInjections[idx].Name)
-				result.ErrCode = faultInjections[idx].Abort.GetHttpStatus()
-				return result
-			}
-
+		if !injector.Abort() && faultInjections[idx].Abort != nil && isInPercentRange(faultInjections[idx].Abort.Percent) {
+			injector.AddAbort(int(faultInjections[idx].Abort.GetHttpStatus()),
+				fmt.Sprintf("the fault injection is triggered. Limiting rule name: %s", faultInjections[idx].Name))
 		}
 	}
-	return result
+	return injector
 }
 
-func isInpercentRange(value float64) bool {
+func isInPercentRange(value float64) bool {
 	if value < 0 || value > 100 {
-		fmt.Println("Value must be between 0 and 100")
 		return false
 	}
 	if value == 0 {
 		return true
 	}
 	randomNumber := randNum.Float64() * 100
-
 	return randomNumber < value
 }
 

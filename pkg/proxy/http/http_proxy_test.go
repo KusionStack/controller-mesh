@@ -64,13 +64,10 @@ func StartProxy() {
 				Match: &ctrlmeshproto.Match{
 					HttpMatch: []*ctrlmeshproto.HttpMatch{
 						{
-							Url: []string{
-								"https://github.com",
+							Host: &ctrlmeshproto.MatchContent{
+								Exact: "github.com",
 							},
-							Method: []string{
-								"POST",
-								"GET",
-							},
+							Method: "GET",
 						},
 					},
 				},
@@ -84,13 +81,13 @@ func StartProxy() {
 				Match: &ctrlmeshproto.Match{
 					HttpMatch: []*ctrlmeshproto.HttpMatch{
 						{
-							Url: []string{
-								"https://www.gayhub.com/foo",
+							Host: &ctrlmeshproto.MatchContent{
+								Exact: "www.gayhub.com",
 							},
-							Method: []string{
-								"POST",
-								"GET",
+							Path: &ctrlmeshproto.MatchContent{
+								Exact: "/foo",
 							},
+							Method: "GET",
 						},
 					},
 				},
@@ -104,13 +101,10 @@ func StartProxy() {
 				Match: &ctrlmeshproto.Match{
 					HttpMatch: []*ctrlmeshproto.HttpMatch{
 						{
-							Url: []string{
-								"https://abc.github.com",
+							Host: &ctrlmeshproto.MatchContent{
+								Exact: "abc.github.com",
 							},
-							Method: []string{
-								"POST",
-								"GET",
-							},
+							Method: "GET",
 						},
 					},
 				},

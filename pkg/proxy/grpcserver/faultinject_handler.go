@@ -21,10 +21,11 @@ import (
 	"fmt"
 
 	"connectrpc.com/connect"
-	ctrlmeshproto "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/proto"
-	"github.com/KusionStack/controller-mesh/pkg/proxy/faultinjection"
 	"google.golang.org/protobuf/encoding/protojson"
 	"k8s.io/klog/v2"
+
+	ctrlmeshproto "github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/proto"
+	"github.com/KusionStack/controller-mesh/pkg/proxy/faultinjection"
 )
 
 type grpcFaultInjectHandler struct {
@@ -33,7 +34,7 @@ type grpcFaultInjectHandler struct {
 
 func (g *grpcFaultInjectHandler) SendConfig(ctx context.Context, req *connect.Request[ctrlmeshproto.FaultInjection]) (*connect.Response[ctrlmeshproto.FaultInjectConfigResp], error) {
 
-	msg := protojson.MarshalOptions{Multiline: true, EmitUnpopulated: true}.Format(req.Msg)
+	msg := protojson.MarshalOptions{Multiline: false, EmitUnpopulated: true}.Format(req.Msg)
 	klog.Infof("handle FaultInjection gRPC request %s", msg)
 	if req.Msg == nil {
 		return connect.NewResponse(&ctrlmeshproto.FaultInjectConfigResp{Success: false}), fmt.Errorf("nil FaultInjection recieived from client")

@@ -111,22 +111,23 @@ message EffectiveTimeRange {
 message Match {
   repeated ResourceMatch resources = 1;
   repeated HttpMatch httpMatch = 2;
-  repeated StringMatch stringMatch = 3;
-}
-
-message StringMatch {
-  StringMatchType matchType = 1;
-  repeated string contents = 2;
-  repeated string methods = 3;
-  enum StringMatchType {
-    NORMAL = 0;
-    REGEXP = 1;
-  }
 }
 
 message HttpMatch {
-  repeated string url = 1;
-  repeated string method = 2;
+  MatchContent host = 1;
+  MatchContent path = 2;
+  string method = 3;
+  repeated HttpHeader headers = 4;
+}
+
+message MatchContent {
+  string exact = 1;
+  string regex = 2;
+}
+
+message HttpHeader {
+  string name = 1;
+  string value = 2;
 }
 
 // Describes how to match K8s resources.
