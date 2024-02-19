@@ -19,8 +19,9 @@ spec:
       - key: ctrlmesh.kusionstack.io/namespace
         operator: NotIn
         values:
-        - foo-1
-        - foo-2
+        - foo-01
+        - foo-02
+        - foo-03
   selector:       # select v0 pods
     matchLabels:
       controller-version: v0

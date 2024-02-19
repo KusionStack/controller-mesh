@@ -16,8 +16,10 @@ spec:
   template:
     metadata:
       labels:
+        #ctrlmesh.kusionstack.io/enable-proxy: "true"
+        #ctrlmesh.kusionstack.io/watching: "true"
         control-plane: controller-manager
-        controller-version: v0
+        controller-version: v0                       # version label: v0
     spec:
       containers:
       - command:
@@ -25,6 +27,7 @@ spec:
         args:
         - --leader-elect=true
         - --leader-election-name=sample-operator-leader
+        - --controller-version=v0
         image: controller:latest
         name: manager
         env:

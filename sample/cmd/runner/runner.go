@@ -18,8 +18,8 @@ package runner
 
 import (
 	"context"
+	"flag"
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
@@ -37,7 +37,8 @@ const (
 )
 
 var (
-	PodName = os.Getenv("POD_NAME")
+	//PodName = os.Getenv("POD_NAME")
+	controllerVersion = flag.String("controller-version", "v0", "")
 )
 
 func New(c client.Client) Runner {
@@ -89,8 +90,8 @@ func (r *runner) holdTestResources(ctx context.Context) error {
 			if ns.Labels == nil {
 				ns.Labels = map[string]string{}
 			}
-			if controlName, ok := ns.Labels[controlLabel]; !ok || PodName != controlName {
-				ns.Labels[controlLabel] = PodName
+			if version, ok := ns.Labels[controlLabel]; !ok || *controllerVersion != version {
+				ns.Labels[controlLabel] = *controllerVersion
 				return r.Update(ctx, ns)
 			}
 			return nil
