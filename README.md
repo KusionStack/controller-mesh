@@ -84,7 +84,7 @@ $ kubectl logs kusionstack-sample-operator-v0-66f7595c7b-wxwtv -n kusionstack-sa
 I0110 09:32:50.950535   1 runner.go:101] hold namespaces [ctrlmesh default foo-01 foo-02 foo-03 foo-04 foo-05 foo-06 foo-07 foo-08 foo-09 foo-10 foo-11 foo-12 foo-13 foo-14 foo-15 foo-16 foo-17 foo-18 foo-19 foo-20 foo-21 foo-22 foo-23 foo-24 foo-25 foo-26 foo-27 foo-28 foo-29 foo-30 foo-31 foo-32 kusionstack-sample kusionstack-system local-path-storage]
 
 # Apply sample ShardingConfigs
-$ ./bin/kustomize build config/shardingconfig/canary -n sample-operator| kubectl apply -f -
+$ ./bin/kustomize build config/shardingconfig/canary| kubectl apply -f -
 shardingconfig.ctrlmesh.kusionstack.io/kusionstack-sample-operator-0-canary created
 shardingconfig.ctrlmesh.kusionstack.io/kusionstack-sample-operator-1-normal created
 ```
@@ -114,7 +114,7 @@ NAME                                                            HOLDER          
 sample-operator-leader---kusionstack-sample-operator-1-normal   kusionstack-sample-operator-v0-6944bb4bf5-lfwdb_497a7962-a5f1-465e-b8ef-6e35660c63f4   32s
 
 # Namespaces [foo-1, foo-2, foo-3] are no longer under v0 control.
-$ kubectl logs kusionstack-sample-operator-v0-6944bb4bf5-lfwdb -c manager | grep "namespaces"
+$ kubectl logs kusionstack-sample-operator-v0-6944bb4bf5-lfwdb -c manager -n kusionstack-sample | grep "namespaces"
  ... hold namespaces [default foo-04 foo-05 ... foo-32]
 
 ```
@@ -147,7 +147,7 @@ foo-01   Active   4m
 foo-02   Active   4m
 foo-03   Active   4m
 
-$ kubectl logs kusionstack-sample-operator-v1-7b6bbb49c8-qbzjj -c manager | grep namespaces
+$ kubectl logs kusionstack-sample-operator-v1-7b6bbb49c8-qbzjj -c manager -n kusionstack-sample | grep namespaces
  ... hold namespaces [foo-01 foo-02 foo-03]
 ```
 Similarly, if you want to have more shards, you need to do the following steps: 
@@ -155,5 +155,13 @@ Similarly, if you want to have more shards, you need to do the following steps:
 2. Configure a new ShardingConfig and apply it.
 3. Recreate or restart the existing pods to make the new ShardingConfig take effect.
 4. Scale out the Pods for the new ShardingConfig.
+
+
+**Clear sample resources**
+
+```bash
+$ chmod +x ./scripts/clear.sh && ./scripts/clear.sh
+```
+
 
 *Beta: Furthermore, we plan to support automatic sharding strategy. With automatic sharding configuration, there is no need to manually configure each shard's configuration. It manages multiple sub-shardingconfigs automatically through a root configuration.*
