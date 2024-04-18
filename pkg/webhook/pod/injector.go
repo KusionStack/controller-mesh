@@ -131,7 +131,7 @@ func (h *MutatingHandler) injectByShardingConfig(ctx context.Context, pod *v1.Po
 	if *proxyImage == "" {
 		return fmt.Errorf("the images for ControllerMesh init or proxy container have not set in args")
 	}
-
+	enableIpTable := pod.Labels[ctrlmesh.CtrlmeshEnableIptableMode] == "true"
 	imagePullPolicy := v1.PullAlways
 	if *proxyImagePullPolicy == string(v1.PullIfNotPresent) {
 		imagePullPolicy = v1.PullIfNotPresent
@@ -177,6 +177,13 @@ func (h *MutatingHandler) injectByShardingConfig(ctx context.Context, pod *v1.Po
 		},
 	}
 
+	if enableIpTable {
+		proxyContainer.Env = append(proxyContainer.Env, v1.EnvVar{
+			Name:  constants.EnvIPTable,
+			Value: "true",
+		})
+	}
+
 	if val, ok := pod.Annotations[ctrlmesh.CtrlmeshProxyContainerResourceAnno]; ok {
 		req := &v1.ResourceRequirements{}
 		if err := json.Unmarshal([]byte(val), req); err != nil {
@@ -213,15 +220,6 @@ func (h *MutatingHandler) injectByShardingConfig(ctx context.Context, pod *v1.Po
 		proxyContainer.Env = append(proxyContainer.Env, apiserverHostPortEnvs...)
 	}
 
-	ipTableEnvs := getEnv(pod, constants.EnvIPTable)
-	enableIpTable := false
-	if len(ipTableEnvs) > 0 {
-		initContainer.Env = append(initContainer.Env, ipTableEnvs...)
-		//proxyContainer.Env = append(proxyContainer.Env, ipTableEnvs...)
-		if ipTableEnvs[0].Value == "true" {
-			enableIpTable = true
-		}
-	}
 	if !enableIpTable {
 		if err := h.applyFakeConfigMap(pod); err != nil {
 			return err
@@ -271,7 +269,7 @@ func (h *MutatingHandler) injectByShardingConfig(ctx context.Context, pod *v1.Po
 			proxyContainer.VolumeMounts = append(proxyContainer.VolumeMounts, certVolumeMounts[0])
 		}
 	}
-	if *initImage != "" {
+	if enableIpTable && *initImage != "" {
 		pod.Spec.InitContainers = append([]v1.Container{*initContainer}, pod.Spec.InitContainers...)
 	}
 	if pod.Labels == nil {
