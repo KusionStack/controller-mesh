@@ -31,11 +31,13 @@ const (
 
 // Labels
 const (
-	CtrlmeshControlPrefix                 = "ctrlmesh.kusionstack.io/"
-	CtrlmeshIgnoreWebhookLabel            = "ctrlmesh.kusionstack.io/ignore-webhook"
-	CtrlmeshIgnoreValidateLabel           = "ctrlmesh.kusionstack.io/ignore-validate"
-	CtrlmeshDefaultReplicasLabel          = "ctrlmesh.kusionstack.io/default-replicas"
-	CtrlmeshEnableProxyLabel              = "ctrlmesh.kusionstack.io/enable-proxy"
+	CtrlmeshControlPrefix        = "ctrlmesh.kusionstack.io/"
+	CtrlmeshIgnoreWebhookLabel   = "ctrlmesh.kusionstack.io/ignore-webhook"
+	CtrlmeshIgnoreValidateLabel  = "ctrlmesh.kusionstack.io/ignore-validate"
+	CtrlmeshDefaultReplicasLabel = "ctrlmesh.kusionstack.io/default-replicas"
+	CtrlmeshEnableProxyLabel     = "ctrlmesh.kusionstack.io/enable-proxy"
+	CtrlmeshEnableIptableMode    = "ctrlmesh.kusionstack.io/enable-iptables"
+
 	CtrlmeshAutoShardingRootLabel         = "ctrlmesh.kusionstack.io/auto-sharding-root"
 	CtrlmeshInRollingLabel                = "ctrlmesh.kusionstack.io/rolling"
 	CtrlmeshDisableFakeKubeconfigArgLabel = "ctrlmesh.kusionstack.io/disable-fake-kubeconfig-arg"

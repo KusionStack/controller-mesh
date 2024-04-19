@@ -35,7 +35,6 @@ import (
 
 	"github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/constants"
 	"github.com/KusionStack/controller-mesh/pkg/client"
-
 	proxyapiserver "github.com/KusionStack/controller-mesh/pkg/proxy/apiserver"
 	proxycache "github.com/KusionStack/controller-mesh/pkg/proxy/cache"
 	"github.com/KusionStack/controller-mesh/pkg/proxy/circuitbreaker"
@@ -56,6 +55,8 @@ var (
 	webhookCertDir     = flag.String(constants.ProxyWebhookCertDirFlag, "", "The directory where the webhook certs generated or mounted.")
 
 	proxyIptablePort = flag.Int(constants.ProxyIptablesFlag, constants.ProxyIptablesPort, "port that http-tproxy listens on")
+
+	enableIpTable = os.Getenv(constants.EnvIPTable) == "true"
 )
 
 func main() {
@@ -66,7 +67,17 @@ func main() {
 		klog.Fatalf("Environment %s=%s %s=%s not exist.",
 			constants.EnvPodNamespace, os.Getenv(constants.EnvPodNamespace), constants.EnvPodName, os.Getenv(constants.EnvPodName))
 	}
-	cfg := ctrl.GetConfigOrDie()
+	var cfg *rest.Config
+
+	if enableIpTable {
+		var err error
+		cfg, err = getRestConfig()
+		if err != nil {
+			klog.Fatalf("Failed to get rest config: %v", err)
+		}
+	} else {
+		cfg = ctrl.GetConfigOrDie()
+	}
 	cfg.UserAgent = "ctrlmesh"
 	if err := client.NewRegistry(cfg); err != nil {
 		klog.Fatalf("Failed to new client registry: %v", err)
@@ -164,4 +175,42 @@ func serveHTTP(ctx context.Context, readyHandler *healthz.Handler) {
 	if err := server.Shutdown(context.Background()); err != nil {
 		klog.Fatalf("Serve HTTP shutting down on :%d: %v", *metricsHealthPort, err)
 	}
+}
+
+func getRestConfig() (*rest.Config, error) {
+	const (
+		tokenFile = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+		//rootCAFile = "/var/run/secrets/kubernetes.io/serviceaccount/..data/ca.crt"
+	)
+	host, port := os.Getenv("KUBERNETES_SERVICE_HOST"), os.Getenv("KUBERNETES_SERVICE_PORT")
+	if len(host) == 0 || len(port) == 0 {
+		return nil, rest.ErrNotInCluster
+	}
+
+	token, err := os.ReadFile(tokenFile)
+	if err != nil {
+		return nil, err
+	}
+
+	tlsClientConfig := rest.TLSClientConfig{Insecure: true}
+
+	//if _, err := certutil.NewPool(rootCAFile); err != nil {
+	//	klog.Errorf("Expected to load root CA config from %s, but got err: %v", rootCAFile, err)
+	//} else {
+	//	tlsClientConfig.CAFile = rootCAFile
+	//}
+
+	cfg := &rest.Config{
+		// TODO: switch to using cluster DNS.
+		Host:            "https://" + net.JoinHostPort(host, port),
+		TLSClientConfig: tlsClientConfig,
+		BearerToken:     string(token),
+		BearerTokenFile: tokenFile,
+
+		Burst: 3000,
+		QPS:   2000.0,
+	}
+	klog.V(3).Infof("Starting with rest config: %v", utils.DumpJSON(cfg))
+
+	return cfg, nil
 }

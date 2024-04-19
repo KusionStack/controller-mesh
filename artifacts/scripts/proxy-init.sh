@@ -14,27 +14,27 @@ if [ ! -f "${SA_DIR}/token" ]; then
 fi
 
 # Remove the old chains, to generate new configs.
-iptables -t nat -D PREROUTING -p tcp -j ctrlmesh_PROXY_INBOUND 2>/dev/null
-iptables -t mangle -D PREROUTING -p tcp -j ctrlmesh_PROXY_INBOUND 2>/dev/null
-iptables -t nat -D OUTPUT -p tcp -j ctrlmesh_PROXY_OUTPUT 2>/dev/null
+iptables -t nat -D PREROUTING -p tcp -j CTRLMESH_INBOUND 2>/dev/null
+iptables -t mangle -D PREROUTING -p tcp -j CTRLMESH_INBOUND 2>/dev/null
+iptables -t nat -D OUTPUT -p tcp -j CTRLMESH_OUTPUT 2>/dev/null
 
 # Flush and delete the ctrlmesh chains.
-iptables -t nat -F ctrlmesh_PROXY_OUTPUT 2>/dev/null
-iptables -t nat -X ctrlmesh_PROXY_OUTPUT 2>/dev/null
-iptables -t nat -F ctrlmesh_PROXY_INBOUND 2>/dev/null
-iptables -t nat -X ctrlmesh_PROXY_INBOUND 2>/dev/null
-iptables -t mangle -F ctrlmesh_PROXY_INBOUND 2>/dev/null
-iptables -t mangle -X ctrlmesh_PROXY_INBOUND 2>/dev/null
-iptables -t mangle -F ctrlmesh_PROXY_DIVERT 2>/dev/null
-iptables -t mangle -X ctrlmesh_PROXY_DIVERT 2>/dev/null
-iptables -t mangle -F ctrlmesh_PROXY_TPROXY 2>/dev/null
-iptables -t mangle -X ctrlmesh_PROXY_TPROXY 2>/dev/null
+iptables -t nat -F CTRLMESH_OUTPUT 2>/dev/null
+iptables -t nat -X CTRLMESH_OUTPUT 2>/dev/null
+iptables -t nat -F CTRLMESH_INBOUND 2>/dev/null
+iptables -t nat -X CTRLMESH_INBOUND 2>/dev/null
+iptables -t mangle -F CTRLMESH_INBOUND 2>/dev/null
+iptables -t mangle -X CTRLMESH_INBOUND 2>/dev/null
+iptables -t mangle -F CTRLMESH_DIVERT 2>/dev/null
+iptables -t mangle -X CTRLMESH_DIVERT 2>/dev/null
+iptables -t mangle -F CTRLMESH_TPROXY 2>/dev/null
+iptables -t mangle -X CTRLMESH_TPROXY 2>/dev/null
 
 # Must be last, the others refer to it
-iptables -t nat -F ctrlmesh_PROXY_REDIRECT 2>/dev/null
-iptables -t nat -X ctrlmesh_PROXY_REDIRECT 2>/dev/null
-iptables -t nat -F ctrlmesh_PROXY_IN_REDIRECT 2>/dev/null
-iptables -t nat -X ctrlmesh_PROXY_IN_REDIRECT 2>/dev/null
+iptables -t nat -F CTRLMESH_REDIRECT 2>/dev/null
+iptables -t nat -X CTRLMESH_REDIRECT 2>/dev/null
+iptables -t nat -F CTRLMESH_IN_REDIRECT 2>/dev/null
+iptables -t nat -X CTRLMESH_IN_REDIRECT 2>/dev/null
 
 if [ "${1:-}" = "clean" ]; then
   echo "Only cleaning, no new rules added"
@@ -70,13 +70,13 @@ set -o pipefail
 set -x # echo on
 
 # Create a new chain for redirecting outbound traffic to the apiserver port.
-# In both chains, '-j RETURN' bypasses Proxy and '-j ctrlmesh_PROXY_REDIRECT' redirects to Proxy.
-iptables -t nat -N ctrlmesh_PROXY_REDIRECT
-iptables -t nat -A ctrlmesh_PROXY_REDIRECT -p tcp -j REDIRECT --to-port "${PROXY_APISERVER_PORT}"
+# In both chains, '-j RETURN' bypasses Proxy and '-j CTRLMESH_REDIRECT' redirects to Proxy.
+iptables -t nat -N CTRLMESH_REDIRECT
+iptables -t nat -A CTRLMESH_REDIRECT -p tcp -j REDIRECT --to-port "${PROXY_APISERVER_PORT}"
 
 # Use this chain also for redirecting inbound traffic to the webhook port when not using TPROXY.
-iptables -t nat -N ctrlmesh_PROXY_IN_REDIRECT
-iptables -t nat -A ctrlmesh_PROXY_IN_REDIRECT -p tcp -j REDIRECT --to-port "${PROXY_WEBHOOK_PORT}"
+iptables -t nat -N CTRLMESH_IN_REDIRECT
+iptables -t nat -A CTRLMESH_IN_REDIRECT -p tcp -j REDIRECT --to-port "${PROXY_WEBHOOK_PORT}"
 
 # Handling of inbound ports. Traffic will be redirected to Proxy, which will process and forward
 # to the local webhook. If not set, no inbound port will be intercepted by the iptables.
@@ -85,14 +85,14 @@ if [ -n "${INBOUND_WEBHOOK_PORT}" ]; then
     # When using TPROXY, create a new chain for routing all inbound traffic to
     # Proxy. Any packet entering this chain gets marked with the ${INBOUND_TPROXY_MARK} mark,
     # so that they get routed to the loopback interface in order to get redirected to Proxy.
-    # In the ctrlmesh_PROXY_INBOUND chain, '-j ctrlmesh_PROXY_DIVERT' reroutes to the loopback
+    # In the CTRLMESH_INBOUND chain, '-j CTRLMESH_DIVERT' reroutes to the loopback
     # interface.
     # Mark all inbound packets.
-    iptables -t mangle -N ctrlmesh_PROXY_DIVERT
-    iptables -t mangle -A ctrlmesh_PROXY_DIVERT -j MARK --set-mark "${INBOUND_TPROXY_MARK}"
-    iptables -t mangle -A ctrlmesh_PROXY_DIVERT -j ACCEPT
+    iptables -t mangle -N CTRLMESH_DIVERT
+    iptables -t mangle -A CTRLMESH_DIVERT -j MARK --set-mark "${INBOUND_TPROXY_MARK}"
+    iptables -t mangle -A CTRLMESH_DIVERT -j ACCEPT
 
-    # Route all packets marked in chain ctrlmesh_PROXY_DIVERT using routing table ${INBOUND_TPROXY_ROUTE_TABLE}.
+    # Route all packets marked in chain CTRLMESH_DIVERT using routing table ${INBOUND_TPROXY_ROUTE_TABLE}.
     ip -f inet rule add fwmark "${INBOUND_TPROXY_MARK}" lookup "${INBOUND_TPROXY_ROUTE_TABLE}"
     # In routing table ${INBOUND_TPROXY_ROUTE_TABLE}, create a single default rule to route all traffic to
     # the loopback interface.
@@ -100,41 +100,41 @@ if [ -n "${INBOUND_WEBHOOK_PORT}" ]; then
 
     # Create a new chain for redirecting inbound traffic to the common Envoy
     # port.
-    # In the ctrlmesh_PROXY_INBOUND chain, '-j RETURN' bypasses Envoy and
-    # '-j ctrlmesh_PROXY_TPROXY' redirects to Envoy.
-    iptables -t mangle -N ctrlmesh_PROXY_TPROXY
-    iptables -t mangle -A ctrlmesh_PROXY_TPROXY ! -d 127.0.0.1/32 -p tcp -j TPROXY --tproxy-mark "${INBOUND_TPROXY_MARK}"/0xffffffff --on-port "${PROXY_PORT}"
+    # In the CTRLMESH_INBOUND chain, '-j RETURN' bypasses Envoy and
+    # '-j CTRLMESH_TPROXY' redirects to Envoy.
+    iptables -t mangle -N CTRLMESH_TPROXY
+    iptables -t mangle -A CTRLMESH_TPROXY ! -d 127.0.0.1/32 -p tcp -j TPROXY --tproxy-mark "${INBOUND_TPROXY_MARK}"/0xffffffff --on-port "${PROXY_PORT}"
 
     table=mangle
   else
     table=nat
   fi
-  iptables -t "${table}" -N ctrlmesh_PROXY_INBOUND
-  iptables -t "${table}" -A PREROUTING -p tcp -j ctrlmesh_PROXY_INBOUND
+  iptables -t "${table}" -N CTRLMESH_INBOUND
+  iptables -t "${table}" -A PREROUTING -p tcp -j CTRLMESH_INBOUND
 
   if [ "${INBOUND_INTERCEPTION_MODE}" = "TPROXY" ]; then
-    iptables -t mangle -A ctrlmesh_PROXY_INBOUND -p tcp --dport "${INBOUND_WEBHOOK_PORT}" -m socket -j ctrlmesh_PROXY_DIVERT || echo "No socket match support"
-    iptables -t mangle -A ctrlmesh_PROXY_INBOUND -p tcp --dport "${INBOUND_WEBHOOK_PORT}" -m socket -j ctrlmesh_PROXY_DIVERT || echo "No socket match support"
-    iptables -t mangle -A ctrlmesh_PROXY_INBOUND -p tcp --dport "${INBOUND_WEBHOOK_PORT}" -j ctrlmesh_PROXY_TPROXY
+    iptables -t mangle -A CTRLMESH_INBOUND -p tcp --dport "${INBOUND_WEBHOOK_PORT}" -m socket -j CTRLMESH_DIVERT || echo "No socket match support"
+    iptables -t mangle -A CTRLMESH_INBOUND -p tcp --dport "${INBOUND_WEBHOOK_PORT}" -m socket -j CTRLMESH_DIVERT || echo "No socket match support"
+    iptables -t mangle -A CTRLMESH_INBOUND -p tcp --dport "${INBOUND_WEBHOOK_PORT}" -j CTRLMESH_TPROXY
   else
-    iptables -t nat -A ctrlmesh_PROXY_INBOUND -p tcp --dport "${INBOUND_WEBHOOK_PORT}" -j ctrlmesh_PROXY_IN_REDIRECT
+    iptables -t nat -A CTRLMESH_INBOUND -p tcp --dport "${INBOUND_WEBHOOK_PORT}" -j CTRLMESH_IN_REDIRECT
   fi
 fi
 
 # Create a new chain for selectively redirecting outbound packets to Proxy.
-iptables -t nat -N ctrlmesh_PROXY_OUTPUT
+iptables -t nat -N CTRLMESH_OUTPUT
 
-# Jump to the ctrlmesh_PROXY_OUTPUT chain from OUTPUT chain for all tcp traffic.
-iptables -t nat -A OUTPUT -p tcp -j ctrlmesh_PROXY_OUTPUT
+# Jump to the CTRLMESH_OUTPUT chain from OUTPUT chain for all tcp traffic.
+iptables -t nat -A OUTPUT -p tcp -j CTRLMESH_OUTPUT
 
 for uid in ${PROXY_UID}; do
   # Avoid infinite loops. Don't redirect Proxy traffic directly back to
   # Proxy for non-loopback traffic.
-  iptables -t nat -A ctrlmesh_PROXY_OUTPUT -m owner --uid-owner "${uid}" -j RETURN
+  iptables -t nat -A CTRLMESH_OUTPUT -m owner --uid-owner "${uid}" -j RETURN
 done
 
 # Redirect all apiserver outbound traffic to Proxy.
-iptables -t nat -A ctrlmesh_PROXY_OUTPUT -d "${KUBERNETES_SERVICE_HOST}" -j ctrlmesh_PROXY_REDIRECT
+iptables -t nat -A CTRLMESH_OUTPUT -d "${KUBERNETES_SERVICE_HOST}" -j CTRLMESH_REDIRECT
 
 # Generate certs
 mount -o remount,rw "${SA_DIR}"
