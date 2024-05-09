@@ -41,6 +41,7 @@ import (
 	"k8s.io/klog/v2"
 
 	"github.com/KusionStack/controller-mesh/pkg/apis/ctrlmesh/constants"
+	"github.com/KusionStack/controller-mesh/pkg/proxy/apiserver/common"
 	proxyfilters "github.com/KusionStack/controller-mesh/pkg/proxy/filters"
 	"github.com/KusionStack/controller-mesh/pkg/proxy/leaderelection"
 	"github.com/KusionStack/controller-mesh/pkg/utils"
@@ -49,21 +50,20 @@ import (
 )
 
 var (
-	upgradeSubresources = sets.NewString("exec", "attach")
-	enableIpTable       = os.Getenv(constants.EnvIPTable) == "true"
-
+	upgradeSubresources   = sets.NewString("exec", "attach")
+	enableIpTable         = os.Getenv(constants.EnvIPTable) == "true"
 	disableCircuitBreaker = os.Getenv(constants.EnvDisableCircuitBreaker) == "true"
 	enableFaultInjection  = os.Getenv(constants.EnvEnableFaultInjection) == "true"
 )
 
 type Proxy struct {
-	opts           *Options
+	opts           *common.Options
 	inSecureServer *http.Server
 	servingInfo    *server.SecureServingInfo
 	handler        http.Handler
 }
 
-func NewProxy(opts *Options) (*Proxy, error) {
+func NewProxy(opts *common.Options) (*Proxy, error) {
 	var servingInfo *server.SecureServingInfo
 	if enableIpTable {
 		if err := opts.ApplyTo(&servingInfo); err != nil {
@@ -79,7 +79,7 @@ func NewProxy(opts *Options) (*Proxy, error) {
 	inHandler := &handler{
 		cfg:       opts.Config,
 		transport: tp,
-		injector:  New(opts.SpecManager),
+		injector:  common.NewInjector(opts.SpecManager),
 	}
 	if opts.LeaderElectionName != "" {
 		inHandler.electionHandler = leaderelection.New(opts.SpecManager, opts.LeaderElectionName)
@@ -95,7 +95,7 @@ func NewProxy(opts *Options) (*Proxy, error) {
 		handler = opts.FaultInjectionWrapperFunc(handler)
 	}
 	handler = genericfilters.WithWaitGroup(handler, opts.LongRunningFunc, opts.HandlerChainWaitGroup)
-	handler = WithRequestInfo(handler, opts.RequestInfoResolver)
+	handler = common.WithRequestInfo(handler, opts.RequestInfoResolver)
 	handler = proxyfilters.WithPanicRecovery(handler, opts.RequestInfoResolver)
 
 	inSecureServer := &http.Server{
@@ -136,7 +136,7 @@ func (p *Proxy) Start(ctx context.Context) (<-chan struct{}, error) {
 type handler struct {
 	cfg             *rest.Config
 	transport       http.RoundTripper
-	injector        Injector
+	injector        common.Injector
 	electionHandler leaderelection.Handler
 }
 

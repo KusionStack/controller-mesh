@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package apiserver
+package common
 
 import (
 	"fmt"
@@ -43,7 +43,7 @@ type injector struct {
 	specManager *protomanager.SpecManager
 }
 
-func New(m *protomanager.SpecManager) Injector {
+func NewInjector(m *protomanager.SpecManager) Injector {
 	return &injector{specManager: m}
 }
 

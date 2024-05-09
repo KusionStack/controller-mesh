@@ -1,5 +1,5 @@
 /*
-Copyright 2023 The KusionStack Authors.
+Copyright 2024 The KusionStack Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,11 +14,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package http
+package rest
+
+const RemoteRegisterPath = "/remote-register"
+
+type ConfigRequest struct {
+	Action      Action   `json:"action"`
+	Kubeconfigs [][]byte `json:"kubeconfig"`
+}
+
+type Action string
 
 const (
-	HeaderMeshRealEndpoint    = "Mesh-Real-Endpoint"
-	HeaderHttpApiServerPreUrl = "Mesh-Pre-Url-Added"
-	HeaderEscapeMesh          = "Mesh-Escape"
-	HeaderRemoteApiServerHost = "Remote-Api-Server-Host"
+	Add    Action = "add"
+	Delete Action = "delete"
+	Update Action = "update"
 )
