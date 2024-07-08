@@ -178,7 +178,7 @@ func (r *RolloutReconciler) Reconcile(ctx context.Context, req reconcile.Request
 		}
 		if rollType != "all" && rollType != "" && !strings.Contains(cfg.Name, rollType) {
 			for _, po := range shardingPods[cfg.Name] {
-				expectedPodRevision[po.Name] = po.Labels["controller-revision-hash"]
+				expectedPodRevision[po.Name] = po.Labels[appsv1.ControllerRevisionHashLabelKey]
 			}
 			continue
 		}
