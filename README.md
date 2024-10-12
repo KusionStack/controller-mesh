@@ -1,6 +1,6 @@
-
-
 # Controller Mesh
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FKusionStack%2Fcontroller-mesh.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2FKusionStack%2Fcontroller-mesh?ref=badge_shield)
+
 
 KusionStack Controller Mesh is a solution that helps developers managing their controllers/operators better.
 
@@ -94,3 +94,7 @@ Router:
 
 <p align="center"><img width="600" src="./docs/img/mesh-proxy.png"/></p>
 
+
+
+## License
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FKusionStack%2Fcontroller-mesh.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2FKusionStack%2Fcontroller-mesh?ref=badge_large)
