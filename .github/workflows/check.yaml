@@ -39,7 +39,7 @@ jobs:
         GO111MODULE=on GOBIN=/usr/local/bin go install github.com/bufbuild/buf/cmd/buf@v1.26.1
         GO111MODULE=on GOBIN=/usr/local/bin go install ./tools/protoc-gen-golang-deepcopy
     - name: Cache Go Dependencies
-      uses: actions/cache@v2
+      uses: actions/cache@v4
       with:
         path: ~/go/pkg/mod
         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
