@@ -6,7 +6,7 @@ KusionStack Controller Mesh is a solution that helps developers managing their c
 
 The design architecture of this project is based on [openkruise/controllermesh](https://github.com/openkruise/controllermesh).
 
-More info about KusionStack ControllerMesh  👉 [Doc.](https://kusionstack.io/docs/ctrlmesh/intro/)
+More info about KusionStack ControllerMesh  👉 [Doc.](https://www.kusionstack.io/ctrlmesh/intro/)
 
 ## Key Features
 
