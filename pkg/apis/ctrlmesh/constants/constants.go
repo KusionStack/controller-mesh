@@ -19,13 +19,14 @@ package constants
 const (
 	ProxyUserID = 1359
 
-	ProxyMetricsHealthPort = 5441
-	ProxyApiserverPort     = 5443
-	ProxyWebhookPort       = 5445
-	ProxyGRPCPort          = 5447
-	ProxyMetricsPort       = 5449
-	ProxyManagerHealthPort = 5451
-	ProxyGRPCServerPort    = 5453
+	ProxyMetricsHealthPort   = 5441
+	ProxyApiServerPort       = 5443
+	ProxyWebhookPort         = 5445
+	ProxyGRPCPort            = 5447
+	ProxyMetricsPort         = 5449
+	ProxyManagerHealthPort   = 5451
+	ProxyGRPCServerPort      = 5453
+	ProxyRemoteApiServerPort = 5455
 
 	ProxyIptablesPort = 15002
 	PprofListenPort   = 5050
@@ -34,7 +35,7 @@ const (
 
 	ProxyIptablesPortFlag           = "proxy-metrics"
 	ProxyMetricsHealthPortFlag      = "metrics-health-port"
-	ProxyApiserverPortFlag          = "proxy-apiserver-port"
+	ProxyApiServerPortFlag          = "proxy-apiserver-port"
 	ProxyWebhookPortFlag            = "proxy-webhook-port"
 	ProxyGRPCPortFlag               = "grpc-port"
 	ProxyIptablesFlag               = "tport"
